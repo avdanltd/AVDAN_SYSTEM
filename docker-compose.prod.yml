@@ -1,0 +1,27 @@
+services:
+  api:
+    image: ghcr.io/avdan/api:${IMAGE_TAG}
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=production
+    env_file:
+      - apps/api/.env
+    command: gunicorn main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+    restart: unless-stopped
+
+  celery:
+    image: ghcr.io/avdan/api:${IMAGE_TAG}
+    env_file:
+      - apps/api/.env
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=4
+    restart: unless-stopped
+
+  celery-beat:
+    image: ghcr.io/avdan/api:${IMAGE_TAG}
+    env_file:
+      - apps/api/.env
+    command: celery -A workers.celery_app beat --loglevel=info
+    restart: unless-stopped
+    deploy:
+      replicas: 1

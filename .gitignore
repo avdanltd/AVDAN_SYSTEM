@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+!.env.local.example
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+
+# pnpm
+.pnpm-store/
+
+# Locks (keep these)
+# uv.lock — committed
+# pnpm-lock.yaml — committed
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# K8s secrets (sealed versions are committed)
+infra/k8s/secrets/
+*.kubeconfig
+
+# Logs
+*.log
+logs/
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Alembic
+# versions/ — committed
+
+docs/*
+!docs/AVDAN_System_Architecture_v3.docx
+!docs/AVDAN_System_Design.docx

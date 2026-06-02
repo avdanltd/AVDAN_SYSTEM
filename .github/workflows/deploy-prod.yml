@@ -1,0 +1,101 @@
+name: Deploy — Production
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false  # never cancel a production deploy in flight
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/avdan
+
+jobs:
+  build-and-deploy:
+    name: Build → Push → Deploy to production
+    runs-on: ubuntu-latest
+    environment: production  # requires manual approval in GitHub repo settings
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Set image tag
+        id: tag
+        run: echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/api/Dockerfile
+          target: production
+          push: true
+          tags: |
+            ${{ env.IMAGE_PREFIX }}/api:${{ steps.tag.outputs.sha }}
+            ${{ env.IMAGE_PREFIX }}/api:stable
+
+      - name: Build and push web-customer image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/web-customer
+          file: infra/docker/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-customer:${{ steps.tag.outputs.sha }}
+
+      - name: Build and push web-vendor image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/web-vendor
+          file: infra/docker/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-vendor:${{ steps.tag.outputs.sha }}
+
+      - name: Build and push web-admin image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/web-admin
+          file: infra/docker/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-admin:${{ steps.tag.outputs.sha }}
+
+      - name: Build and push web-hub image
+        uses: docker/build-push-action@v5
+        with:
+          context: apps/web-hub
+          file: infra/docker/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-hub:${{ steps.tag.outputs.sha }}
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+
+      - name: Deploy to avdan-app namespace
+        run: |
+          SHA=${{ steps.tag.outputs.sha }}
+          kubectl set image deployment/api api=${{ env.IMAGE_PREFIX }}/api:$SHA -n avdan-app
+          kubectl set image deployment/web-customer web-customer=${{ env.IMAGE_PREFIX }}/web-customer:$SHA -n avdan-app
+          kubectl set image deployment/web-vendor web-vendor=${{ env.IMAGE_PREFIX }}/web-vendor:$SHA -n avdan-app
+          kubectl set image deployment/web-admin web-admin=${{ env.IMAGE_PREFIX }}/web-admin:$SHA -n avdan-app
+          kubectl set image deployment/web-hub web-hub=${{ env.IMAGE_PREFIX }}/web-hub:$SHA -n avdan-app
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/api -n avdan-app --timeout=300s
+          kubectl rollout status deployment/web-customer -n avdan-app --timeout=300s
