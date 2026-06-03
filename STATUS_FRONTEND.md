@@ -10,9 +10,9 @@
 ## Current Status
 
 **Active Phase:** Phase 2
-**Active Milestone:** 2.1 — Auth Module
+**Active Milestone:** 2.1–2.5 — Auth Module complete (pending backend live test)
 **Last Completed:** Phase 1 — Scaffold ✓ (2026-06-02)
-**Blocking Issues:** Backend Phase 2 must be complete before Phase 2 frontend can be fully verified end-to-end
+**Blocking Issues:** Backend Phase 2 API must be running to verify login/register end-to-end
 
 ---
 
@@ -138,46 +138,46 @@ Repeat for each app.
 > Requires: Backend Phase 2 complete
 
 ### 2.1 Auth Module (All Apps — identical base)
-- [ ] `modules/auth/schemas/auth.schemas.ts` — Zod schemas for login, register forms (derived from `@avdan/types`)
-- [ ] `modules/auth/services/auth.service.ts` — `login()`, `register()`, `logout()`, `refreshToken()`, `getMe()` (calls `apiClient`, zero React)
-- [ ] `modules/auth/store/auth.store.ts` — Zustand store: `user`, `isAuthenticated`, `setUser`, `clearUser`
-- [ ] `modules/auth/hooks/use-session.ts` — reads user from store, provides `isAuthenticated`, `user`, `role`
-- [ ] `modules/auth/hooks/use-login.ts` — TanStack Query mutation wrapping `auth.service.login`
-- [ ] `modules/auth/hooks/use-logout.ts` — mutation, clears store + calls logout endpoint
+- [x] `modules/auth/schemas/auth.schemas.ts` — Zod schemas for login, register forms (derived from `@avdan/types`)
+- [x] `modules/auth/services/auth.service.ts` — `login()`, `register()`, `logout()`, `getMe()` (calls `apiClient`, zero React); User interface includes `name`
+- [x] `modules/auth/store/auth.store.ts` — Zustand store: `user`, `isAuthenticated`, `setUser`, `clearUser`
+- [x] `modules/auth/hooks/use-session.ts` — reads user from store, provides `isAuthenticated`, `user`, `role`
+- [x] `modules/auth/hooks/use-login.ts` — TanStack Query mutation wrapping `auth.service.login`
+- [x] `modules/auth/hooks/use-logout.ts` — mutation, clears store + calls logout endpoint
 
 ### 2.2 Login Page (All Apps)
-- [ ] `modules/auth/components/login-form.tsx` — RHF + Zod, email/phone + password fields
-- [ ] Login form uses `@avdan/ui` primitives (Button, Input, FormField, FormError)
-- [ ] Login form shows loading state during submission (Button disabled, Spinner visible)
-- [ ] Login form shows error toast on invalid credentials (Sonner toast)
-- [ ] On successful login: redirects to app home (no flicker, no blank screen)
-- [ ] `app/(auth)/login/page.tsx` — thin wrapper rendering `<LoginForm />`
-- [ ] Login page is accessible without auth (excluded from proxy matcher config)
-- [ ] Login page design: centered card, brand logo placeholder, clean modern layout
+- [x] `modules/auth/components/login-form.tsx` — RHF + Zod, email + password fields
+- [x] Login form uses `@avdan/ui` primitives (Button, Input, FormField, FormMessage)
+- [x] Login form shows loading state during submission (Button disabled)
+- [x] Login form shows error toast on invalid credentials (Sonner toast)
+- [x] On successful login: redirects to app home (no flicker, no blank screen)
+- [x] `app/(auth)/login/page.tsx` — thin wrapper rendering `<LoginForm />`
+- [x] Login page is accessible without auth (excluded from proxy matcher config)
+- [x] Login page design: centered card, brand logo placeholder, clean modern layout
 
 ### 2.3 Register Page (web-customer + web-vendor only)
-- [ ] `modules/auth/components/register-form.tsx` — name, email, phone, password, confirm password
-- [ ] `modules/auth/components/otp-form.tsx` — 6-digit OTP input, resend countdown timer
-- [ ] Register flow: fill form → submit → OTP screen → verify → redirect to app
-- [ ] Vendor register has additional fields: business name, business type, description
-- [ ] `app/(auth)/register/page.tsx` — thin wrapper
-- [ ] OTP input: 6 individual character inputs, auto-focus next on entry, paste support
+- [x] `modules/auth/components/register-form.tsx` — name, email, phone, password, confirm password
+- [x] `modules/auth/components/otp-form.tsx` — 6 individual digit inputs, auto-focus, paste support, resend countdown timer
+- [x] Register flow: fill form → submit → OTP screen → verify → redirect to login
+- [x] Vendor register has additional fields: business name, business type, description
+- [x] `app/(auth)/register/page.tsx` — thin wrapper
+- [x] OTP input: 6 individual character inputs, auto-focus next on entry, backspace focus-back, paste support
 
 ### 2.4 Authenticated Layout Shell
-- [ ] `app/(main)/layout.tsx` — authenticated layout with sidebar + main content area
-- [ ] `components/layout/sidebar.tsx` — navigation per app (links differ per app)
-- [ ] `components/layout/navbar.tsx` — top bar with user avatar, notifications bell, logout
-- [ ] `components/layout/page-wrapper.tsx` — consistent page padding, max-width
-- [ ] Sidebar links derived from `config/routes.ts`
-- [ ] Active route highlighted in sidebar
-- [ ] Mobile: sidebar collapses to hamburger menu
-- [ ] User profile displayed in sidebar footer (name, role, avatar)
+- [x] `app/(main)/layout.tsx` — authenticated layout with sidebar + main content area
+- [x] `components/layout/sidebar.tsx` — desktop sidebar + user profile footer (name, role, avatar)
+- [x] `components/layout/navbar.tsx` — top bar with user dropdown (name, email, logout), mobile hamburger + Sheet
+- [x] `components/layout/page-wrapper.tsx` — consistent page padding, max-width (per-app widths)
+- [x] Sidebar links derived from `config/routes.ts`
+- [x] Active route highlighted in sidebar
+- [x] Mobile: hamburger in navbar opens Sheet with full navigation
+- [x] User profile displayed in sidebar footer (name, role, avatar) — hydrated via SessionHydrate
 
 ### 2.5 Session Hydration
-- [ ] On app load, `GET /api/auth/me` called once to hydrate Zustand store
-- [ ] This happens in a root layout Server Component — user data is in store before first client render
-- [ ] If `/auth/me` fails (expired token), proxy.ts has already redirected — this is a safety net only
-- [ ] No auth-check flickering on any page
+- [x] Root `app/layout.tsx` (Server Component) fetches `GET /auth/me` server-side using `avdan_token` cookie
+- [x] User passed to `Providers` → `SessionHydrate` client component initialises Zustand store synchronously before first render
+- [x] If `/auth/me` fails (no token / expired), returns null — proxy.ts handles redirect
+- [x] No auth-check flickering: store is populated before any child component renders
 
 **Phase 2 complete when:** User can log in and log out in all four apps. Authenticated layout renders. Unauthenticated requests redirect to login. Session hydration works. Register works in web-customer.
 

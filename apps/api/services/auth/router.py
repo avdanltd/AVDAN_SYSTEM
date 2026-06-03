@@ -1,15 +1,18 @@
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Cookie, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import redis.asyncio as aioredis
 
 from core.database import get_db
-from core.dependencies import get_current_user, CurrentUser
+from core.dependencies import CurrentUser, get_current_user
+from core.exceptions import AuthException
 from core.redis import get_redis
 from services.auth.schemas import (
     LoginRequest,
     RegisterCustomerRequest,
+    RegisterVendorRequest,
     TokenResponse,
+    UpdateProfileRequest,
     UserResponse,
     VerifyOtpRequest,
 )
@@ -17,11 +20,25 @@ from services.auth.service import AuthService
 
 router = APIRouter()
 
-_COOKIE_OPTS = {
+_COOKIE_OPTS: dict = {
     "httponly": True,
     "samesite": "lax",
     "path": "/",
 }
+
+
+def _user_response(user: object) -> UserResponse:
+    from services.auth.models import User
+
+    u: User = user  # type: ignore[assignment]
+    return UserResponse(
+        id=str(u.id),
+        email=u.email,
+        phone=u.phone,
+        name=u.name,
+        role=u.role,
+        status=u.status,
+    )
 
 
 @router.post("/register/customer", response_model=dict, status_code=201)
@@ -32,7 +49,17 @@ async def register_customer(
 ) -> dict:
     svc = AuthService(db, redis)
     user, otp = await svc.register_customer(data)
-    # In production, send OTP via SMS/email. For dev, return it directly.
+    return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
+
+
+@router.post("/register/vendor", response_model=dict, status_code=201)
+async def register_vendor(
+    data: RegisterVendorRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    svc = AuthService(db, redis)
+    user, otp = await svc.register_vendor(data)
     return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
 
 
@@ -65,10 +92,38 @@ async def login(
     return TokenResponse(message="Login successful")
 
 
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh(
+    response: Response,
+    avdan_refresh_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> TokenResponse:
+    if not avdan_refresh_token:
+        raise AuthException("Refresh token missing")
+
+    from core.config import settings
+
+    svc = AuthService(db, redis)
+    access_token, new_refresh_token = await svc.refresh_tokens(avdan_refresh_token)
+
+    secure = settings.is_production
+    response.set_cookie("avdan_token", access_token, secure=secure, **_COOKIE_OPTS)
+    response.set_cookie("avdan_refresh_token", new_refresh_token, secure=secure, **_COOKIE_OPTS)
+    return TokenResponse(message="Token refreshed")
+
+
 @router.post("/logout")
-async def logout(response: Response) -> dict:
-    response.delete_cookie("avdan_token")
-    response.delete_cookie("avdan_refresh_token")
+async def logout(
+    response: Response,
+    avdan_refresh_token: str | None = Cookie(default=None),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    svc = AuthService(db, redis)
+    await svc.logout(avdan_refresh_token)
+    response.delete_cookie("avdan_token", path="/")
+    response.delete_cookie("avdan_refresh_token", path="/")
     return {"message": "Logged out"}
 
 
@@ -80,10 +135,16 @@ async def get_me(
 ) -> UserResponse:
     svc = AuthService(db, redis)
     user = await svc.get_user_by_id(current_user.user_id)
-    return UserResponse(
-        id=str(user.id),
-        email=user.email,
-        phone=user.phone,
-        role=user.role,
-        status=user.status,
-    )
+    return _user_response(user)
+
+
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    data: UpdateProfileRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> UserResponse:
+    svc = AuthService(db, redis)
+    user = await svc.update_profile(current_user.user_id, data)
+    return _user_response(user)

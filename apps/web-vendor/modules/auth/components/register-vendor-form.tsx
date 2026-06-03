@@ -13,9 +13,8 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
-import { apiClient } from '@/lib/api-client'
 import { authService } from '../services/auth.service'
-import { otpSchema, type OtpInput } from '../schemas/auth.schemas'
+import { OtpForm } from './otp-form'
 
 const vendorRegisterSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -44,54 +43,10 @@ export function RegisterVendorForm() {
     onError: (error: Error) => toast.error(error.message),
   })
 
-  const verifyMutation = useMutation({
-    mutationFn: authService.verifyOtp,
-    onSuccess: () => {
-      toast.success('Account created! Please sign in.')
-      window.location.href = ROUTES.login
-    },
-    onError: (error: Error) => toast.error(error.message),
-  })
-
   const form = useForm<VendorRegisterInput>({ resolver: zodResolver(vendorRegisterSchema) })
-  const otpForm = useForm<OtpInput>({ resolver: zodResolver(otpSchema) })
 
   if (step === 'otp' && userId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Verify your phone</CardTitle>
-            <CardDescription>Enter the 6-digit code sent to your phone</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...otpForm}>
-              <form
-                onSubmit={otpForm.handleSubmit((d) =>
-                  verifyMutation.mutate({ user_id: userId, otp: d.otp }),
-                )}
-                className="space-y-4"
-              >
-                <FormField
-                  control={otpForm.control}
-                  name="otp"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>OTP Code</FormLabel>
-                      <FormControl><Input placeholder="000000" maxLength={6} {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button type="submit" className="w-full" disabled={verifyMutation.isPending}>
-                  {verifyMutation.isPending ? 'Verifying...' : 'Verify OTP'}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <OtpForm userId={userId} onBack={() => setStep('register')} />
   }
 
   return (

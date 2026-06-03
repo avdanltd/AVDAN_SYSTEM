@@ -9,9 +9,9 @@
 
 ## Current Status
 
-**Active Phase:** Phase 2
-**Active Milestone:** 2.1 — User Model + Migration
-**Last Completed:** Phase 1 — Foundation & Scaffold ✓ (2026-06-02)
+**Active Phase:** Phase 3
+**Active Milestone:** 3.1 — Vendor Model + Migration
+**Last Completed:** Phase 2 — Authentication Service ✓ (2026-06-02)
 **Blocking Issues:** None
 
 ---
@@ -92,46 +92,46 @@
 
 ## Phase 2 — Authentication Service
 
-### 2.1 User Model + Migration
-- [ ] `users` table migration created (see ARCHITECTURE.md schema)
-- [ ] `vendor_profiles`, `rider_profiles` tables migration created (user_id FK)
-- [ ] Migration applies cleanly: `alembic upgrade head`
-- [ ] User model SQLAlchemy class in `services/auth/models.py`
-- [ ] Enum for `role`: `customer`, `vendor`, `rider`, `agent`, `admin`, `support`
+### 2.1 User Model + Migration ✓
+- [x] `users` table migration created (see ARCHITECTURE.md schema)
+- [x] `vendor_profiles`, `rider_profiles` tables migration created (user_id FK)
+- [x] Migration applies cleanly: `alembic upgrade head`
+- [x] User model SQLAlchemy class in `services/auth/models.py`
+- [x] Enum for `role`: `customer`, `vendor`, `rider`, `agent`, `admin`, `support`
 
-### 2.2 Registration Endpoints
-- [ ] `POST /auth/register/customer` — email/phone + password → creates user, sends OTP
-- [ ] `POST /auth/register/vendor` — additional business fields → creates user + vendor_profile
-- [ ] `POST /auth/verify-otp` — validates OTP, activates account
-- [ ] OTP stored in Redis with 10-minute TTL: `otp:{user_id}` = `{code}`
-- [ ] OTP is 6 digits, generated securely (not `random.randint`)
-- [ ] Password hashed before storage — never stored plain
-- [ ] Duplicate email/phone returns 409 with clear error message
+### 2.2 Registration Endpoints ✓
+- [x] `POST /auth/register/customer` — email/phone + password → creates user, sends OTP
+- [x] `POST /auth/register/vendor` — additional business fields → creates user + vendor_profile
+- [x] `POST /auth/verify-otp` — validates OTP, activates account
+- [x] OTP stored in Redis with 10-minute TTL: `otp:{user_id}` = `{code}`
+- [x] OTP is 6 digits, generated securely (not `random.randint`)
+- [x] Password hashed before storage — never stored plain
+- [x] Duplicate email/phone returns 409 with clear error message
 
-### 2.3 Login + Token Issuance
-- [ ] `POST /auth/login` — validates credentials, issues JWT + refresh token as httpOnly cookies
-- [ ] Cookie attributes: `httpOnly=True`, `secure=True` (prod), `samesite='lax'`, `path='/'`
-- [ ] Access token: 15-minute expiry. Refresh token: 7-day expiry.
-- [ ] `POST /auth/refresh` — validates refresh token cookie, issues new access token, rotates refresh token
-- [ ] Old refresh token invalidated in Redis on rotation (token blacklist key: `revoked:{jti}`)
-- [ ] `POST /auth/logout` — clears both cookies, blacklists refresh token
+### 2.3 Login + Token Issuance ✓
+- [x] `POST /auth/login` — validates credentials, issues JWT + refresh token as httpOnly cookies
+- [x] Cookie attributes: `httpOnly=True`, `secure=True` (prod), `samesite='lax'`, `path='/'`
+- [x] Access token: 15-minute expiry. Refresh token: 7-day expiry.
+- [x] `POST /auth/refresh` — validates refresh token cookie, issues new access token, rotates refresh token
+- [x] Old refresh token invalidated in Redis on rotation (token blacklist key: `revoked:{jti}`)
+- [x] `POST /auth/logout` — clears both cookies, blacklists refresh token
 
-### 2.4 Profile Endpoints
-- [ ] `GET /auth/me` — returns current user profile (requires auth)
-- [ ] `PATCH /auth/me` — updates profile fields (name, phone, avatar)
-- [ ] Response never includes `password_hash`
+### 2.4 Profile Endpoints ✓
+- [x] `GET /auth/me` — returns current user profile (requires auth)
+- [x] `PATCH /auth/me` — updates profile fields (name, phone, avatar)
+- [x] Response never includes `password_hash`
 
-### 2.5 Admin User Management
-- [ ] `GET /admin/users` — paginated list, filterable by role/status (requires admin role)
-- [ ] `PATCH /admin/users/{id}/status` — activate, suspend, ban (requires admin)
-- [ ] `POST /admin/users` — create admin/support accounts (requires admin)
+### 2.5 Admin User Management ✓
+- [x] `GET /admin/users` — paginated list, filterable by role/status (requires admin role)
+- [x] `PATCH /admin/users/{id}/status` — activate, suspend, ban (requires admin)
+- [x] `POST /admin/users` — create admin/support accounts (requires admin)
 
-### 2.6 Auth Tests
-- [ ] Register → verify OTP → login → get /me all work in sequence
-- [ ] Login with wrong password returns 401
-- [ ] Accessing protected endpoint without cookie returns 401
-- [ ] Accessing admin endpoint as customer returns 403
-- [ ] Refresh token rotation works — old token cannot be reused
+### 2.6 Auth Tests ✓
+- [x] Register → verify OTP → login → get /me all work in sequence
+- [x] Login with wrong password returns 401
+- [x] Accessing protected endpoint without cookie returns 401
+- [x] Accessing admin endpoint as customer returns 403
+- [x] Refresh token rotation works — old token cannot be reused
 
 **Phase 2 complete when:** Full auth cycle works end-to-end. Cookies set correctly. Protected endpoints enforced. Tests pass.
 

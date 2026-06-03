@@ -1,22 +1,20 @@
 import secrets
 from datetime import UTC, datetime, timedelta
 
+import bcrypt
 import jwt
-from passlib.context import CryptContext
 
 from core.config import settings
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _ALGORITHM = "HS256"
 
 
 def hash_password(plain: str) -> str:
-    return _pwd_context.hash(plain)
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt()).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def create_access_token(user_id: str, role: str) -> str:

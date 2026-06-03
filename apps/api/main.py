@@ -8,6 +8,7 @@ from core.config import settings
 from core.database import engine
 from core.exceptions import AppError, app_error_handler, unhandled_error_handler, validation_error_handler
 from core.redis import redis_pool
+from services.admin.router import router as admin_router
 from services.auth.router import router as auth_router
 
 
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
+    app.include_router(admin_router, prefix="/admin", tags=["admin"])
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
