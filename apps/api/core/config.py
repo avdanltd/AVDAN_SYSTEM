@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     paystack_secret_key: str = ""
     paystack_public_key: str = ""
 
+    # Push notifications — FCM legacy server key (empty = push disabled)
+    fcm_server_key: str = ""
+
     # App
     environment: str = "development"
     frontend_urls: list[str] = ["http://localhost:3000"]
