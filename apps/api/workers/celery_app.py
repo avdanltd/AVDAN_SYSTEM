@@ -26,3 +26,5 @@ celery_app.config_from_object(
 )
 
 celery_app.conf.beat_schedule = {}  # populated in beat_schedule.py
+
+import workers.beat_schedule  # noqa: F401, E402 — activates beat schedule entries

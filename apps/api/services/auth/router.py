@@ -9,6 +9,7 @@ from core.exceptions import AuthException
 from core.redis import get_redis
 from services.auth.schemas import (
     LoginRequest,
+    PushTokenRequest,
     RegisterCustomerRequest,
     RegisterVendorRequest,
     TokenResponse,
@@ -148,3 +149,21 @@ async def update_me(
     svc = AuthService(db, redis)
     user = await svc.update_profile(current_user.user_id, data)
     return _user_response(user)
+
+
+@router.patch("/me/push-token", response_model=dict)
+async def update_push_token(
+    data: PushTokenRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    from sqlalchemy import select
+    from services.auth.models import User
+    result = await db.execute(
+        select(User).where(User.id == current_user.user_id)  # type: ignore[arg-type]
+    )
+    user = result.scalar_one_or_none()
+    if user:
+        user.fcm_token = data.token
+    return {"message": "Push token updated"}

@@ -67,3 +67,7 @@ class PaginatedUsersResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class PushTokenRequest(BaseModel):
+    token: str
