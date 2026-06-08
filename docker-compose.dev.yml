@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: avdan_dev
       POSTGRES_DB: avdan
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -85,14 +85,16 @@ services:
 
   web-customer:
     build:
-      context: apps/web-customer
-      dockerfile: ../../infra/docker/web/Dockerfile
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        APP_NAME: web-customer
     ports:
       - "3000:3000"
     volumes:
-      - ./apps/web-customer:/app
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web-customer:/app/apps/web-customer
+      - /app/apps/web-customer/node_modules
+      - /app/apps/web-customer/.next
     environment:
       - API_INTERNAL_URL=http://api:8000
     env_file:
@@ -102,14 +104,16 @@ services:
 
   web-vendor:
     build:
-      context: apps/web-vendor
-      dockerfile: ../../infra/docker/web/Dockerfile
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        APP_NAME: web-vendor
     ports:
       - "3001:3000"
     volumes:
-      - ./apps/web-vendor:/app
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web-vendor:/app/apps/web-vendor
+      - /app/apps/web-vendor/node_modules
+      - /app/apps/web-vendor/.next
     environment:
       - API_INTERNAL_URL=http://api:8000
     env_file:
@@ -119,14 +123,16 @@ services:
 
   web-admin:
     build:
-      context: apps/web-admin
-      dockerfile: ../../infra/docker/web/Dockerfile
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        APP_NAME: web-admin
     ports:
       - "3002:3000"
     volumes:
-      - ./apps/web-admin:/app
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web-admin:/app/apps/web-admin
+      - /app/apps/web-admin/node_modules
+      - /app/apps/web-admin/.next
     environment:
       - API_INTERNAL_URL=http://api:8000
     env_file:
@@ -136,14 +142,16 @@ services:
 
   web-hub:
     build:
-      context: apps/web-hub
-      dockerfile: ../../infra/docker/web/Dockerfile
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        APP_NAME: web-hub
     ports:
       - "3003:3000"
     volumes:
-      - ./apps/web-hub:/app
-      - /app/node_modules
-      - /app/.next
+      - ./apps/web-hub:/app/apps/web-hub
+      - /app/apps/web-hub/node_modules
+      - /app/apps/web-hub/.next
     environment:
       - API_INTERNAL_URL=http://api:8000
     env_file:

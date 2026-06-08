@@ -9,6 +9,14 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from core.config import settings
 from models.base import Base
 import services.auth.models  # noqa: F401 — registers models with Base.metadata
+import services.vendor.models  # noqa: F401 — registers models with Base.metadata
+import services.orders.models  # noqa: F401 — registers models with Base.metadata
+import services.payment.models  # noqa: F401 — registers models with Base.metadata
+import services.dispatch.models  # noqa: F401 — registers models with Base.metadata
+import services.notification.models  # noqa: F401 — registers models with Base.metadata
+import services.qa.models  # noqa: F401 — registers models with Base.metadata
+import services.dispute.models  # noqa: F401 — registers models with Base.metadata
+import services.analytics.models  # noqa: F401 — registers models with Base.metadata
 
 # Alembic Config object
 config = context.config

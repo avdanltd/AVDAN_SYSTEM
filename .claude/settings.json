@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\hp\\\\Desktop\\\\AVDAN_SYSTEM\\\\AVDAN_SYSTEM\\\\apps\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\hp\\\\Desktop\\\\AVDAN_SYSTEM\\\\AVDAN_SYSTEM\\\\apps\\\\api\\\\workers\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\hp\\\\Desktop\\\\AVDAN_SYSTEM\\\\AVDAN_SYSTEM\\\\apps\\\\web-customer\\\\app\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\hp\\\\Desktop\\\\AVDAN_SYSTEM\\\\AVDAN_SYSTEM\\\\apps\\\\web-admin\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\hp\\\\Desktop\\\\AVDAN_SYSTEM\\\\AVDAN_SYSTEM\\\\apps\\\\web-hub\" -Force | Select-Object Name, @{Name=\"Type\";Expression={if\\($_.PSIsContainer\\){\"DIR\"}else{\"FILE\"}}} | Format-Table -AutoSize)"
+    ]
+  }
+}

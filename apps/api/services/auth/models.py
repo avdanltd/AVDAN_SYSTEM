@@ -23,6 +23,10 @@ class User(BaseModel):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    fcm_token: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    hub_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )  # set for agent role users; FK to agent_hubs added in Phase 8 migration
 
     vendor_profile: Mapped["VendorProfile | None"] = relationship(
         "VendorProfile", back_populates="user", uselist=False
