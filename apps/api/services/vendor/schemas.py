@@ -52,6 +52,7 @@ class VendorResponse(BaseModel):
     status: str
     zone_id: str | None
     rating: float
+    created_at: str
 
     model_config = {"from_attributes": True}
 
@@ -70,6 +71,9 @@ class VendorResponse(BaseModel):
 
 class VendorDetailResponse(VendorResponse):
     products: list[ProductResponse] = []
+    has_payout_account: bool = False
+    payout_bank_name: str | None = None
+    payout_account_name: str | None = None
 
 
 class UpdateVendorProfileRequest(BaseModel):
@@ -83,6 +87,37 @@ class PaginatedVendorsResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# ── Payout account ───────────────────────────────────────────────────────────
+
+class BankResponse(BaseModel):
+    name: str
+    code: str
+
+
+class VerifyAccountRequest(BaseModel):
+    account_number: str = Field(min_length=10, max_length=10, pattern=r"^\d{10}$")
+    bank_code: str = Field(min_length=1)
+
+
+class VerifyAccountResponse(BaseModel):
+    account_name: str
+    account_number: str
+
+
+class SavePayoutAccountRequest(BaseModel):
+    account_number: str = Field(min_length=10, max_length=10, pattern=r"^\d{10}$")
+    bank_code: str = Field(min_length=1)
+    bank_name: str = Field(min_length=1)
+    account_name: str = Field(min_length=1)
+
+
+class PayoutAccountResponse(BaseModel):
+    has_payout_account: bool
+    account_number: str | None
+    bank_name: str | None
+    account_name: str | None
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────

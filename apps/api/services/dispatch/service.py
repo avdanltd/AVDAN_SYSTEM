@@ -98,38 +98,44 @@ class DispatchService:
 
     # ── Admin/Dispatch-facing ─────────────────────────────────────────────────
 
-    async def assign_rider(self, order_id: str) -> Rider:
+    async def assign_rider(self, order_id: str, rider_id: str | None = None) -> Rider:
         order = await self._get_order(order_id)
         if order.status != OrderStatus.READY_FOR_PICKUP:
             raise AppError(400, "INVALID_STATE", "Order must be READY_FOR_PICKUP to assign a rider")
 
-        # Find vendor's zone
-        from services.vendor.models import Vendor
-        vendor_result = await self.db.execute(
-            select(Vendor).where(Vendor.id == order.vendor_id)
-        )
-        vendor = vendor_result.scalar_one_or_none()
-        zone_id = vendor.zone_id if vendor else None
+        if rider_id:
+            # Admin specified a rider explicitly — no online check required
+            result = await self.db.execute(select(Rider).where(Rider.id == uuid.UUID(rider_id)))
+            nearest = result.scalar_one_or_none()
+            if not nearest:
+                raise NotFoundException("Rider not found")
+        else:
+            # Find vendor's zone
+            from services.vendor.models import Vendor
+            vendor_result = await self.db.execute(
+                select(Vendor).where(Vendor.id == order.vendor_id)
+            )
+            vendor = vendor_result.scalar_one_or_none()
+            zone_id = vendor.zone_id if vendor else None
 
-        # Find online riders in zone, not already on an active order
-        query = select(Rider).where(Rider.online.is_(True))
-        if zone_id:
-            query = query.where(Rider.zone_id == zone_id)
+            # Find online riders in zone
+            query = select(Rider).where(Rider.online.is_(True))
+            if zone_id:
+                query = query.where(Rider.zone_id == zone_id)
 
-        result = await self.db.execute(query)
-        candidates = list(result.scalars().all())
+            result = await self.db.execute(query)
+            candidates = list(result.scalars().all())
 
-        if not candidates:
-            raise AppError(404, "NO_RIDERS_AVAILABLE", "No online riders available in this zone")
+            if not candidates:
+                raise AppError(404, "NO_RIDERS_AVAILABLE", "No online riders available in this zone")
 
-        # Prefer nearest rider if vendor has coordinates
-        nearest = candidates[0]
-        if vendor and vendor.lat and vendor.lng:
-            def _dist(r: Rider) -> float:
-                if r.lat and r.lng:
-                    return _haversine_km(float(r.lat), float(r.lng), float(vendor.lat), float(vendor.lng))  # type: ignore[arg-type]
-                return float("inf")
-            nearest = min(candidates, key=_dist)
+            nearest = candidates[0]
+            if vendor and vendor.lat and vendor.lng:
+                def _dist(r: Rider) -> float:
+                    if r.lat and r.lng:
+                        return _haversine_km(float(r.lat), float(r.lng), float(vendor.lat), float(vendor.lng))  # type: ignore[arg-type]
+                    return float("inf")
+                nearest = min(candidates, key=_dist)
 
         # Assign rider to order via state machine
         order.rider_id = nearest.id
@@ -142,6 +148,44 @@ class DispatchService:
             metadata={"assigned_rider_id": str(nearest.id)},
         )
         return nearest
+
+    async def get_rider_orders(self, user_id: str) -> list[Order]:
+        from sqlalchemy.orm import selectinload
+        rider = await self.get_or_create_rider(user_id)
+        result = await self.db.execute(
+            select(Order)
+            .where(
+                Order.rider_id == rider.id,
+                Order.status.in_([
+                    OrderStatus.PICKED_UP,
+                    OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.AT_HUB,
+                    OrderStatus.OUT_FOR_DELIVERY,
+                ]),
+            )
+            .options(selectinload(Order.items))
+        )
+        return list(result.scalars().all())
+
+    async def rider_transition(self, user_id: str, order_id: str, to_state: str) -> Order:
+        rider = await self.get_or_create_rider(user_id)
+        result = await self.db.execute(
+            select(Order).where(
+                Order.id == uuid.UUID(order_id),
+                Order.rider_id == rider.id,
+            )
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise NotFoundException("Order not found or not assigned to this rider")
+        order_svc = OrderService(self.db)
+        return await order_svc.transition(
+            order_id=order_id,
+            to_state=to_state,
+            actor_id=user_id,
+            actor_role="rider",
+            metadata={},
+        )
 
     async def get_available_riders(self, zone_id: str | None) -> list[Rider]:
         query = select(Rider).where(Rider.online.is_(True))

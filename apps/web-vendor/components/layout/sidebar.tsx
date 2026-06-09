@@ -2,17 +2,18 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { LayoutDashboard, ShoppingBag, Package, TrendingUp, User } from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 
 export const navItems = [
-  { label: 'Dashboard', href: ROUTES.home },
-  { label: 'Orders', href: ROUTES.orders },
-  { label: 'Products', href: ROUTES.products },
-  { label: 'Earnings', href: ROUTES.earnings },
-  { label: 'Profile', href: ROUTES.profile },
+  { label: 'Dashboard', href: ROUTES.home, icon: LayoutDashboard },
+  { label: 'Orders', href: ROUTES.orders, icon: ShoppingBag },
+  { label: 'Products', href: ROUTES.products, icon: Package },
+  { label: 'Earnings', href: ROUTES.earnings, icon: TrendingUp },
+  { label: 'Profile', href: ROUTES.profile, icon: User },
 ]
 
 function getUserInitials(name: string | null | undefined): string {
@@ -37,22 +38,26 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={onNav}
-                className={cn(
-                  'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  pathname === item.href
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                )}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onNav}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    pathname === item.href
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       </nav>
 

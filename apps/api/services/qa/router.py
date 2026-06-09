@@ -22,13 +22,14 @@ router = APIRouter()
 _EVIDENCE_DIR = Path("media") / "qa-evidence"
 
 
-def _order_resp(order: object) -> OrderResponse:
+def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
         id=str(o.id),
         customer_id=str(o.customer_id),
         vendor_id=str(o.vendor_id),
+        vendor_name=vendor_name,
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_address=o.delivery_address,
@@ -44,6 +45,7 @@ def _order_resp(order: object) -> OrderResponse:
             for i in (o.items or [])
         ],
         created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
     )
 
 
@@ -54,14 +56,37 @@ async def list_inbound_orders(
     current_user: CurrentUser = Depends(require_role("agent")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedOrdersResponse:
+    import uuid as _uuid
+    from sqlalchemy import select
+    from services.vendor.models import Vendor
     svc = QAService(db)
     orders, total = await svc.list_inbound_orders(current_user.user_id, page, page_size)
+    vendor_ids = list({o.vendor_id for o in orders})
+    vendors: dict = {}
+    if vendor_ids:
+        res = await db.execute(select(Vendor).where(Vendor.id.in_(vendor_ids)))
+        vendors = {v.id: v.name for v in res.scalars().all()}
     return PaginatedOrdersResponse(
-        items=[_order_resp(o) for o in orders],
+        items=[_order_resp(o, vendor_name=vendors.get(o.vendor_id)) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/orders/{order_id}", response_model=OrderResponse)
+async def get_hub_order(
+    order_id: str,
+    current_user: CurrentUser = Depends(require_role("agent")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderResponse:
+    from sqlalchemy import select
+    from services.vendor.models import Vendor
+    svc = QAService(db)
+    order = await svc.get_order_for_agent(current_user.user_id, order_id)
+    vendor_result = await db.execute(select(Vendor).where(Vendor.id == order.vendor_id))
+    vendor = vendor_result.scalar_one_or_none()
+    return _order_resp(order, vendor_name=vendor.name if vendor else None)
 
 
 @router.post("/orders/{order_id}/receive", response_model=OrderResponse)

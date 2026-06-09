@@ -47,7 +47,9 @@ class PaymentService:
             raise ValidationException("Customer email required for payment")
 
         provider = get_provider("paystack")
-        charge = await provider.initiate_charge(order_id, order.total_kobo, user.email)
+        charge = await provider.initiate_charge(
+            order_id, order.total_kobo, user.email, settings.payment_callback_url
+        )
 
         escrow = EscrowTransaction(
             order_id=uuid.UUID(order_id),

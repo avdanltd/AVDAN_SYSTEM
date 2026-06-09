@@ -24,6 +24,10 @@ class RiderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssignRiderRequest(BaseModel):
+    rider_id: str | None = None  # if None, auto-picks nearest online rider
+
+
 class AssignRiderResponse(BaseModel):
     order_id: str
     rider_id: str

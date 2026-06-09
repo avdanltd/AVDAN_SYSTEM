@@ -32,6 +32,23 @@ class RefundResult:
 
 
 @dataclass
+class BankInfo:
+    name: str
+    code: str
+
+
+@dataclass
+class AccountVerifyResult:
+    account_name: str
+    account_number: str
+
+
+@dataclass
+class RecipientResult:
+    recipient_code: str
+
+
+@dataclass
 class WebhookEvent:
     event_type: str       # "charge.success", "transfer.success", etc.
     reference: str        # transaction reference
@@ -43,7 +60,7 @@ class WebhookEvent:
 class PaymentProvider(ABC):
     @abstractmethod
     async def initiate_charge(
-        self, order_id: str, amount_kobo: int, customer_email: str
+        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = ""
     ) -> ChargeResult: ...
 
     @abstractmethod
@@ -61,3 +78,16 @@ class PaymentProvider(ABC):
     async def verify_webhook(
         self, payload: bytes, signature: str
     ) -> WebhookEvent: ...
+
+    @abstractmethod
+    async def get_banks(self) -> list[BankInfo]: ...
+
+    @abstractmethod
+    async def resolve_account(
+        self, account_number: str, bank_code: str
+    ) -> AccountVerifyResult: ...
+
+    @abstractmethod
+    async def create_transfer_recipient(
+        self, account_name: str, account_number: str, bank_code: str
+    ) -> RecipientResult: ...

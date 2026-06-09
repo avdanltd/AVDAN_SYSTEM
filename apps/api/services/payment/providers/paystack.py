@@ -9,9 +9,12 @@ import httpx
 
 from core.exceptions import AppError
 from services.payment.providers.base import (
+    AccountVerifyResult,
+    BankInfo,
     ChargeResult,
     PaymentProvider,
     PaymentStatus,
+    RecipientResult,
     RefundResult,
     TransferResult,
     WebhookEvent,
@@ -31,17 +34,20 @@ class PaystackProvider(PaymentProvider):
         }
 
     async def initiate_charge(
-        self, order_id: str, amount_kobo: int, customer_email: str
+        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = ""
     ) -> ChargeResult:
+        payload: dict = {
+            "email": customer_email,
+            "amount": amount_kobo,
+            "reference": f"avdan-{order_id}",
+        }
+        if callback_url:
+            payload["callback_url"] = callback_url
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{_BASE_URL}/transaction/initialize",
                 headers=self._headers(),
-                json={
-                    "email": customer_email,
-                    "amount": amount_kobo,
-                    "reference": f"avdan-{order_id}",
-                },
+                json=payload,
             )
         if response.status_code != 200:
             raise AppError(502, "PAYMENT_INIT_FAILED", "Failed to initiate payment")
@@ -107,6 +113,57 @@ class PaystackProvider(PaymentProvider):
             refund_ref=str(data.get("id", payment_ref)),
             success=data.get("status") in ("processed", "pending"),
         )
+
+    async def get_banks(self) -> list[BankInfo]:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{_BASE_URL}/bank?currency=NGN&perPage=200",
+                headers=self._headers(),
+            )
+        if response.status_code != 200:
+            raise AppError(502, "BANKS_FETCH_FAILED", "Failed to fetch bank list")
+        return [
+            BankInfo(name=b["name"], code=b["code"])
+            for b in response.json().get("data", [])
+            if b.get("active") and b.get("type") != "mobile_money"
+        ]
+
+    async def resolve_account(
+        self, account_number: str, bank_code: str
+    ) -> AccountVerifyResult:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{_BASE_URL}/bank/resolve",
+                headers=self._headers(),
+                params={"account_number": account_number, "bank_code": bank_code},
+            )
+        if response.status_code != 200:
+            raise AppError(422, "ACCOUNT_RESOLVE_FAILED", "Could not verify account — check account number and bank")
+        data = response.json()["data"]
+        return AccountVerifyResult(
+            account_name=data["account_name"],
+            account_number=data["account_number"],
+        )
+
+    async def create_transfer_recipient(
+        self, account_name: str, account_number: str, bank_code: str
+    ) -> RecipientResult:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                f"{_BASE_URL}/transferrecipient",
+                headers=self._headers(),
+                json={
+                    "type": "nuban",
+                    "name": account_name,
+                    "account_number": account_number,
+                    "bank_code": bank_code,
+                    "currency": "NGN",
+                },
+            )
+        if response.status_code not in (200, 201):
+            raise AppError(502, "RECIPIENT_CREATE_FAILED", "Failed to create transfer recipient")
+        data = response.json()["data"]
+        return RecipientResult(recipient_code=data["recipient_code"])
 
     async def verify_webhook(
         self, payload: bytes, signature: str

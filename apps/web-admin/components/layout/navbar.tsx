@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 import {
   Avatar,
@@ -18,6 +19,7 @@ import {
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { SidebarContent } from './sidebar'
+import { ROUTES } from '@/config/routes'
 
 function MenuIcon() {
   return (
@@ -72,6 +74,10 @@ export function Navbar() {
               <p className="text-sm font-medium">{user?.name ?? '—'}</p>
               <p className="truncate text-xs text-muted-foreground capitalize">{user?.role ?? ''}</p>
             </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={ROUTES.profile}>Profile</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}
