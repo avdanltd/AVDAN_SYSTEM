@@ -4,14 +4,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.dependencies import CurrentUser, get_current_user, require_role
 from services.vendor.schemas import (
+    BankResponse,
     CreateProductRequest,
     PaginatedVendorsResponse,
+    PayoutAccountResponse,
     ProductResponse,
+    SavePayoutAccountRequest,
     UpdateProductAvailabilityRequest,
     UpdateProductRequest,
     UpdateVendorProfileRequest,
     VendorDetailResponse,
     VendorResponse,
+    VerifyAccountRequest,
+    VerifyAccountResponse,
 )
 from services.vendor.service import VendorService
 
@@ -30,6 +35,7 @@ def _vendor_response(vendor: object) -> VendorResponse:
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
         rating=float(v.rating),
+        created_at=v.created_at.isoformat(),
     )
 
 
@@ -60,7 +66,11 @@ def _vendor_detail_response(vendor: object) -> VendorDetailResponse:
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
         rating=float(v.rating),
+        created_at=v.created_at.isoformat(),
         products=[_product_response(p) for p in v.products],
+        has_payout_account=bool(v.paystack_recipient_code),
+        payout_bank_name=v.payout_bank_name,
+        payout_account_name=v.payout_account_name,
     )
 
 
@@ -69,12 +79,13 @@ def _vendor_detail_response(vendor: object) -> VendorDetailResponse:
 @router.get("", response_model=PaginatedVendorsResponse)
 async def list_vendors(
     zone_id: str | None = Query(default=None),
+    search: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedVendorsResponse:
     svc = VendorService(db)
-    vendors, total = await svc.list_vendors(zone_id=zone_id, page=page, page_size=page_size)
+    vendors, total = await svc.list_vendors(zone_id=zone_id, search=search, page=page, page_size=page_size)
     return PaginatedVendorsResponse(
         items=[_vendor_response(v) for v in vendors],
         total=total,
@@ -85,14 +96,14 @@ async def list_vendors(
 
 # ── Vendor-authenticated endpoints (/me routes MUST come before /{slug}) ─────
 
-@router.get("/me", response_model=VendorResponse)
+@router.get("/me", response_model=VendorDetailResponse)
 async def get_my_vendor(
     current_user: CurrentUser = Depends(require_role("vendor")),
     db: AsyncSession = Depends(get_db),
-) -> VendorResponse:
+) -> VendorDetailResponse:
     svc = VendorService(db)
     vendor = await svc.get_or_create_vendor_for_user(current_user.user_id)
-    return _vendor_response(vendor)
+    return _vendor_detail_response(vendor)
 
 
 @router.patch("/me", response_model=VendorResponse)
@@ -137,6 +148,66 @@ async def delete_product(
 ) -> None:
     svc = VendorService(db)
     await svc.delete_product(current_user.user_id, product_id)
+
+
+@router.get("/me/banks", response_model=list[BankResponse])
+async def list_banks(
+    _current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> list[BankResponse]:
+    svc = VendorService(db)
+    banks = await svc.list_banks()
+    return [BankResponse(name=b.name, code=b.code) for b in banks]
+
+
+@router.post("/me/payout-account/verify", response_model=VerifyAccountResponse)
+async def verify_payout_account(
+    data: VerifyAccountRequest,
+    _current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> VerifyAccountResponse:
+    svc = VendorService(db)
+    result = await svc.verify_payout_account(data.account_number, data.bank_code)
+    from services.payment.providers.base import AccountVerifyResult
+    r: AccountVerifyResult = result  # type: ignore[assignment]
+    return VerifyAccountResponse(account_name=r.account_name, account_number=r.account_number)
+
+
+@router.post("/me/payout-account", response_model=PayoutAccountResponse)
+async def save_payout_account(
+    data: SavePayoutAccountRequest,
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> PayoutAccountResponse:
+    svc = VendorService(db)
+    vendor = await svc.save_payout_account(
+        current_user.user_id,
+        data.account_number,
+        data.bank_code,
+        data.bank_name,
+        data.account_name,
+    )
+    return PayoutAccountResponse(
+        has_payout_account=True,
+        account_number=vendor.payout_account_number,
+        bank_name=vendor.payout_bank_name,
+        account_name=vendor.payout_account_name,
+    )
+
+
+@router.get("/me/payout-account", response_model=PayoutAccountResponse)
+async def get_payout_account(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> PayoutAccountResponse:
+    svc = VendorService(db)
+    vendor = await svc.get_payout_account(current_user.user_id)
+    return PayoutAccountResponse(
+        has_payout_account=bool(vendor.paystack_recipient_code),
+        account_number=vendor.payout_account_number,
+        bank_name=vendor.payout_bank_name,
+        account_name=vendor.payout_account_name,
+    )
 
 
 @router.patch("/me/products/{product_id}/availability", response_model=ProductResponse)

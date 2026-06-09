@@ -135,6 +135,63 @@ class AdminService:
             raise NotFoundException("Order not found")
         return order
 
+    # ── Hub management ────────────────────────────────────────────────────────
+
+    async def list_hubs(self) -> list:
+        from services.qa.models import AgentHub
+        result = await self.db.execute(select(AgentHub).order_by(AgentHub.name))
+        return list(result.scalars().all())
+
+    async def create_hub(self, name: str, capacity: int, lat: float | None, lng: float | None):
+        from services.qa.models import AgentHub
+        hub = AgentHub(name=name, capacity=capacity, lat=lat, lng=lng)
+        self.db.add(hub)
+        await self.db.flush()
+        await self.db.refresh(hub)
+        return hub
+
+    async def update_hub(self, hub_id: str, name: str, capacity: int):
+        from services.qa.models import AgentHub
+        import uuid as _uuid
+        result = await self.db.execute(
+            select(AgentHub).where(AgentHub.id == _uuid.UUID(hub_id))
+        )
+        hub = result.scalar_one_or_none()
+        if not hub:
+            raise NotFoundException("Hub not found")
+        hub.name = name
+        hub.capacity = capacity
+        await self.db.flush()
+        return hub
+
+    async def delete_hub(self, hub_id: str) -> None:
+        from services.qa.models import AgentHub
+        import uuid as _uuid
+        result = await self.db.execute(
+            select(AgentHub).where(AgentHub.id == _uuid.UUID(hub_id))
+        )
+        hub = result.scalar_one_or_none()
+        if not hub:
+            raise NotFoundException("Hub not found")
+        # Unassign any agents pointing to this hub
+        agent_result = await self.db.execute(
+            select(User).where(User.hub_id == hub.id)
+        )
+        for agent in agent_result.scalars().all():
+            agent.hub_id = None
+        await self.db.delete(hub)
+        await self.db.flush()
+
+    async def assign_agent_hub(self, user_id: str, hub_id: str | None) -> User:
+        import uuid as _uuid
+        result = await self.db.execute(select(User).where(User.id == user_id))  # type: ignore[arg-type]
+        user = result.scalar_one_or_none()
+        if not user:
+            raise NotFoundException("User not found")
+        user.hub_id = _uuid.UUID(hub_id) if hub_id else None
+        await self.db.flush()
+        return user
+
     async def override_order_status(
         self, order_id: str, new_status: str, reason: str, admin_id: str
     ) -> Order:

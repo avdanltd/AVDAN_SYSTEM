@@ -2,20 +2,34 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import {
+  LayoutDashboard,
+  Users,
+  ShoppingBag,
+  Store,
+  AlertTriangle,
+  DollarSign,
+  Truck,
+  BarChart2,
+  Settings,
+  Building2,
+} from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 
 export const navItems = [
-  { label: 'Dashboard', href: ROUTES.home },
-  { label: 'Orders', href: ROUTES.orders },
-  { label: 'Users', href: ROUTES.users },
-  { label: 'Vendors', href: ROUTES.vendors },
-  { label: 'Disputes', href: ROUTES.disputes },
-  { label: 'Escrow', href: ROUTES.escrow },
-  { label: 'Analytics', href: ROUTES.analytics },
-  { label: 'Config', href: ROUTES.config },
+  { label: 'Dashboard', href: ROUTES.home, icon: LayoutDashboard },
+  { label: 'Users', href: ROUTES.users, icon: Users },
+  { label: 'Orders', href: ROUTES.orders, icon: ShoppingBag },
+  { label: 'Vendors', href: ROUTES.vendors, icon: Store },
+  { label: 'Disputes', href: ROUTES.disputes, icon: AlertTriangle },
+  { label: 'Escrow', href: ROUTES.escrow, icon: DollarSign },
+  { label: 'Dispatch', href: ROUTES.dispatch, icon: Truck },
+  { label: 'Hubs', href: ROUTES.hubs, icon: Building2 },
+  { label: 'Analytics', href: ROUTES.analytics, icon: BarChart2 },
+  { label: 'Config', href: ROUTES.config, icon: Settings },
 ]
 
 function getUserInitials(name: string | null | undefined): string {
@@ -40,22 +54,26 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                onClick={onNav}
-                className={cn(
-                  'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  pathname === item.href
-                    ? 'bg-primary/10 text-primary'
-                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                )}
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onNav}
+                  className={cn(
+                    'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    pathname === item.href
+                      ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  {item.label}
+                </Link>
+              </li>
+            )
+          })}
         </ul>
       </nav>
 

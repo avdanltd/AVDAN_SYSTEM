@@ -24,6 +24,17 @@ def release_escrow(self, order_id: str) -> None:  # type: ignore[override]
     asyncio.run(_release_async(order_id))
 
 
+@celery_app.task(
+    name="workers.tasks.escrow.refund_rejected_order",
+    bind=True,
+    max_retries=3,
+    default_retry_delay=120,
+)
+def refund_rejected_order(self, order_id: str) -> None:  # type: ignore[override]
+    """Automatically refund customer after vendor rejection. Idempotent."""
+    asyncio.run(_refund_rejected_async(order_id))
+
+
 # ── Async implementations ─────────────────────────────────────────────────────
 
 async def _check_async() -> None:
@@ -44,6 +55,35 @@ async def _check_async() -> None:
 
     for order_id in order_ids:
         release_escrow.delay(order_id)
+
+
+async def _refund_rejected_async(order_id: str) -> None:
+    from core.database import AsyncSessionLocal
+    from services.payment.service import PaymentService
+    from services.orders.models import Order
+    from services.orders.state_machine import OrderStatus
+    from sqlalchemy import select
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            result = await db.execute(select(Order).where(Order.id == __import__("uuid").UUID(order_id)))
+            order = result.scalar_one_or_none()
+            if not order or order.status != OrderStatus.VENDOR_REJECTED:
+                return
+            svc = PaymentService(db)
+            escrow = await svc._get_escrow_for_order(order_id)
+            if not escrow:
+                return
+            # Transition to REFUND_INITIATED and attempt Paystack refund
+            try:
+                await svc.process_refund(
+                    order_id,
+                    escrow.amount_kobo,
+                    admin_id="00000000-0000-0000-0000-000000000000",
+                    reason="Vendor rejected the order — automatic refund",
+                )
+            except Exception:
+                pass
 
 
 async def _release_async(order_id: str) -> None:

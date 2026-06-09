@@ -13,6 +13,9 @@ export const ROUTES = {
   cart: '/cart',
   checkout: '/checkout',
 
+  checkoutSuccess: '/checkout/success',
+  checkoutFailed: '/checkout/failed',
+
   profile: '/profile',
   notifications: '/notifications',
 } as const

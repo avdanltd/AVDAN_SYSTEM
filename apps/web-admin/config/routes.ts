@@ -16,6 +16,9 @@ export const ROUTES = {
   dispute: (id: string) => `/disputes/${id}`,
 
   escrow: '/escrow',
+  dispatch: '/dispatch',
+  hubs: '/hubs',
   analytics: '/analytics',
   config: '/config',
+  profile: '/profile',
 } as const

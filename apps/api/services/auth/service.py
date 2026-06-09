@@ -180,6 +180,12 @@ class AuthService:
         )
         self.db.add(user)
         await self.db.flush()
+        if data.role == "rider":
+            from services.auth.models import RiderProfile
+            from services.dispatch.models import Rider
+            self.db.add(RiderProfile(user_id=user.id))
+            self.db.add(Rider(user_id=user.id))
+            await self.db.flush()
         return user
 
     async def _assert_unique(self, email: str | None, phone: str | None) -> None:

@@ -79,13 +79,17 @@ export {
 } from './components/ui/select'
 export { Textarea } from './components/ui/textarea'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
+export { Switch } from './components/ui/switch'
+export { Progress } from './components/ui/progress'
 
 // ─── Custom components (built on top of Shadcn) ───────────────────────────────
 export { OrderStatusBadge, UserStatusBadge } from './components/custom/status-badge'
+export { StatsCard } from './components/custom/stats-card'
 export { ConfirmDialog } from './components/custom/confirm-dialog'
 export { DataTable } from './components/custom/data-table'
 export type { Column } from './components/custom/data-table'
 export { PageLoader } from './components/custom/page-loader'
+export { Spinner } from './components/primitives/spinner'
 export { EmptyState } from './components/custom/empty-state'
 
 // ─── Feedback ─────────────────────────────────────────────────────────────────

@@ -35,3 +35,23 @@ class HubAnalyticsResponse(BaseModel):
 class EvidenceUploadResponse(BaseModel):
     url: str
     filename: str
+
+
+class HubResponse(BaseModel):
+    id: str
+    name: str
+    active: bool
+    capacity: int
+    lat: float | None
+    lng: float | None
+
+
+class CreateHubRequest(BaseModel):
+    name: str
+    capacity: int = 100
+    lat: float | None = None
+    lng: float | None = None
+
+
+class AssignHubRequest(BaseModel):
+    hub_id: str | None = None

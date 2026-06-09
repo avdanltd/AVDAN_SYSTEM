@@ -46,6 +46,9 @@ class Vendor(BaseModel):
         Numeric(3, 2), default=Decimal("0.00"), nullable=False
     )
     paystack_recipient_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payout_account_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payout_bank_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    payout_account_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
     user: Mapped["User"] = relationship("User")
     zone: Mapped["DeliveryZone | None"] = relationship("DeliveryZone", back_populates="vendors")

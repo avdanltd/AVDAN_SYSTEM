@@ -57,6 +57,7 @@ def _order_resp(order: object) -> OrderResponse:
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
     )
 
 
@@ -73,6 +74,7 @@ def _order_detail_resp(order: object) -> OrderDetailResponse:
         items=[_item_resp(i) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
         created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
     )
 
 
@@ -148,6 +150,17 @@ async def list_vendor_orders(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/vendor/{order_id}", response_model=OrderDetailResponse)
+async def get_vendor_order(
+    order_id: str,
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderDetailResponse:
+    svc = OrderService(db)
+    order = await svc.get_vendor_order(current_user.user_id, order_id)
+    return _order_detail_resp(order)
 
 
 @router.post("/vendor/{order_id}/accept", response_model=OrderResponse)

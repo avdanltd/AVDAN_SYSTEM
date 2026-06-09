@@ -57,7 +57,7 @@ export function OtpForm({ userId, onBack }: OtpFormProps) {
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     if (!pasted) return
     const next = ['', '', '', '', '', '']
-    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i]
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i] ?? ''
     setDigits(next)
     inputRefs.current[Math.min(pasted.length, 5)]?.focus()
   }

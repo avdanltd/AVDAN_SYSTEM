@@ -46,6 +46,7 @@ class UserResponse(BaseModel):
     name: str | None
     role: str
     status: str
+    created_at: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -55,7 +56,7 @@ class AdminCreateUserRequest(BaseModel):
     phone: str | None = None
     password: str
     name: str
-    role: Literal["admin", "support"]
+    role: Literal["admin", "support", "agent", "rider"]
 
 
 class UpdateUserStatusRequest(BaseModel):

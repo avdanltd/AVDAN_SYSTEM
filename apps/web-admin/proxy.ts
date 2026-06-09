@@ -69,5 +69,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/((?!login|register|_next|favicon|api/auth).*)'],
+  matcher: ['/((?!login|register|_next|favicon).*)'],
 }
