@@ -29,6 +29,7 @@ class VendorService:
         zone_id: str | None,
         page: int,
         page_size: int,
+        search: str | None = None,
     ) -> tuple[list[Vendor], int]:
         query = select(Vendor).where(Vendor.status == "active")
         count_query = select(func.count()).select_from(Vendor).where(Vendor.status == "active")
@@ -36,6 +37,11 @@ class VendorService:
         if zone_id:
             query = query.where(Vendor.zone_id == zone_id)
             count_query = count_query.where(Vendor.zone_id == zone_id)
+
+        if search:
+            pattern = f"%{search}%"
+            query = query.where(Vendor.name.ilike(pattern))
+            count_query = count_query.where(Vendor.name.ilike(pattern))
 
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
@@ -62,8 +68,11 @@ class VendorService:
 
     async def get_or_create_vendor_for_user(self, user_id: str) -> Vendor:
         """Returns the vendor row for a user, creating it lazily if absent."""
+        user_uuid = uuid.UUID(user_id)
         result = await self.db.execute(
-            select(Vendor).where(Vendor.user_id == uuid.UUID(user_id))
+            select(Vendor)
+            .where(Vendor.user_id == user_uuid)
+            .options(selectinload(Vendor.products))
         )
         vendor = result.scalar_one_or_none()
         if vendor:
@@ -72,7 +81,7 @@ class VendorService:
         # Lazy-create from vendor_profile data
         from services.auth.models import VendorProfile
         profile_result = await self.db.execute(
-            select(VendorProfile).where(VendorProfile.user_id == uuid.UUID(user_id))
+            select(VendorProfile).where(VendorProfile.user_id == user_uuid)
         )
         profile = profile_result.scalar_one_or_none()
         if not profile:
@@ -80,7 +89,7 @@ class VendorService:
 
         slug = await self._unique_slug(profile.business_name)
         vendor = Vendor(
-            user_id=uuid.UUID(user_id),
+            user_id=user_uuid,
             name=profile.business_name,
             slug=slug,
             description=profile.description,
@@ -88,7 +97,13 @@ class VendorService:
         )
         self.db.add(vendor)
         await self.db.flush()
-        return vendor
+        # Re-fetch with products loaded so the relationship is initialised
+        result = await self.db.execute(
+            select(Vendor)
+            .where(Vendor.id == vendor.id)
+            .options(selectinload(Vendor.products))
+        )
+        return result.scalar_one()
 
     async def update_vendor_profile(
         self, user_id: str, data: UpdateVendorProfileRequest
@@ -140,9 +155,8 @@ class VendorService:
         return product
 
     async def delete_product(self, user_id: str, product_id: str) -> None:
-        """Soft delete — sets available=False."""
         product = await self._get_product_for_user(user_id, product_id)
-        product.available = False
+        await self.db.delete(product)
 
     async def set_product_availability(
         self, user_id: str, product_id: str, available: bool
@@ -150,6 +164,41 @@ class VendorService:
         product = await self._get_product_for_user(user_id, product_id)
         product.available = available
         return product
+
+    # ── Payout account ────────────────────────────────────────────────────────
+
+    async def list_banks(self) -> list:
+        from services.payment.providers.registry import get_provider
+        provider = get_provider("paystack")
+        return await provider.get_banks()
+
+    async def verify_payout_account(
+        self, account_number: str, bank_code: str
+    ) -> object:
+        from services.payment.providers.registry import get_provider
+        provider = get_provider("paystack")
+        return await provider.resolve_account(account_number, bank_code)
+
+    async def save_payout_account(
+        self,
+        user_id: str,
+        account_number: str,
+        bank_code: str,
+        bank_name: str,
+        account_name: str,
+    ) -> Vendor:
+        from services.payment.providers.registry import get_provider
+        vendor = await self._get_vendor_for_user(user_id)
+        provider = get_provider("paystack")
+        result = await provider.create_transfer_recipient(account_name, account_number, bank_code)
+        vendor.paystack_recipient_code = result.recipient_code
+        vendor.payout_account_number = account_number
+        vendor.payout_bank_name = bank_name
+        vendor.payout_account_name = account_name
+        return vendor
+
+    async def get_payout_account(self, user_id: str) -> Vendor:
+        return await self._get_vendor_for_user(user_id)
 
     # ── Private helpers ───────────────────────────────────────────────────────
 

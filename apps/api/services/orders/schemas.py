@@ -56,11 +56,13 @@ class OrderResponse(BaseModel):
     id: str
     customer_id: str
     vendor_id: str
+    vendor_name: str | None = None
     status: str
     total_kobo: int
     delivery_address: dict
     items: list[OrderItemResponse] = []
     created_at: str
+    updated_at: str
 
     model_config = {"from_attributes": True}
 

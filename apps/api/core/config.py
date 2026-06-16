@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # Payment
     paystack_secret_key: str = ""
     paystack_public_key: str = ""
+    payment_callback_url: str = "http://localhost:3000/checkout/success"
 
     # Push notifications — FCM legacy server key (empty = push disabled)
     fcm_server_key: str = ""

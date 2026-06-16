@@ -1,6 +1,6 @@
 import { Badge } from '../ui/badge'
 import { cn } from '../../lib/utils'
-import type { OrderStatus, UserRole } from '@avdan/types'
+import type { OrderStatus } from '@avdan/types'
 
 type StatusVariant = 'default' | 'secondary' | 'destructive' | 'outline'
 
@@ -49,7 +49,7 @@ interface OrderStatusBadgeProps {
 }
 
 export function OrderStatusBadge({ status, className }: OrderStatusBadgeProps) {
-  const config = ORDER_STATUS_MAP[status] ?? { label: status, variant: 'outline' as StatusVariant }
+  const config: StatusConfig = ORDER_STATUS_MAP[status] ?? { label: status, variant: 'outline' as StatusVariant }
   return (
     <Badge
       variant={config.variant}

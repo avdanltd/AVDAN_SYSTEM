@@ -13,7 +13,7 @@ import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
-import { authService } from '../services/auth.service'
+import { apiClient } from '@/lib/api-client'
 import { OtpForm } from './otp-form'
 
 const vendorRegisterSchema = z.object({
@@ -35,7 +35,7 @@ export function RegisterVendorForm() {
   const registerMutation = useMutation({
     mutationFn: (data: VendorRegisterInput) =>
       apiClient.post<{ user_id: string; message: string }>('/auth/register/vendor', data),
-    onSuccess: (data) => {
+    onSuccess: (data: { user_id: string; message: string }) => {
       setUserId(data.user_id)
       setStep('otp')
       toast.success('Check your phone for the OTP')

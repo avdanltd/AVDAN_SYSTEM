@@ -27,6 +27,8 @@ class VendorAnalyticsResponse(BaseModel):
     active_orders: int
     completed_orders: int
     total_revenue_kobo: int
+    pending_release_kobo: int
+    commission_rate: float
     rejection_count: int
     rejection_rate_pct: float
 

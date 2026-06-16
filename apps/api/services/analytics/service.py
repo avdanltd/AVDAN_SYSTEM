@@ -127,12 +127,26 @@ class AnalyticsService:
             )
         )).scalar_one())
 
+        pending_release = int((await self.db.execute(
+            select(func.coalesce(func.sum(EscrowTransaction.amount_kobo), 0))
+            .join(Order, Order.id == EscrowTransaction.order_id)
+            .where(
+                Order.vendor_id == v_uuid,
+                EscrowTransaction.status == EscrowStatus.HELD,
+            )
+        )).scalar_one())
+
+        from core.config import settings
+        commission_rate = settings.commission_rate_percent / 100
+
         return {
             "vendor_id": vendor_id,
             "total_orders": total,
             "active_orders": active,
             "completed_orders": completed,
             "total_revenue_kobo": revenue,
+            "pending_release_kobo": pending_release,
+            "commission_rate": commission_rate,
             "rejection_count": rejected,
             "rejection_rate_pct": round(rejected / total * 100, 2) if total > 0 else 0.0,
         }

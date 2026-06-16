@@ -13,7 +13,7 @@ import { useLogin } from '../hooks/use-login'
 
 export function LoginForm() {
   const { mutate: login, isPending } = useLogin()
-  const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
+  const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">

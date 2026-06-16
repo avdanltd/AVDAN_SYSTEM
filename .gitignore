@@ -64,3 +64,5 @@ coverage.xml
 docs/*
 !docs/AVDAN_System_Architecture_v3.docx
 !docs/AVDAN_System_Design.docx
+
+apps/api/create_admin.py

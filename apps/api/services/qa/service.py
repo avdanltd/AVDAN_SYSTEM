@@ -44,8 +44,16 @@ class QAService:
     async def list_inbound_orders(
         self, agent_user_id: str, page: int, page_size: int
     ) -> tuple[list[Order], int]:
+        from sqlalchemy import or_
         hub = await self.get_hub_for_agent(agent_user_id)
-        inbound_statuses = [
+
+        # IN_TRANSIT_TO_HUB orders: hub_id not yet assigned — any hub can claim them
+        # AT_HUB and later: filter to orders already assigned to this hub
+        hub_filter = or_(
+            (Order.status == OrderStatus.IN_TRANSIT_TO_HUB) & Order.hub_id.is_(None),
+            Order.hub_id == hub.id,
+        )
+        active_statuses = [
             OrderStatus.IN_TRANSIT_TO_HUB,
             OrderStatus.AT_HUB,
             OrderStatus.QA_IN_PROGRESS,
@@ -53,25 +61,39 @@ class QAService:
             OrderStatus.QA_FAILED,
             OrderStatus.VENDOR_REMEDIATION,
         ]
-        query = select(Order).where(
-            Order.hub_id == hub.id,
-            Order.status.in_(inbound_statuses),
-        )
+        base_filter = hub_filter & Order.status.in_(active_statuses)
+
         count_result = await self.db.execute(
-            select(func.count()).select_from(Order).where(
-                Order.hub_id == hub.id,
-                Order.status.in_(inbound_statuses),
-            )
+            select(func.count()).select_from(Order).where(base_filter)
         )
         total = count_result.scalar_one()
+
         offset = (page - 1) * page_size
         result = await self.db.execute(
-            query.options(selectinload(Order.items))
+            select(Order)
+            .where(base_filter)
+            .options(selectinload(Order.items))
             .order_by(Order.created_at.desc())
             .offset(offset)
             .limit(page_size)
         )
         return list(result.scalars().all()), total
+
+    async def get_order_for_agent(self, agent_user_id: str, order_id: str) -> Order:
+        hub = await self.get_hub_for_agent(agent_user_id)
+        result = await self.db.execute(
+            select(Order)
+            .where(Order.id == uuid.UUID(order_id))
+            .options(selectinload(Order.items))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise NotFoundException("Order not found")
+        # Allow access to orders in transit (hub_id not yet set) or already at this hub
+        from services.orders.state_machine import OrderStatus
+        if order.hub_id and order.hub_id != hub.id:
+            raise ForbiddenException("Order belongs to a different hub")
+        return order
 
     async def receive_order(self, agent_user_id: str, order_id: str) -> Order:
         """IN_TRANSIT_TO_HUB → AT_HUB → QA_IN_PROGRESS (two transitions, one request)."""

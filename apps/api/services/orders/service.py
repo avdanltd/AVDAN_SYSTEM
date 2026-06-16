@@ -148,7 +148,7 @@ class OrderService:
 
         await self._apply_transition(order, OrderStatus.CANCELLED, customer_id, "customer")
         await self._restore_stock(order_id)
-        return order
+        return await self._load_order_with_items(order_id)
 
     # ── Vendor ────────────────────────────────────────────────────────────────
 
@@ -178,6 +178,11 @@ class OrderService:
         )
         return list(result.scalars().all()), total
 
+    async def get_vendor_order(self, vendor_user_id: str, order_id: str) -> Order:
+        order = await self._load_order_full(order_id)
+        await self._assert_vendor_owns_order(vendor_user_id, order)
+        return order
+
     async def accept_order(self, vendor_user_id: str, order_id: str) -> Order:
         """PAID → VENDOR_ACCEPTED → PREPARING (two events, one request)."""
         order = await self._get_order(order_id)
@@ -191,7 +196,7 @@ class OrderService:
         await self._record_event(order, OrderStatus.PREPARING, vendor_user_id, "vendor")
         order.status = OrderStatus.PREPARING
 
-        return order
+        return await self._load_order_with_items(order_id)
 
     async def reject_order(
         self, vendor_user_id: str, order_id: str, data: RejectOrderRequest
@@ -209,6 +214,22 @@ class OrderService:
         )
         order.status = OrderStatus.VENDOR_REJECTED
         await self._restore_stock(order_id)
+        order = await self._load_order_with_items(order_id)
+
+        # Trigger automatic refund in background (non-blocking)
+        try:
+            import asyncio
+            from workers.tasks.escrow import refund_rejected_order
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(
+                None,
+                lambda: refund_rejected_order.apply_async(
+                    args=[order_id], countdown=5
+                ),
+            )
+        except Exception:
+            pass
+
         return order
 
     async def mark_ready(self, vendor_user_id: str, order_id: str) -> Order:
@@ -217,7 +238,7 @@ class OrderService:
 
         validate_transition(order.status, OrderStatus.READY_FOR_PICKUP, "vendor")
         await self._apply_transition(order, OrderStatus.READY_FOR_PICKUP, vendor_user_id, "vendor")
-        return order
+        return await self._load_order_with_items(order_id)
 
     # ── Internal / system transitions (used by payment webhook in Phase 5) ───
 
@@ -298,12 +319,21 @@ class OrderService:
         )
         await self.db.flush()
 
-        # Enqueue notification task — countdown lets the DB transaction commit first
-        from workers.tasks.notifications import send_order_notification
-        send_order_notification.apply_async(
-            args=[str(order.id), from_state, to_state],
-            countdown=2,
-        )
+        # Celery's apply_async makes a synchronous broker connection — run it in a
+        # thread so it doesn't conflict with SQLAlchemy's async greenlet context.
+        try:
+            import asyncio
+            from workers.tasks.notifications import send_order_notification
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(
+                None,
+                lambda: send_order_notification.apply_async(
+                    args=[str(order.id), from_state, to_state],
+                    countdown=2,
+                ),
+            )
+        except Exception:
+            pass  # notification failure must never break the order flow
 
     async def _get_vendor_for_user(self, user_id: str) -> object:
         from services.vendor.models import Vendor
