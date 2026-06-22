@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 import redis.asyncio as aioredis
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
+from core.limiter import limiter
 from core.redis import get_redis
 from services.dispatch.schemas import (
     AssignRiderRequest,
@@ -48,7 +49,9 @@ async def set_availability(
 
 
 @router.post("/me/location", response_model=RiderResponse)
+@limiter.limit("30/minute")
 async def update_location(
+    request: Request,
     data: LocationUpdate,
     current_user: CurrentUser = Depends(require_role("rider")),
     db: AsyncSession = Depends(get_db),
@@ -112,6 +115,19 @@ async def get_my_orders(
         )
 
     return [_order(o) for o in orders]
+
+
+@router.post("/me/orders/{order_id}/pickup", response_model=dict)
+async def mark_picked_up(
+    order_id: str,
+    current_user: CurrentUser = Depends(require_role("rider")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    from services.orders.state_machine import OrderStatus
+    svc = DispatchService(db, redis)
+    order = await svc.rider_transition(current_user.user_id, order_id, OrderStatus.PICKED_UP)
+    return {"order_id": order_id, "status": order.status}
 
 
 @router.post("/me/orders/{order_id}/transit", response_model=dict)
