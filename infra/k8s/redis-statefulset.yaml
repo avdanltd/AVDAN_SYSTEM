@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: avdan-app
+  labels:
+    app: redis
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          command: ["redis-server", "--appendonly", "yes", "--save", "60", "1"]
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+        - name: sentinel
+          image: redis:7-alpine
+          ports:
+            - containerPort: 26379
+          command:
+            - sh
+            - -c
+            - |
+              cat > /tmp/sentinel.conf <<EOF
+              sentinel monitor mymaster redis 6379 1
+              sentinel down-after-milliseconds mymaster 5000
+              sentinel failover-timeout mymaster 10000
+              sentinel parallel-syncs mymaster 1
+              EOF
+              redis-sentinel /tmp/sentinel.conf
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: avdan-app
+spec:
+  selector:
+    app: redis
+  ports:
+    - name: redis
+      protocol: TCP
+      port: 6379
+      targetPort: 6379
+    - name: sentinel
+      protocol: TCP
+      port: 26379
+      targetPort: 26379
+  clusterIP: None
