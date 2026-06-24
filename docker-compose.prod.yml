@@ -1,27 +1,144 @@
+# Production docker-compose — all services use pre-built images from GHCR.
+# Required env vars (set in /opt/avdan/.env on the VPS):
+#   IMAGE_PREFIX   = ghcr.io/<org>/avdan
+#   IMAGE_TAG      = <git-sha>  (set by CI before running docker-compose up)
+#   GHCR_TOKEN     = GitHub PAT with packages:read scope (for docker login)
+#   PORT           = 3000  (internal Next.js port — do not change)
+
 services:
+  # ── Backend ──────────────────────────────────────────────────────────────────
   api:
-    image: ghcr.io/avdan/api:${IMAGE_TAG}
-    ports:
-      - "8000:8000"
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
+    restart: unless-stopped
     environment:
       - ENVIRONMENT=production
+      - PORT=8000
     env_file:
-      - apps/api/.env
+      - /opt/avdan/secrets/api.env
     command: gunicorn main:app -w 2 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-    restart: unless-stopped
+    networks:
+      - avdan
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   celery:
-    image: ghcr.io/avdan/api:${IMAGE_TAG}
-    env_file:
-      - apps/api/.env
-    command: celery -A workers.celery_app worker --loglevel=info --concurrency=4
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
     restart: unless-stopped
+    env_file:
+      - /opt/avdan/secrets/api.env
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=4
+    networks:
+      - avdan
+    depends_on:
+      - api
 
   celery-beat:
-    image: ghcr.io/avdan/api:${IMAGE_TAG}
-    env_file:
-      - apps/api/.env
-    command: celery -A workers.celery_app beat --loglevel=info
+    image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
     restart: unless-stopped
+    env_file:
+      - /opt/avdan/secrets/api.env
+    command: celery -A workers.celery_app beat --loglevel=info
+    networks:
+      - avdan
+    depends_on:
+      - api
     deploy:
       replicas: 1
+
+  # ── Frontend apps ────────────────────────────────────────────────────────────
+  web-customer:
+    image: ${IMAGE_PREFIX}/web-customer:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - /opt/avdan/secrets/web-customer.env
+    networks:
+      - avdan
+    depends_on:
+      - api
+
+  web-vendor:
+    image: ${IMAGE_PREFIX}/web-vendor:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - /opt/avdan/secrets/web-vendor.env
+    networks:
+      - avdan
+    depends_on:
+      - api
+
+  web-admin:
+    image: ${IMAGE_PREFIX}/web-admin:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - /opt/avdan/secrets/web-admin.env
+    networks:
+      - avdan
+    depends_on:
+      - api
+
+  web-hub:
+    image: ${IMAGE_PREFIX}/web-hub:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - /opt/avdan/secrets/web-hub.env
+    networks:
+      - avdan
+    depends_on:
+      - api
+
+  web-rider:
+    image: ${IMAGE_PREFIX}/web-rider:${IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - /opt/avdan/secrets/web-rider.env
+    networks:
+      - avdan
+    depends_on:
+      - api
+
+  # ── Nginx reverse proxy (SSL termination) ────────────────────────────────────
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /opt/avdan/infra/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+    networks:
+      - avdan
+    depends_on:
+      - web-customer
+      - web-vendor
+      - web-admin
+      - web-hub
+      - web-rider
+      - api
+
+networks:
+  avdan:
+    driver: bridge
