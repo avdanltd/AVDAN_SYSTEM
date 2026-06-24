@@ -159,6 +159,25 @@ services:
     depends_on:
       - api
 
+  web-rider:
+    build:
+      context: .
+      dockerfile: infra/docker/web/Dockerfile
+      args:
+        APP_NAME: web-rider
+    ports:
+      - "3004:3000"
+    volumes:
+      - ./apps/web-rider:/app/apps/web-rider
+      - /app/apps/web-rider/node_modules
+      - /app/apps/web-rider/.next
+    environment:
+      - API_INTERNAL_URL=http://api:8000
+    env_file:
+      - apps/web-rider/.env.local
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   redis_data:

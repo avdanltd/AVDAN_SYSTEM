@@ -21,7 +21,7 @@ AVDAN is a multi-sided logistics and commerce platform. Six actor types. Five fr
 |------|-----------|----------------|
 | Customer | web-customer | Browse vendors, place orders, track delivery, pay |
 | Vendor | web-vendor | Accept orders, manage catalog, view earnings |
-| Rider | app-rider (Phase 4) | Receive jobs, navigate, confirm delivery |
+| Rider | web-rider (web-first; native app future phase) | Receive jobs, navigate, confirm delivery |
 | Agent Hub | web-hub | QA inspection, inbound/outbound dispatch |
 | Admin | web-admin | Full platform oversight, config, financials |
 | Support | web-admin (support role) | Dispute resolution, user help |
@@ -62,6 +62,7 @@ avdanstore.com          → web-customer Service
 vendor.avdanstore.com   → web-vendor Service
 admin.avdanstore.com    → web-admin Service
 hub.avdanstore.com      → web-hub Service
+rider.avdanstore.com    → web-rider Service
 api.avdanstore.com      → FastAPI Service
 staging.avdanstore.com  → web-customer Service (staging namespace)
 ```
@@ -518,7 +519,7 @@ sonner = "^1.x"
 
 ## What Intentionally Does Not Exist Yet
 
-- `apps/app-rider/` — Phase 4, do not create
+- `apps/app-rider/` — Native mobile app, future phase. `apps/web-rider/` is the current web-first implementation.
 - Kafka — Phase 3, use Redis Pub/Sub now
 - TimescaleDB — Phase 3, use partitioned PostgreSQL now
 - Service mesh — Phase 3
