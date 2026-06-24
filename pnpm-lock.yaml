@@ -228,6 +228,73 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  apps/web-rider:
+    dependencies:
+      '@avdan/types':
+        specifier: workspace:*
+        version: link:../../packages/types
+      '@avdan/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      '@hookform/resolvers':
+        specifier: ^3.10.0
+        version: 3.10.0(react-hook-form@7.77.0(react@19.2.7))
+      '@tanstack/react-query':
+        specifier: ^5.64.1
+        version: 5.100.14(react@19.2.7)
+      jose:
+        specifier: ^5.10.0
+        version: 5.10.0
+      lucide-react:
+        specifier: ^0.469.0
+        version: 0.469.0(react@19.2.7)
+      next:
+        specifier: 16.x
+        version: 16.2.7(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+      react-hook-form:
+        specifier: ^7.54.2
+        version: 7.77.0(react@19.2.7)
+      sonner:
+        specifier: ^1.7.4
+        version: 1.7.4(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
+      zustand:
+        specifier: ^5.0.3
+        version: 5.0.14(@types/react@19.2.16)(immer@11.1.8)(react@19.2.7)(use-sync-external-store@1.6.0(react@19.2.7))
+    devDependencies:
+      '@avdan/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@tailwindcss/postcss':
+        specifier: ^4.0.0
+        version: 4.3.0
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.19
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.16
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.16)
+      eslint:
+        specifier: ^9.18.0
+        version: 9.39.4(jiti@2.7.0)
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   apps/web-vendor:
     dependencies:
       '@avdan/types':
