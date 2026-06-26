@@ -17,10 +17,9 @@ ws_router = APIRouter()
 async def _get_initial_state(order_id: str, redis) -> dict:  # type: ignore[type-arg]
     """Fetch current order status and last known rider location from Redis."""
     from sqlalchemy import select
-    from sqlalchemy.orm import selectinload
+
     from core.database import AsyncSessionLocal
     from services.orders.models import Order
-    from services.dispatch.models import Rider
 
     async with AsyncSessionLocal() as db:
         result = await db.execute(
@@ -126,6 +125,7 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
 
 async def _get_delivery_address(order_id: str) -> dict:
     from sqlalchemy import select
+
     from core.database import AsyncSessionLocal
     from services.orders.models import Order
     async with AsyncSessionLocal() as db:

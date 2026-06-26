@@ -39,6 +39,7 @@ def refund_rejected_order(self, order_id: str) -> None:  # type: ignore[override
 
 async def _check_async() -> None:
     from sqlalchemy import select
+
     from core.database import AsyncSessionLocal
     from services.orders.models import Order
     from services.orders.state_machine import OrderStatus
@@ -58,11 +59,12 @@ async def _check_async() -> None:
 
 
 async def _refund_rejected_async(order_id: str) -> None:
+    from sqlalchemy import select
+
     from core.database import AsyncSessionLocal
-    from services.payment.service import PaymentService
     from services.orders.models import Order
     from services.orders.state_machine import OrderStatus
-    from sqlalchemy import select
+    from services.payment.service import PaymentService
 
     async with AsyncSessionLocal() as db:
         async with db.begin():

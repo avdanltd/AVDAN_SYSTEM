@@ -105,8 +105,8 @@
 
 ### 1.7 GitHub Actions CI
 - [x] `.github/workflows/ci.yml` — on push to any branch: install, lint, type-check, build
-- [ ] `.github/workflows/deploy-staging.yml` — needs K3s cluster + KUBECONFIG secret
-- [ ] `.github/workflows/deploy-prod.yml` — needs K3s cluster + KUBECONFIG secret
+- [x] `.github/workflows/deploy-staging.yml` — triggers on CI success for develop branch; SSH + Docker Compose deploy to VPS staging
+- [x] `.github/workflows/deploy-prod.yml` — triggers on CI success for main branch; SSH + Docker Compose deploy to VPS production (environment approval gate)
 
 **Phase 1 complete ✓ (code)** — pending live verification of proxy and build pipeline.
 

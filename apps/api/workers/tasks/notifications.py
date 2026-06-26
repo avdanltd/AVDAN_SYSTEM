@@ -61,13 +61,14 @@ async def _dispatch_async(
     to_state: str,
     triggers: list[dict],
 ) -> None:
-    from datetime import UTC, datetime
     import uuid
+    from datetime import UTC, datetime
 
     from sqlalchemy import select
+
     from core.database import AsyncSessionLocal
-    from services.orders.models import Order
     from services.notification.models import Notification
+    from services.orders.models import Order
 
     async with AsyncSessionLocal() as db:
         async with db.begin():
@@ -120,6 +121,7 @@ async def _dispatch_async(
 async def _resolve_recipients(db, order) -> dict[str, object]:
     """Returns {"customer": UUID, "vendor": UUID}."""
     from sqlalchemy import select
+
     from services.vendor.models import Vendor
 
     recipient_map: dict = {"customer": order.customer_id}
@@ -134,6 +136,7 @@ async def _resolve_recipients(db, order) -> dict[str, object]:
 
 async def _get_fcm_token(db, user_id) -> str | None:
     from sqlalchemy import select
+
     from services.auth.models import User
     result = await db.execute(select(User.fcm_token).where(User.id == user_id))
     return result.scalar_one_or_none()

@@ -1,19 +1,16 @@
-import os
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Query, UploadFile, File
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.config import settings
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
-from services.orders.schemas import OrderResponse, OrderItemResponse, PaginatedOrdersResponse
+from services.orders.schemas import OrderItemResponse, OrderResponse, PaginatedOrdersResponse
 from services.qa.schemas import (
     EvidenceUploadResponse,
     HubAnalyticsResponse,
     QAFailRequest,
-    QAInspectionResponse,
 )
 from services.qa.service import QAService
 
@@ -56,8 +53,8 @@ async def list_inbound_orders(
     current_user: CurrentUser = Depends(require_role("agent")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedOrdersResponse:
-    import uuid as _uuid
     from sqlalchemy import select
+
     from services.vendor.models import Vendor
     svc = QAService(db)
     orders, total = await svc.list_inbound_orders(current_user.user_id, page, page_size)
@@ -81,6 +78,7 @@ async def get_hub_order(
     db: AsyncSession = Depends(get_db),
 ) -> OrderResponse:
     from sqlalchemy import select
+
     from services.vendor.models import Vendor
     svc = QAService(db)
     order = await svc.get_order_for_agent(current_user.user_id, order_id)
