@@ -36,15 +36,6 @@ jobs:
         id: tag
         run: echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: Set deploy namespace
-        id: ns
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "namespace=avdan-app" >> $GITHUB_OUTPUT
-          else
-            echo "namespace=avdan-staging" >> $GITHUB_OUTPUT
-          fi
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -66,6 +57,7 @@ jobs:
         with:
           context: .
           file: infra/docker/web/Dockerfile
+          target: production
           build-args: APP_NAME=web-customer
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-customer:${{ steps.tag.outputs.sha }}
@@ -77,6 +69,7 @@ jobs:
         with:
           context: .
           file: infra/docker/web/Dockerfile
+          target: production
           build-args: APP_NAME=web-vendor
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-vendor:${{ steps.tag.outputs.sha }}
@@ -88,6 +81,7 @@ jobs:
         with:
           context: .
           file: infra/docker/web/Dockerfile
+          target: production
           build-args: APP_NAME=web-admin
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-admin:${{ steps.tag.outputs.sha }}
@@ -99,38 +93,62 @@ jobs:
         with:
           context: .
           file: infra/docker/web/Dockerfile
+          target: production
           build-args: APP_NAME=web-hub
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-hub:${{ steps.tag.outputs.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Build and push web-rider image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-rider
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-rider:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Configure kubeconfig
+      # ── Deploy via SSH + Docker Compose ────────────────────────────────────
+      - name: Set up SSH key
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Rolling deploy
+      - name: Copy compose files to VPS
         run: |
-          SHA=${{ steps.tag.outputs.sha }}
-          NS=${{ steps.ns.outputs.namespace }}
-          kubectl set image deployment/api          api=${{ env.IMAGE_PREFIX }}/api:$SHA          -n $NS
-          kubectl set image deployment/celery-worker celery-worker=${{ env.IMAGE_PREFIX }}/api:$SHA -n $NS
-          kubectl set image deployment/celery-beat  celery-beat=${{ env.IMAGE_PREFIX }}/api:$SHA  -n $NS
-          kubectl set image deployment/web-customer web-customer=${{ env.IMAGE_PREFIX }}/web-customer:$SHA -n $NS
-          kubectl set image deployment/web-vendor   web-vendor=${{ env.IMAGE_PREFIX }}/web-vendor:$SHA   -n $NS
-          kubectl set image deployment/web-admin    web-admin=${{ env.IMAGE_PREFIX }}/web-admin:$SHA     -n $NS
-          kubectl set image deployment/web-hub      web-hub=${{ env.IMAGE_PREFIX }}/web-hub:$SHA         -n $NS
+          scp -i ~/.ssh/deploy_key \
+            docker-compose.prod.yml \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/
+          scp -i ~/.ssh/deploy_key \
+            infra/nginx/nginx.prod.conf \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/infra/nginx/
 
-      - name: Wait for rollout
+      - name: Deploy on VPS
         run: |
-          NS=${{ steps.ns.outputs.namespace }}
-          kubectl rollout status deployment/api           -n $NS --timeout=300s
-          kubectl rollout status deployment/celery-worker -n $NS --timeout=300s
-          kubectl rollout status deployment/web-customer  -n $NS --timeout=300s
-          kubectl rollout status deployment/web-vendor    -n $NS --timeout=300s
-          kubectl rollout status deployment/web-admin     -n $NS --timeout=300s
-          kubectl rollout status deployment/web-hub       -n $NS --timeout=300s
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            set -e
+            cd /opt/avdan
+            echo IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} > .env.deploy
+            echo IMAGE_TAG=${{ steps.tag.outputs.sha }}  >> .env.deploy
+            # Merge deploy env into main .env (IMAGE_PREFIX + IMAGE_TAG override)
+            grep -v '^IMAGE_' .env 2>/dev/null > .env.merged || true
+            cat .env.deploy >> .env.merged
+            mv .env.merged .env
+            # Authenticate to GHCR on the VPS
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
+          "
+
+      - name: Health check
+        run: |
+          sleep 15
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "docker compose -f /opt/avdan/docker-compose.prod.yml ps --format 'table {{.Name}}\t{{.Status}}'"

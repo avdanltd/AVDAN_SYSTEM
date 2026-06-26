@@ -49,6 +49,10 @@ Thumbs.db
 infra/k8s/secrets/
 *.kubeconfig
 
+# Certbot / Cloudflare credentials — NEVER commit
+infra/certbot/cloudflare.ini
+/opt/avdan/secrets/
+
 # Logs
 *.log
 logs/

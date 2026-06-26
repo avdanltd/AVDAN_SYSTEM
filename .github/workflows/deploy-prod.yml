@@ -35,6 +35,9 @@ jobs:
         id: tag
         run: echo "sha=${{ github.sha }}" >> $GITHUB_OUTPUT
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build and push API image
         uses: docker/build-push-action@v5
         with:
@@ -45,57 +48,106 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/api:${{ steps.tag.outputs.sha }}
             ${{ env.IMAGE_PREFIX }}/api:stable
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push web-customer image
         uses: docker/build-push-action@v5
         with:
-          context: apps/web-customer
+          context: .
           file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-customer
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-customer:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push web-vendor image
         uses: docker/build-push-action@v5
         with:
-          context: apps/web-vendor
+          context: .
           file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-vendor
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-vendor:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push web-admin image
         uses: docker/build-push-action@v5
         with:
-          context: apps/web-admin
+          context: .
           file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-admin
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-admin:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push web-hub image
         uses: docker/build-push-action@v5
         with:
-          context: apps/web-hub
+          context: .
           file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-hub
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-hub:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Set up kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Build and push web-rider image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: infra/docker/web/Dockerfile
+          target: production
+          build-args: APP_NAME=web-rider
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/web-rider:${{ steps.tag.outputs.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Configure kubeconfig
+      - name: Set up SSH key
         run: |
-          mkdir -p $HOME/.kube
-          echo "${{ secrets.KUBECONFIG }}" > $HOME/.kube/config
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to avdan-app namespace
+      - name: Copy compose files to VPS
         run: |
-          SHA=${{ steps.tag.outputs.sha }}
-          kubectl set image deployment/api api=${{ env.IMAGE_PREFIX }}/api:$SHA -n avdan-app
-          kubectl set image deployment/web-customer web-customer=${{ env.IMAGE_PREFIX }}/web-customer:$SHA -n avdan-app
-          kubectl set image deployment/web-vendor web-vendor=${{ env.IMAGE_PREFIX }}/web-vendor:$SHA -n avdan-app
-          kubectl set image deployment/web-admin web-admin=${{ env.IMAGE_PREFIX }}/web-admin:$SHA -n avdan-app
-          kubectl set image deployment/web-hub web-hub=${{ env.IMAGE_PREFIX }}/web-hub:$SHA -n avdan-app
+          scp -i ~/.ssh/deploy_key \
+            docker-compose.prod.yml \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/
+          scp -i ~/.ssh/deploy_key \
+            infra/nginx/nginx.prod.conf \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/infra/nginx/
 
-      - name: Wait for rollout
+      - name: Deploy on VPS
         run: |
-          kubectl rollout status deployment/api -n avdan-app --timeout=300s
-          kubectl rollout status deployment/web-customer -n avdan-app --timeout=300s
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            set -e
+            cd /opt/avdan
+            echo IMAGE_PREFIX=${{ env.IMAGE_PREFIX }} > .env.deploy
+            echo IMAGE_TAG=${{ steps.tag.outputs.sha }}  >> .env.deploy
+            grep -v '^IMAGE_' .env 2>/dev/null > .env.merged || true
+            cat .env.deploy >> .env.merged
+            mv .env.merged .env
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -f
+          "
+
+      - name: Verify production is up
+        run: |
+          sleep 20
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            docker compose -f /opt/avdan/docker-compose.prod.yml ps --format 'table {{.Name}}\t{{.Status}}'
+            curl -sf https://avdanstore.com/favicon.ico && echo 'avdanstore.com: OK'
+            curl -sf https://api.avdanstore.com/health && echo 'api.avdanstore.com: OK'
+          "
