@@ -1,8 +1,11 @@
 name: CI
 
+# Runs on feature branches and PRs only.
+# Pushes to develop and main are handled by deploy-staging.yml and deploy-prod.yml.
+
 on:
   push:
-    branches: ['**']
+    branches-ignore: [main, develop]
   pull_request:
     branches: [main, develop]
 
