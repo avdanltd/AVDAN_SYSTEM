@@ -101,7 +101,7 @@ export function OrdersPage() {
         />
       )}
 
-      {!isLoading && data && data.pages > 1 && (
+      {!isLoading && data && data.total > data.page_size && (
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
             Showing {orders.length} of {data.total} orders
