@@ -1,7 +1,6 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Cookie, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import redis.asyncio as aioredis
 
 from core.database import get_db
 from core.dependencies import CurrentUser, get_current_user
@@ -159,6 +158,7 @@ async def update_push_token(
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
     from sqlalchemy import select
+
     from services.auth.models import User
     result = await db.execute(
         select(User).where(User.id == current_user.user_id)  # type: ignore[arg-type]

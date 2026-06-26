@@ -1,24 +1,11 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import redis.asyncio as aioredis
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
 from services.admin.service import AdminService
-from services.auth.schemas import (
-    AdminCreateUserRequest,
-    PaginatedUsersResponse,
-    UpdateUserStatusRequest,
-    UserResponse,
-)
-from services.auth.service import AuthService
-from services.vendor.schemas import (
-    AdminVendorResponse,
-    PaginatedVendorsResponse,
-    UpdateVendorStatusRequest,
-)
 from services.analytics.schemas import (
     OrderVolumeResponse,
     OverviewResponse,
@@ -26,8 +13,18 @@ from services.analytics.schemas import (
     UpdateConfigRequest,
     VendorAnalyticsResponse,
 )
-from services.dispute.schemas import DisputeResponse, PaginatedDisputesResponse, ResolveDisputeRequest
-from services.payment.schemas import EscrowStatusResponse, RefundRequest
+from services.auth.schemas import (
+    AdminCreateUserRequest,
+    PaginatedUsersResponse,
+    UpdateUserStatusRequest,
+    UserResponse,
+)
+from services.auth.service import AuthService
+from services.dispute.schemas import (
+    DisputeResponse,
+    PaginatedDisputesResponse,
+    ResolveDisputeRequest,
+)
 from services.orders.schemas import (
     AdminOverrideStatusRequest,
     OrderDetailResponse,
@@ -35,6 +32,12 @@ from services.orders.schemas import (
     OrderItemResponse,
     OrderResponse,
     PaginatedOrdersResponse,
+)
+from services.payment.schemas import EscrowStatusResponse, RefundRequest
+from services.vendor.schemas import (
+    AdminVendorResponse,
+    PaginatedVendorsResponse,
+    UpdateVendorStatusRequest,
 )
 
 router = APIRouter()
@@ -139,7 +142,7 @@ async def update_vendor_status(
     data: UpdateVendorStatusRequest,
     _current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
-) -> AdminVendorResponse: 
+) -> AdminVendorResponse:
     svc = AdminService(db)
     vendor = await svc.update_vendor_status(vendor_id, data.status)
     return _admin_vendor_response(vendor)

@@ -6,11 +6,11 @@ import secrets
 import uuid
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-from core.exceptions import ForbiddenException, NotFoundException, ConflictException
-from services.vendor.models import DeliveryZone, Product, Vendor
+from core.exceptions import NotFoundException
+from services.vendor.models import Product, Vendor
 from services.vendor.schemas import (
     CreateProductRequest,
     UpdateProductRequest,

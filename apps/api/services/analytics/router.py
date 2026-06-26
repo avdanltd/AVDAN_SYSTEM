@@ -15,8 +15,9 @@ async def vendor_own_analytics(
     current_user: CurrentUser = Depends(require_role("vendor")),
     db: AsyncSession = Depends(get_db),
 ) -> VendorAnalyticsResponse:
-    from services.vendor.models import Vendor
     from sqlalchemy import select
+
+    from services.vendor.models import Vendor
     vendor_result = await db.execute(
         select(Vendor).where(Vendor.user_id == current_user.user_id)  # type: ignore[arg-type]
     )

@@ -1,9 +1,7 @@
 from collections.abc import Callable
 
 from fastapi import Cookie, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.database import get_db
 from core.exceptions import AuthException, ForbiddenException
 from core.security import decode_token
 

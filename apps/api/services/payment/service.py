@@ -4,7 +4,6 @@ from __future__ import annotations
 import uuid
 
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -13,7 +12,6 @@ from services.orders.models import Order
 from services.orders.service import OrderService
 from services.orders.state_machine import OrderStatus
 from services.payment.models import EscrowStatus, EscrowTransaction
-from services.payment.providers.base import PaymentProvider
 from services.payment.providers.registry import get_provider
 
 

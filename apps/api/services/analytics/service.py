@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.analytics.models import AuditLog, DEFAULT_PLATFORM_CONFIG, PlatformConfig
+from services.analytics.models import DEFAULT_PLATFORM_CONFIG, AuditLog, PlatformConfig
 from services.dispatch.models import Rider
 from services.orders.models import Order
 from services.orders.state_machine import OrderStatus

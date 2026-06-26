@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from core.exceptions import AppError, ForbiddenException, NotFoundException
 from services.orders.models import Order, OrderEvent
@@ -90,7 +89,6 @@ class QAService:
         if not order:
             raise NotFoundException("Order not found")
         # Allow access to orders in transit (hub_id not yet set) or already at this hub
-        from services.orders.state_machine import OrderStatus
         if order.hub_id and order.hub_id != hub.id:
             raise ForbiddenException("Order belongs to a different hub")
         return order
