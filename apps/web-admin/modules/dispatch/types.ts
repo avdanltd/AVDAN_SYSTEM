@@ -1,8 +1,10 @@
+import type { OrderStatus } from '@avdan/types'
+
 export interface DispatchOrder {
   id: string
   customer_id: string
   vendor_id: string
-  status: string
+  status: OrderStatus
   total_kobo: number
   delivery_address: Record<string, string>
   items: Array<{

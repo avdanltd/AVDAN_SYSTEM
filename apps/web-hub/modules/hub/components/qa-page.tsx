@@ -177,7 +177,7 @@ export function QaPage({ orderId }: QaPageProps) {
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-foreground">
                       {item.quantity}×
                     </span>
-                    <span className="text-sm font-medium text-foreground">{item.name}</span>
+                    <span className="text-sm font-medium text-foreground">{item.product_name}</span>
                   </div>
                   <span className="text-sm text-muted-foreground">
                     {formatKobo(item.price_kobo)} each
