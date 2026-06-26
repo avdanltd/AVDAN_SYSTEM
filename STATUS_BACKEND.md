@@ -366,17 +366,13 @@
 - [x] Prometheus metrics endpoint at `/metrics` via prometheus-fastapi-instrumentator
 - [x] Key metrics exposed: request count, request duration histogram
 
-### 11.4 K8s Manifests ✓
-- [x] `infra/k8s/api-deployment.yaml` — 4 replicas, rolling update, liveness + readiness probes
-- [x] `infra/k8s/celery-deployment.yaml` — 2 replicas
-- [x] `infra/k8s/celery-beat-deployment.yaml` — exactly 1 replica, Recreate strategy, PodDisruptionBudget
-- [x] `infra/k8s/nginx-daemonset.yaml` — one per node
-- [x] `infra/k8s/postgres-statefulset.yaml` — PVC 200 GB
-- [x] `infra/k8s/redis-statefulset.yaml` — with Sentinel sidecar
-- [x] `infra/k8s/sealed-secrets/` — directory created for sealed secrets
-- [x] `.github/workflows/deploy.yml` — unified workflow: builds all images, pushes GHCR, rolling deploys to staging (develop) or prod (main)
+### 11.4 Deployment Workflows ✓
+- [x] `.github/workflows/ci.yml` — lint, type-check, build on every push
+- [x] `.github/workflows/deploy-staging.yml` — triggers on CI success for develop; builds all Docker images, pushes to GHCR, SSH deploys to VPS via Docker Compose
+- [x] `.github/workflows/deploy-prod.yml` — triggers on CI success for main; same pipeline with production environment approval gate and health check verification
+- [ ] K8s manifests (`infra/k8s/`) — deferred; deployment runs Docker Compose on single VPS, not K3s
 
-**Phase 11 complete when:** App deploys to K3s cluster via GitHub Actions. Monitoring stack running. All security controls verified. Performance baselines met.
+**Phase 11 complete when:** App deploys to VPS via GitHub Actions. Monitoring stack running. All security controls verified. Performance baselines met.
 
 ---
 

@@ -59,5 +59,5 @@ COPY --from=builder /app/apps/${APP_NAME} ./apps/${APP_NAME}
 
 EXPOSE 3000
 
-# next start reads PORT env var; docker-compose.prod.yml sets PORT=3000
-CMD ["sh", "-c", "exec /app/apps/$APP_NAME/node_modules/.bin/next start -p ${PORT:-3000}"]
+# cd into the app dir so next start finds .next/ relative to cwd
+CMD ["sh", "-c", "cd /app/apps/$APP_NAME && exec node_modules/.bin/next start -p ${PORT:-3000}"]

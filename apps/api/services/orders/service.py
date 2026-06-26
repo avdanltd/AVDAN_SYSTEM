@@ -2,11 +2,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from core.exceptions import AppError, ForbiddenException, NotFoundException, ValidationException
 from services.orders.models import Order, OrderEvent, OrderItem
@@ -155,7 +154,6 @@ class OrderService:
     async def list_vendor_orders(
         self, vendor_user_id: str, status: str | None, page: int, page_size: int
     ) -> tuple[list[Order], int]:
-        from services.vendor.models import Vendor
         vendor = await self._get_vendor_for_user(vendor_user_id)
 
         query = select(Order).where(Order.vendor_id == vendor.id)
@@ -219,6 +217,7 @@ class OrderService:
         # Trigger automatic refund in background (non-blocking)
         try:
             import asyncio
+
             from workers.tasks.escrow import refund_rejected_order
             loop = asyncio.get_running_loop()
             loop.run_in_executor(
@@ -323,6 +322,7 @@ class OrderService:
         # thread so it doesn't conflict with SQLAlchemy's async greenlet context.
         try:
             import asyncio
+
             from workers.tasks.notifications import send_order_notification
             loop = asyncio.get_running_loop()
             loop.run_in_executor(

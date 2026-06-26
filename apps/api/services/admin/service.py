@@ -5,7 +5,6 @@ import uuid
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import NotFoundException
@@ -151,8 +150,9 @@ class AdminService:
         return hub
 
     async def update_hub(self, hub_id: str, name: str, capacity: int):
-        from services.qa.models import AgentHub
         import uuid as _uuid
+
+        from services.qa.models import AgentHub
         result = await self.db.execute(
             select(AgentHub).where(AgentHub.id == _uuid.UUID(hub_id))
         )
@@ -165,8 +165,9 @@ class AdminService:
         return hub
 
     async def delete_hub(self, hub_id: str) -> None:
-        from services.qa.models import AgentHub
         import uuid as _uuid
+
+        from services.qa.models import AgentHub
         result = await self.db.execute(
             select(AgentHub).where(AgentHub.id == _uuid.UUID(hub_id))
         )

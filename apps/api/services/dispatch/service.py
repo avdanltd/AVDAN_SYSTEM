@@ -22,7 +22,7 @@ _LOCATION_TTL = 60
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in kilometres."""
-    R = 6371.0
+    R = 6371.0  # noqa: N806 — standard symbol for Earth's radius
     lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
     dlon = lon2 - lon1

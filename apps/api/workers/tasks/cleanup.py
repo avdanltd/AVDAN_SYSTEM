@@ -15,6 +15,7 @@ def purge_old_rider_partitions() -> None:
 
 async def _purge_async() -> None:
     from sqlalchemy import text
+
     from core.database import AsyncSessionLocal
 
     today = date.today()

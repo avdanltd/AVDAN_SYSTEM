@@ -1,6 +1,6 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +12,12 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from core.config import settings
 from core.database import engine
-from core.exceptions import AppError, app_error_handler, unhandled_error_handler, validation_error_handler
+from core.exceptions import (
+    AppError,
+    app_error_handler,
+    unhandled_error_handler,
+    validation_error_handler,
+)
 from core.limiter import limiter
 from core.logging import configure_logging
 from core.middleware import RequestIDMiddleware

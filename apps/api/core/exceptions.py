@@ -11,27 +11,27 @@ class AppError(Exception):
         super().__init__(message)
 
 
-class NotFoundException(AppError):
+class NotFoundException(AppError):  # noqa: N818
     def __init__(self, message: str = "Resource not found") -> None:
         super().__init__(status.HTTP_404_NOT_FOUND, "NOT_FOUND", message)
 
 
-class ValidationException(AppError):
+class ValidationException(AppError):  # noqa: N818
     def __init__(self, message: str) -> None:
         super().__init__(status.HTTP_400_BAD_REQUEST, "VALIDATION_ERROR", message)
 
 
-class AuthException(AppError):
+class AuthException(AppError):  # noqa: N818
     def __init__(self, message: str = "Authentication required") -> None:
         super().__init__(status.HTTP_401_UNAUTHORIZED, "UNAUTHORIZED", message)
 
 
-class ForbiddenException(AppError):
+class ForbiddenException(AppError):  # noqa: N818
     def __init__(self, message: str = "Forbidden") -> None:
         super().__init__(status.HTTP_403_FORBIDDEN, "FORBIDDEN", message)
 
 
-class ConflictException(AppError):
+class ConflictException(AppError):  # noqa: N818
     def __init__(self, message: str) -> None:
         super().__init__(status.HTTP_409_CONFLICT, "CONFLICT", message)
 
@@ -44,8 +44,9 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    from core.config import settings
     import logging
+
+    from core.config import settings
 
     logging.getLogger(__name__).exception("Unhandled exception: %s", exc)
 

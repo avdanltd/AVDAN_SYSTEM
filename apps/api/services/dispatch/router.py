@@ -1,7 +1,6 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import redis.asyncio as aioredis
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
@@ -15,7 +14,7 @@ from services.dispatch.schemas import (
     RiderResponse,
 )
 from services.dispatch.service import DispatchService
-from services.orders.schemas import OrderResponse, OrderItemResponse
+from services.orders.schemas import OrderItemResponse, OrderResponse
 
 router = APIRouter()
 
@@ -188,6 +187,7 @@ async def list_all_riders(
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> list[RiderResponse]:
     from sqlalchemy import select
+
     from services.dispatch.models import Rider
     result = await db.execute(select(Rider))
     return [_rider_resp(r) for r in result.scalars().all()]
