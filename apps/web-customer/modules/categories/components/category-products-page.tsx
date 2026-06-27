@@ -45,7 +45,7 @@ export function CategoryProductsPage({ slug }: CategoryProductsPageProps) {
   const basePath = ROUTES.category(slug)
 
   const filters: FilterState = {
-    sort,
+    sort: sort ?? 'popular',
     minPrice: searchParams.get('min_price') ?? '',
     maxPrice: searchParams.get('max_price') ?? '',
     availableOnly,

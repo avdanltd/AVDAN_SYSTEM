@@ -181,7 +181,7 @@ function VendorProducts({ vendorId, vendorName }: { vendorId: string; vendorName
   const totalPages = data ? Math.ceil(data.total / LIMIT) : 1
 
   const filters: FilterState = {
-    sort,
+    sort: sort ?? 'popular',
     minPrice: searchParams.get('min_price') ?? '',
     maxPrice: searchParams.get('max_price') ?? '',
     availableOnly,
