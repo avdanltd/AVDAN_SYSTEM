@@ -24,7 +24,7 @@ const ICON_MAP: Record<string, React.ComponentType<LucideProps>> = {
   shirt: Shirt,
 }
 
-interface CategoryIconProps extends LucideProps {
+interface CategoryIconProps extends Omit<LucideProps, 'name'> {
   name: string | null | undefined
 }
 
