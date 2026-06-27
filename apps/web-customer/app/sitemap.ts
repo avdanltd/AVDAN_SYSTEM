@@ -3,6 +3,8 @@ import { vendorsService } from '@/modules/vendors/services/vendors.service'
 import { categoriesService } from '@/modules/categories/services/categories.service'
 import { productsService } from '@/modules/products/services/products.service'
 
+export const dynamic = 'force-dynamic'
+
 const BASE_URL = 'https://avdanstore.com'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

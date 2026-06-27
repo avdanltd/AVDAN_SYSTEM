@@ -19,7 +19,6 @@ import {
   Input,
   Textarea,
   Button,
-  Switch,
 } from '@avdan/ui'
 import { categoryCreateSchema, type CategoryCreateForm } from '../schemas/category.schemas'
 import { useCreateCategory, useUpdateCategory } from '../hooks/use-categories'
