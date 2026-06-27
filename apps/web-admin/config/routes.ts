@@ -9,6 +9,8 @@ export const ROUTES = {
   orders: '/orders',
   order: (id: string) => `/orders/${id}`,
 
+  categories: '/categories',
+
   vendors: '/vendors',
   vendor: (id: string) => `/vendors/${id}`,
 

@@ -10,6 +10,7 @@ from models.base import BaseModel
 
 if TYPE_CHECKING:
     from services.auth.models import User
+    from services.categories.models import Category
 
 VendorStatus = str  # "pending" | "active" | "suspended" | "rejected"
 
@@ -65,6 +66,12 @@ class Product(BaseModel):
         ForeignKey("vendors.id", ondelete="CASCADE"),
         nullable=False,
     )
+    category_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("categories.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     price_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -73,3 +80,11 @@ class Product(BaseModel):
     image_urls: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
 
     vendor: Mapped["Vendor"] = relationship("Vendor", back_populates="products")
+    category: Mapped["Category | None"] = relationship("Category", back_populates="products")
+
+    @property
+    def category_name(self) -> str | None:
+        if TYPE_CHECKING:
+            from services.categories.models import Category as _Category  # noqa: F401
+        cat = self.__dict__.get("category")
+        return cat.name if cat is not None else None

@@ -9,8 +9,8 @@
 
 ## Current Status
 
-**Active Phase:** Complete
-**Active Milestone:** All backend phases complete ✓
+**Active Phase:** Phase 12 — Categories + Products API + Semantic Search
+**Active Milestone:** 12.1 Categories System
 **Last Completed:** Phase 11 — Production Hardening ✓ (2026-06-16)
 **Blocking Issues:** None
 
@@ -373,6 +373,74 @@
 - [ ] K8s manifests (`infra/k8s/`) — deferred; deployment runs Docker Compose on single VPS, not K3s
 
 **Phase 11 complete when:** App deploys to VPS via GitHub Actions. Monitoring stack running. All security controls verified. Performance baselines met.
+
+---
+
+---
+
+## Phase 12 — Categories + Products Public API + Semantic Search
+
+> Required by: web-customer full ecommerce redesign, category management in web-admin, category selection in web-vendor.
+> Detail tasks tracked in `quickfix.md`.
+
+### 12.1 Categories System
+- [ ] Migration 0012: `categories` table (id, name, slug, description, icon, sort_order, active, created_at, updated_at)
+- [ ] Migration 0012 or 0013: add `category_id UUID NOT NULL REFERENCES categories(id)` to `products`
+- [ ] `services/categories/models.py` — SQLAlchemy Category model
+- [ ] `services/categories/schemas.py` — CategoryOut, CategoryCreate, CategoryUpdate
+- [ ] `services/categories/service.py` — CRUD
+- [ ] `services/categories/router.py` — routes:
+  - [ ] `GET /categories` — public, list active (sorted by sort_order)
+  - [ ] `POST /admin/categories` — create (admin only)
+  - [ ] `PATCH /admin/categories/{id}` — update (admin only)
+  - [ ] `DELETE /admin/categories/{id}` — deactivate (admin only)
+- [ ] Register categories router in `main.py`
+- [ ] Update `ProductCreate` and `ProductUpdate` schemas: `category_id` required
+- [ ] Update product create endpoint to validate category FK
+
+### 12.2 Products Public Endpoint
+- [ ] `GET /products` — public, paginated. Params: page, limit, category_id, vendor_id, search, min_price_kobo, max_price_kobo, sort (price_asc/desc/newest/popular). Response includes vendor_name, vendor_slug, category_name
+- [ ] `GET /products/{id}` — public, single product detail with vendor info + category + 4 related products from same vendor
+- [ ] Register both in vendor/products router
+
+### 12.3 pgvector Semantic Search
+- [ ] `uv add pgvector sentence-transformers` in pyproject.toml
+- [ ] Migration: `CREATE EXTENSION IF NOT EXISTS vector`; add `embedding vector(384)` to products and vendors; add ivfflat cosine indexes
+- [ ] `services/search/embedder.py` — singleton sentence-transformers loader (`all-MiniLM-L6-v2`, 384 dim)
+- [ ] `workers/tasks/embeddings.py`:
+  - [ ] `generate_product_embedding(product_id)` — text = name + description + category_name
+  - [ ] `generate_vendor_embedding(vendor_id)` — text = name + description
+  - [ ] `backfill_all_embeddings()` — runs both for all existing rows
+- [ ] Hook product create/update → enqueue `generate_product_embedding.delay(product_id)`
+- [ ] Hook vendor create/update → enqueue `generate_vendor_embedding.delay(vendor_id)`
+- [ ] `services/search/service.py` + `router.py`:
+  - [ ] `GET /search?q=&type=products|vendors|all&limit=20` — cosine similarity on embeddings, fallback to tsvector
+- [ ] Register search router in `main.py`
+- [ ] `apps/api/scripts/backfill_embeddings.py` — one-shot script to run after seed
+
+**Phase 12 complete when:** Categories CRUD works, products can be fetched without going through vendor endpoint, semantic search returns relevant results for test queries.
+
+---
+
+## Phase 13 — Seed Scripts
+
+### 13.1 User + Catalog Seed
+- [ ] `apps/api/scripts/seed.py`:
+  - [ ] Idempotent check (skips if admin@avdan.com exists)
+  - [ ] Creates 1 delivery zone (Lagos Zone)
+  - [ ] Creates 8 categories (Electronics, Food & Groceries, Fashion & Clothing, Health & Beauty, Home & Kitchen, Sports & Fitness, Baby & Kids, Books & Stationery)
+  - [ ] Creates 21 users: 1 admin, 1 support, 8 vendors, 5 customers, 4 riders, 2 hub agents — all with `Avdan@2024` password, status=active
+  - [ ] Creates 8 vendor profiles (one per vendor user, status=active, realistic Nigerian business names)
+  - [ ] Creates ~88 products spread across vendors and categories with realistic NGN kobo prices
+  - [ ] Image URLs: Unsplash CDN or placeholder image service
+
+### 13.2 Orders Seed
+- [ ] `apps/api/scripts/seed_orders.py`:
+  - [ ] 15 sample orders in states: PENDING(2), PAID(3), VENDOR_ACCEPTED(2), PREPARING(1), DELIVERED(4), COMPLETED(2), CANCELLED(1)
+  - [ ] Correct order_events rows for each transition
+  - [ ] escrow_transactions for PAID+ orders
+
+**Phase 13 complete when:** After running both scripts the system has populated vendors, products, customers, riders, agents, orders. Every frontend page has real data to display.
 
 ---
 

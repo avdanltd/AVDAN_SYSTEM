@@ -15,6 +15,7 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  Logo,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
@@ -55,7 +56,7 @@ export function Navbar() {
             <SidebarContent onNav={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <span className="text-lg font-bold tracking-tight text-primary">AVDAN Admin</span>
+        <Logo size="sm" suffix="Admin" />
       </div>
 
       <div className="hidden lg:block" />

@@ -18,6 +18,7 @@ import {
   FormControl,
   FormMessage,
   Input,
+  Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 
@@ -35,7 +36,7 @@ export function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="mb-2 text-3xl font-bold text-primary">AVDAN</div>
+          <Logo size="lg" className="mb-2" />
           <CardTitle>Sign in</CardTitle>
           <CardDescription>Welcome back — enter your credentials to continue</CardDescription>
         </CardHeader>

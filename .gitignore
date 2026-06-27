@@ -70,3 +70,4 @@ docs/*
 !docs/AVDAN_System_Design.docx
 
 apps/api/create_admin.py
+quickfix.md

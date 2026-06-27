@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Home, ShoppingBag, Bell, User } from 'lucide-react'
 
-import { Avatar, AvatarFallback, Separator, cn } from '@avdan/ui'
+import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 
@@ -32,7 +32,7 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-border px-6">
-        <span className="text-xl font-bold tracking-tight text-primary">AVDAN</span>
+        <Logo size="md" />
       </div>
 
       <nav className="flex-1 px-3 py-4">

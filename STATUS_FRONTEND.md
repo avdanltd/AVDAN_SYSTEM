@@ -9,9 +9,9 @@
 
 ## Current Status
 
-**Active Phase:** Phase 7 — Admin Panel (code complete, pending live backend test)
-**Last Completed:** Phase 6 — Hub Portal ✓ (2026-06-09)
-**Blocking Issues:** None — all phases require live backend to verify end-to-end
+**Active Phase:** Phase 3A — Full Ecommerce Redesign (web-customer) + Category Management (web-admin + web-vendor)
+**Last Completed:** Phase 7 — Admin Panel ✓ code-complete (2026-06-09), pending live backend test
+**Blocking Issues:** Backend Phase 12 (categories + /products endpoint + pgvector) must be done first
 
 ---
 
@@ -26,6 +26,7 @@
 | Phase 5 (tracking UI) | Backend Phase 6 |
 | Phase 6 (hub portal) | Backend Phase 8 |
 | Phase 7 (admin dashboard) | Backend Phase 10 |
+| Phase 3A (ecommerce redesign) | Backend Phase 12 (categories + /products + pgvector) |
 | Phase 8 (mobile) | All backend phases complete |
 
 ---
@@ -337,6 +338,66 @@
 - [x] Routes: `ROUTES.dispatch` added
 
 **Phase 7 complete ✓ (code)** — requires Backend Phase 10 running.
+
+---
+
+## Phase 3A — Full Ecommerce Redesign + Category Management
+
+> Requires Backend Phase 12 complete (categories table, GET /products, pgvector search).
+> Detail tasks tracked in `quickfix.md`. Mark complete here when all quickfix.md tasks are done and verified.
+
+### 3A.1 — Backend wiring: new service + hook layer (web-customer)
+- [ ] `modules/products/types.ts` — ProductListing, ProductDetail
+- [ ] `modules/products/services/products.service.ts` — getProducts(params), getProduct(id)
+- [ ] `modules/products/hooks/use-products.ts`, `use-product.ts`
+- [ ] `modules/categories/types.ts` — Category
+- [ ] `modules/categories/services/categories.service.ts` — getCategories()
+- [ ] `modules/categories/hooks/use-categories.ts`
+- [ ] `modules/search/services/search.service.ts` — search(q, type)
+- [ ] `modules/search/hooks/use-search.ts` — debounced
+
+### 3A.2 — Reusable ProductCard + ProductGrid (web-customer)
+- [ ] `modules/products/components/product-card.tsx` — image, category badge, name, vendor link, price, Add to Cart, out-of-stock overlay
+- [ ] `modules/products/components/product-card-skeleton.tsx`
+- [ ] `modules/products/components/product-grid.tsx` — responsive, loading/empty/error states
+
+### 3A.3 — Header + Footer (web-customer)
+- [ ] Navbar redesign: categories mega-dropdown, search bar + toggle (Products|Vendors), cart, auth
+- [ ] Mobile navbar: bottom tab bar or Sheet hamburger
+- [ ] Footer: 4-column links + newsletter + social + payment badge
+
+### 3A.4 — Homepage redesign (web-customer)
+- [ ] Hero (full-bleed), category grid, featured products (8), top vendors (4), new arrivals (8)
+- [ ] `store-home-page.tsx` replaces `vendors-home-page.tsx`
+
+### 3A.5 — New pages (web-customer)
+- [ ] `/products` — all products with filters
+- [ ] `/products/[id]` — product detail with related products
+- [ ] `/categories` — all categories grid
+- [ ] `/categories/[slug]` — category products page
+- [ ] `/search` — search results with Products|Vendors toggle
+- [ ] Enhanced `/vendors` — vendor grid with filters
+- [ ] Enhanced `/vendors/[slug]` — store page with category tabs
+
+### 3A.6 — Enhanced existing pages (web-customer)
+- [ ] Cart drawer redesign (thumbnails, quantity stepper, empty state)
+- [ ] Checkout redesign (2-col, step indicator)
+- [ ] Payment success/failed redesign
+- [ ] Orders page redesign (tabs + order cards)
+- [ ] Order detail redesign (timeline stepper)
+- [ ] My Account redesign (tabs, stats, edit via Dialog)
+- [ ] Notifications redesign (icons per type, mark all read)
+
+### 3A.7 — Routes update (web-customer)
+- [ ] `config/routes.ts` — add products, product, categories, category, search
+
+### 3A.8 — Category management (web-admin)
+- [ ] Category CRUD module + page + sidebar nav item
+
+### 3A.9 — Category on product form (web-vendor)
+- [ ] Category Select field on product create/edit form
+
+**Phase 3A complete when:** Every page in web-customer is visually polished, categories are admin-managed, vendors select categories when creating products, semantic search returns relevant results, homepage shows real products and vendors from seed data.
 
 ---
 
