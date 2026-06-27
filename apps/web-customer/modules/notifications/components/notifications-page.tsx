@@ -1,7 +1,7 @@
 'use client'
 
 import { Button, EmptyState, Skeleton, cn, toast } from '@avdan/ui'
-import { Bell } from 'lucide-react'
+import { Bell, ShoppingBag, Package, Truck, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useNotifications, useMarkRead, useMarkAllRead } from '../hooks/use-notifications'
 
 function formatDate(iso: string): string {
@@ -16,6 +16,15 @@ function formatDate(iso: string): string {
   const diffDays = Math.floor(diffHours / 24)
   if (diffDays < 7) return `${diffDays}d ago`
   return d.toLocaleDateString('en-NG', { month: 'short', day: 'numeric' })
+}
+
+function getNotificationIcon(type: string) {
+  if (type.includes('order_placed') || type.includes('placed')) return <ShoppingBag className="h-4 w-4" />
+  if (type.includes('deliver') || type.includes('completed')) return <CheckCircle2 className="h-4 w-4" />
+  if (type.includes('pickup') || type.includes('transit') || type.includes('dispatch')) return <Truck className="h-4 w-4" />
+  if (type.includes('accept') || type.includes('prepar')) return <Package className="h-4 w-4" />
+  if (type.includes('reject') || type.includes('failed') || type.includes('cancel')) return <AlertCircle className="h-4 w-4" />
+  return <Bell className="h-4 w-4" />
 }
 
 export function NotificationsPage() {
@@ -102,7 +111,7 @@ export function NotificationsPage() {
                   notification.read ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
                 )}
               >
-                <Bell className="h-4 w-4" />
+                {getNotificationIcon(notification.type ?? '')}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">

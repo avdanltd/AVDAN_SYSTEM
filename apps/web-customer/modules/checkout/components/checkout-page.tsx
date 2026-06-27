@@ -91,7 +91,21 @@ export function CheckoutPage() {
     <div className="mx-auto max-w-4xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Checkout</h1>
-        <p className="mt-1 text-muted-foreground">Review your order and enter delivery details</p>
+
+        {/* Step indicator */}
+        <div className="mt-4 flex items-center gap-0">
+          {['Cart', 'Delivery', 'Payment'].map((step, i) => (
+            <div key={step} className="flex items-center">
+              <div className={`flex items-center gap-1.5 ${i === 1 ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${i === 1 ? 'bg-primary text-white' : i < 1 ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                  {i + 1}
+                </span>
+                <span className="text-sm">{step}</span>
+              </div>
+              {i < 2 && <span className="mx-3 h-px w-8 bg-border" />}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">

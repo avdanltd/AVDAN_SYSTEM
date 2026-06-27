@@ -22,6 +22,8 @@ dependencies = [
     "slowapi>=0.1.9",
     "python-json-logger>=2.0",
     "prometheus-fastapi-instrumentator>=7.0",
+    "pgvector>=0.3.0",
+    "sentence-transformers>=3.0",
 ]
 
 [project.optional-dependencies]

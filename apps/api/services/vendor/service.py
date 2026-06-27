@@ -5,7 +5,7 @@ import re
 import secrets
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -22,7 +22,100 @@ class VendorService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    # ── Public ────────────────────────────────────────────────────────────────
+    # ── Public products ───────────────────────────────────────────────────────
+
+    async def list_products(
+        self,
+        page: int,
+        page_size: int,
+        category_id: str | None = None,
+        vendor_id: str | None = None,
+        search: str | None = None,
+        min_price_kobo: int | None = None,
+        max_price_kobo: int | None = None,
+        sort: str = "newest",
+    ) -> tuple[list[Product], int]:
+        from services.categories.models import Category
+
+        q = (
+            select(Product)
+            .join(Vendor, Product.vendor_id == Vendor.id)
+            .outerjoin(Category, Product.category_id == Category.id)
+            .where(Product.available.is_(True), Vendor.status == "active")
+            .options(selectinload(Product.vendor), selectinload(Product.category))
+        )
+        cq = (
+            select(func.count())
+            .select_from(Product)
+            .join(Vendor, Product.vendor_id == Vendor.id)
+            .where(Product.available.is_(True), Vendor.status == "active")
+        )
+
+        if category_id:
+            q = q.where(Product.category_id == uuid.UUID(category_id))
+            cq = cq.where(Product.category_id == uuid.UUID(category_id))
+
+        if vendor_id:
+            q = q.where(Product.vendor_id == uuid.UUID(vendor_id))
+            cq = cq.where(Product.vendor_id == uuid.UUID(vendor_id))
+
+        if search:
+            pattern = f"%{search}%"
+            q = q.where(
+                or_(Product.name.ilike(pattern), Product.description.ilike(pattern))
+            )
+            cq = cq.where(
+                or_(Product.name.ilike(pattern), Product.description.ilike(pattern))
+            )
+
+        if min_price_kobo is not None:
+            q = q.where(Product.price_kobo >= min_price_kobo)
+            cq = cq.where(Product.price_kobo >= min_price_kobo)
+
+        if max_price_kobo is not None:
+            q = q.where(Product.price_kobo <= max_price_kobo)
+            cq = cq.where(Product.price_kobo <= max_price_kobo)
+
+        total = (await self.db.execute(cq)).scalar_one()
+
+        if sort == "price_asc":
+            q = q.order_by(Product.price_kobo.asc())
+        elif sort == "price_desc":
+            q = q.order_by(Product.price_kobo.desc())
+        elif sort == "popular":
+            q = q.order_by(Product.stock_qty.desc(), Product.created_at.desc())
+        else:
+            q = q.order_by(Product.created_at.desc())
+
+        q = q.offset((page - 1) * page_size).limit(page_size)
+        rows = (await self.db.execute(q)).scalars().all()
+        return list(rows), total
+
+    async def get_product_by_id(self, product_id: str) -> tuple[Product, list[Product]]:
+        result = await self.db.execute(
+            select(Product)
+            .where(Product.id == uuid.UUID(product_id), Product.available.is_(True))
+            .options(selectinload(Product.vendor), selectinload(Product.category))
+        )
+        product = result.scalar_one_or_none()
+        if not product:
+            raise NotFoundException("Product not found")
+
+        # Related: up to 4 other products from the same vendor
+        related_result = await self.db.execute(
+            select(Product)
+            .where(
+                Product.vendor_id == product.vendor_id,
+                Product.id != product.id,
+                Product.available.is_(True),
+            )
+            .options(selectinload(Product.vendor), selectinload(Product.category))
+            .limit(4)
+        )
+        related = list(related_result.scalars().all())
+        return product, related
+
+    # ── Public vendors ────────────────────────────────────────────────────────
 
     async def list_vendors(
         self,
@@ -57,7 +150,7 @@ class VendorService:
         result = await self.db.execute(
             select(Vendor)
             .where(Vendor.slug == slug, Vendor.status == "active")
-            .options(selectinload(Vendor.products))
+            .options(selectinload(Vendor.products).selectinload(Product.category))
         )
         vendor = result.scalar_one_or_none()
         if not vendor:
@@ -72,7 +165,7 @@ class VendorService:
         result = await self.db.execute(
             select(Vendor)
             .where(Vendor.user_id == user_uuid)
-            .options(selectinload(Vendor.products))
+            .options(selectinload(Vendor.products).selectinload(Product.category))
         )
         vendor = result.scalar_one_or_none()
         if vendor:
@@ -101,7 +194,7 @@ class VendorService:
         result = await self.db.execute(
             select(Vendor)
             .where(Vendor.id == vendor.id)
-            .options(selectinload(Vendor.products))
+            .options(selectinload(Vendor.products).selectinload(Product.category))
         )
         return result.scalar_one()
 
@@ -124,8 +217,10 @@ class VendorService:
 
     async def create_product(self, user_id: str, data: CreateProductRequest) -> Product:
         vendor = await self._get_vendor_for_user(user_id)
+        category_id = uuid.UUID(data.category_id) if data.category_id else None
         product = Product(
             vendor_id=vendor.id,
+            category_id=category_id,
             name=data.name,
             description=data.description,
             price_kobo=data.price_kobo,
@@ -134,6 +229,12 @@ class VendorService:
         )
         self.db.add(product)
         await self.db.flush()
+        # Enqueue embedding generation
+        try:
+            from workers.tasks.embeddings import generate_product_embedding
+            generate_product_embedding.delay(str(product.id))
+        except Exception:
+            pass
         return product
 
     async def update_product(
@@ -151,7 +252,14 @@ class VendorService:
             product.stock_qty = data.stock_qty
         if data.image_urls is not None:
             product.image_urls = data.image_urls
+        if data.category_id is not None:
+            product.category_id = uuid.UUID(data.category_id)
 
+        try:
+            from workers.tasks.embeddings import generate_product_embedding
+            generate_product_embedding.delay(str(product.id))
+        except Exception:
+            pass
         return product
 
     async def delete_product(self, user_id: str, product_id: str) -> None:

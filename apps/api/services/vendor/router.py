@@ -6,9 +6,11 @@ from core.dependencies import CurrentUser, require_role
 from services.vendor.schemas import (
     BankResponse,
     CreateProductRequest,
+    PaginatedProductsResponse,
     PaginatedVendorsResponse,
     PayoutAccountResponse,
     ProductResponse,
+    PublicProductResponse,
     SavePayoutAccountRequest,
     UpdateProductAvailabilityRequest,
     UpdateProductRequest,
@@ -42,15 +44,40 @@ def _vendor_response(vendor: object) -> VendorResponse:
 def _product_response(product: object) -> ProductResponse:
     from services.vendor.models import Product
     p: Product = product  # type: ignore[assignment]
+    cat = getattr(p, "category", None)
     return ProductResponse(
         id=str(p.id),
         vendor_id=str(p.vendor_id),
+        category_id=str(p.category_id) if p.category_id else None,
+        category_name=cat.name if cat else None,
         name=p.name,
         description=p.description,
         price_kobo=p.price_kobo,
         available=p.available,
         stock_qty=p.stock_qty,
         image_urls=p.image_urls or [],
+    )
+
+
+def _public_product_response(product: object) -> PublicProductResponse:
+    from services.vendor.models import Product
+    p: Product = product  # type: ignore[assignment]
+    v = p.vendor
+    cat = getattr(p, "category", None)
+    return PublicProductResponse(
+        id=str(p.id),
+        vendor_id=str(p.vendor_id),
+        vendor_name=v.name,
+        vendor_slug=v.slug,
+        category_id=str(p.category_id) if p.category_id else None,
+        category_name=cat.name if cat else None,
+        name=p.name,
+        description=p.description,
+        price_kobo=p.price_kobo,
+        available=p.available,
+        stock_qty=p.stock_qty,
+        image_urls=p.image_urls or [],
+        created_at=p.created_at.isoformat(),
     )
 
 
@@ -74,7 +101,55 @@ def _vendor_detail_response(vendor: object) -> VendorDetailResponse:
     )
 
 
-# ── Public endpoints ──────────────────────────────────────────────────────────
+# ── Public product endpoints (/products prefix, registered in main.py) ────────
+
+products_router = APIRouter()
+
+
+@products_router.get("", response_model=PaginatedProductsResponse)
+async def list_products(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    category_id: str | None = Query(default=None),
+    vendor_id: str | None = Query(default=None),
+    search: str | None = Query(default=None),
+    min_price_kobo: int | None = Query(default=None, ge=0),
+    max_price_kobo: int | None = Query(default=None, ge=0),
+    sort: str = Query(default="newest", pattern="^(newest|price_asc|price_desc|popular)$"),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedProductsResponse:
+    svc = VendorService(db)
+    products, total = await svc.list_products(
+        page=page,
+        page_size=page_size,
+        category_id=category_id,
+        vendor_id=vendor_id,
+        search=search,
+        min_price_kobo=min_price_kobo,
+        max_price_kobo=max_price_kobo,
+        sort=sort,
+    )
+    return PaginatedProductsResponse(
+        items=[_public_product_response(p) for p in products],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@products_router.get("/{product_id}", response_model=dict)
+async def get_product(
+    product_id: str,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    svc = VendorService(db)
+    product, related = await svc.get_product_by_id(product_id)
+    product_data = _public_product_response(product).model_dump()
+    product_data["related_products"] = [_public_product_response(p).model_dump() for p in related]
+    return product_data
+
+
+# ── Public vendor endpoints ───────────────────────────────────────────────────
 
 @router.get("", response_model=PaginatedVendorsResponse)
 async def list_vendors(

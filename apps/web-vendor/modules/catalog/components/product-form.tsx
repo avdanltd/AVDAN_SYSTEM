@@ -16,10 +16,16 @@ import {
   Switch,
   Textarea,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@avdan/ui'
 import type { Product } from '../types'
 import { useCreateProduct } from '../hooks/use-create-product'
 import { useUpdateProduct } from '../hooks/use-update-product'
+import { useCategories } from '../hooks/use-categories'
 
 const productSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -32,6 +38,7 @@ const productSchema = z.object({
     .int('Must be a whole number')
     .min(0, 'Cannot be negative'),
   available: z.boolean().default(true),
+  category_id: z.string().min(1, 'Please select a category'),
 })
 
 type ProductFormValues = z.infer<typeof productSchema>
@@ -45,6 +52,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
   const isEditing = Boolean(product)
   const { mutate: createProduct, isPending: creating } = useCreateProduct()
   const { mutate: updateProduct, isPending: updating } = useUpdateProduct()
+  const { data: categories = [] } = useCategories()
   const isPending = creating || updating
 
   const form = useForm<ProductFormValues>({
@@ -55,10 +63,10 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       price_kobo: product?.price_kobo ?? 0,
       stock_qty: product?.stock_qty ?? 0,
       available: product?.available ?? true,
+      category_id: product?.category_id ?? '',
     },
   })
 
-  // Sync form when product changes (edit dialog reopened with different product)
   useEffect(() => {
     if (product) {
       form.reset({
@@ -67,6 +75,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         price_kobo: product.price_kobo,
         stock_qty: product.stock_qty,
         available: product.available,
+        category_id: product.category_id ?? '',
       })
     }
   }, [product, form])
@@ -78,6 +87,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       price_kobo: values.price_kobo,
       stock_qty: values.stock_qty,
       available: values.available,
+      category_id: values.category_id,
     }
 
     if (isEditing && product) {
@@ -102,8 +112,33 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             <FormItem>
               <FormLabel>Product Name</FormLabel>
               <FormControl>
-                <Input placeholder="e.g. Jollof Rice (Large)" {...field} />
+                <Input placeholder="e.g. Samsung Galaxy A55" {...field} />
               </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category_id"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <FormMessage />
             </FormItem>
           )}
@@ -114,13 +149,9 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           name="description"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Description (optional)</FormLabel>
+              <FormLabel>Description <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
               <FormControl>
-                <Textarea
-                  placeholder="Describe the product…"
-                  rows={3}
-                  {...field}
-                />
+                <Textarea placeholder="Describe the product…" rows={3} {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -179,11 +210,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             <FormItem>
               <div className="flex items-center gap-3">
                 <FormControl>
-                  <Switch
-                    checked={field.value}
-                    onCheckedChange={field.onChange}
-                    id="available-switch"
-                  />
+                  <Switch checked={field.value} onCheckedChange={field.onChange} id="available-switch" />
                 </FormControl>
                 <Label htmlFor="available-switch" className="cursor-pointer">
                   Available for purchase
@@ -198,8 +225,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
           <Button type="submit" disabled={isPending}>
             {isPending
               ? isEditing ? 'Saving…' : 'Creating…'
-              : isEditing ? 'Save Changes' : 'Add Product'
-            }
+              : isEditing ? 'Save Changes' : 'Add Product'}
           </Button>
         </div>
       </form>

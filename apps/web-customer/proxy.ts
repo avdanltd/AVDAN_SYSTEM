@@ -4,10 +4,17 @@ import { jwtVerify } from 'jose'
 const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? '')
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:8000'
 
+// Routes that require a valid session. Everything else is publicly browsable.
+const PROTECTED_PATHS = ['/orders', '/checkout', '/profile', '/notifications']
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))
+}
+
 export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
-  // Proxy /api/* → FastAPI backend
+  // Proxy /api/* → FastAPI backend (always, auth header injected if token present)
   if (pathname.startsWith('/api/')) {
     const backendPath = pathname.replace('/api', '')
     const url = `${API_INTERNAL_URL}${backendPath}${request.nextUrl.search}`
@@ -21,7 +28,12 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
     return NextResponse.rewrite(url, { request: { headers } })
   }
 
-  // Auth gate — validate JWT from cookie
+  // Public routes — no auth required (home, vendor pages, etc.)
+  if (!isProtectedPath(pathname)) {
+    return NextResponse.next()
+  }
+
+  // Auth gate — only runs for protected routes
   const token = request.cookies.get('avdan_token')?.value
 
   if (!token) {
@@ -33,7 +45,6 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   try {
     const { payload } = await jwtVerify(token, SECRET)
 
-    // Attach claims to headers for server components
     const response = NextResponse.next()
     response.headers.set('x-user-id', String(payload.sub ?? ''))
     response.headers.set('x-user-role', String(payload.role ?? ''))

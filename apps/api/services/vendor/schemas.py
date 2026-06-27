@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field, field_validator
 class ProductResponse(BaseModel):
     id: str
     vendor_id: str
+    category_id: str | None
+    category_name: str | None
     name: str
     description: str | None
     price_kobo: int
@@ -18,6 +20,37 @@ class ProductResponse(BaseModel):
 
     model_config = {"from_attributes": True}
 
+    @field_validator("vendor_id", "category_id", mode="before")
+    @classmethod
+    def uuid_to_str(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        return str(v)
+
+
+class PublicProductResponse(BaseModel):
+    """Extended product response for public listing — includes vendor info."""
+    id: str
+    vendor_id: str
+    vendor_name: str
+    vendor_slug: str
+    category_id: str | None
+    category_name: str | None
+    name: str
+    description: str | None
+    price_kobo: int
+    available: bool
+    stock_qty: int
+    image_urls: list[str]
+    created_at: str
+
+
+class PaginatedProductsResponse(BaseModel):
+    items: list[PublicProductResponse]
+    total: int
+    page: int
+    page_size: int
+
 
 class CreateProductRequest(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -25,6 +58,7 @@ class CreateProductRequest(BaseModel):
     price_kobo: int = Field(gt=0, description="Price in kobo (must be > 0)")
     stock_qty: int = Field(default=0, ge=0)
     image_urls: list[str] = Field(default_factory=list)
+    category_id: str | None = None
 
 
 class UpdateProductRequest(BaseModel):
@@ -33,6 +67,7 @@ class UpdateProductRequest(BaseModel):
     price_kobo: int | None = Field(default=None, gt=0)
     stock_qty: int | None = Field(default=None, ge=0)
     image_urls: list[str] | None = None
+    category_id: str | None = None
 
 
 class UpdateProductAvailabilityRequest(BaseModel):
