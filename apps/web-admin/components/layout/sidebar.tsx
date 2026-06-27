@@ -13,9 +13,10 @@ import {
   BarChart2,
   Settings,
   Building2,
+  Tag,
 } from 'lucide-react'
 
-import { Avatar, AvatarFallback, Separator, cn } from '@avdan/ui'
+import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 
@@ -24,6 +25,7 @@ export const navItems = [
   { label: 'Users', href: ROUTES.users, icon: Users },
   { label: 'Orders', href: ROUTES.orders, icon: ShoppingBag },
   { label: 'Vendors', href: ROUTES.vendors, icon: Store },
+  { label: 'Categories', href: ROUTES.categories, icon: Tag },
   { label: 'Disputes', href: ROUTES.disputes, icon: AlertTriangle },
   { label: 'Escrow', href: ROUTES.escrow, icon: DollarSign },
   { label: 'Dispatch', href: ROUTES.dispatch, icon: Truck },
@@ -49,7 +51,7 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-border px-6">
-        <span className="text-xl font-bold tracking-tight text-primary">AVDAN Admin</span>
+        <Logo size="md" suffix="Admin" />
       </div>
 
       <nav className="flex-1 px-3 py-4">

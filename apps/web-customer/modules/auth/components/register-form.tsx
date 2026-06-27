@@ -21,6 +21,7 @@ import {
   FormControl,
   FormMessage,
   Input,
+  Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 
@@ -52,7 +53,7 @@ export function RegisterForm() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="mb-2 text-3xl font-bold text-primary">AVDAN</div>
+          <Logo size="lg" className="mb-2" />
           <CardTitle>Create account</CardTitle>
           <CardDescription>Join AVDAN to start ordering</CardDescription>
         </CardHeader>

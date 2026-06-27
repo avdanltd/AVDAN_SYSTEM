@@ -1,4 +1,4 @@
-import { VendorsHomePage } from '@/modules/vendors/components/vendors-home-page'
+import { StoreHomePage } from '@/modules/store/components/store-home-page'
 
 export const metadata = {
   title: 'AVDAN — Shop Local Vendors',
@@ -6,5 +6,5 @@ export const metadata = {
 }
 
 export default function HomePage() {
-  return <VendorsHomePage />
+  return <StoreHomePage />
 }

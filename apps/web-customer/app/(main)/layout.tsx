@@ -1,10 +1,5 @@
 import { AppShell } from '@/components/layout/app-shell'
-import { SessionProvider } from '@/components/common/session-provider'
 
-export default function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <AppShell>
-      <SessionProvider>{children}</SessionProvider>
-    </AppShell>
-  )
+export default function StoreLayout({ children }: { children: React.ReactNode }) {
+  return <AppShell>{children}</AppShell>
 }

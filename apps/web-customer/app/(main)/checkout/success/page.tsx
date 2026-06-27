@@ -24,10 +24,10 @@ export default function CheckoutSuccessPage() {
           href={ROUTES.orders}
           className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
         >
-          View My Orders
+          Track Order
         </Link>
         <Link
-          href={ROUTES.home}
+          href={ROUTES.products}
           className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-background px-6 text-sm font-medium shadow-sm transition-colors hover:bg-secondary"
         >
           Continue Shopping

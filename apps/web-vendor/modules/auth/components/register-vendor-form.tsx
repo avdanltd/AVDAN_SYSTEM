@@ -10,7 +10,7 @@ import { toast } from '@avdan/ui'
 
 import {
   Button, Card, CardHeader, CardContent, CardTitle, CardDescription,
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
+  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input, Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { apiClient } from '@/lib/api-client'
@@ -53,7 +53,7 @@ export function RegisterVendorForm() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <div className="mb-2 text-3xl font-bold text-primary">AVDAN</div>
+          <Logo size="lg" className="mb-2" />
           <CardTitle>Register as Vendor</CardTitle>
           <CardDescription>Create your vendor account to start selling</CardDescription>
         </CardHeader>

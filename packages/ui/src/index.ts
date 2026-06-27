@@ -81,6 +81,14 @@ export { Textarea } from './components/ui/textarea'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
 export { Switch } from './components/ui/switch'
 export { Progress } from './components/ui/progress'
+export {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from './components/ui/carousel'
 
 // ─── Custom components (built on top of Shadcn) ───────────────────────────────
 export { OrderStatusBadge, UserStatusBadge } from './components/custom/status-badge'
@@ -89,6 +97,8 @@ export { ConfirmDialog } from './components/custom/confirm-dialog'
 export { DataTable } from './components/custom/data-table'
 export type { Column } from './components/custom/data-table'
 export { PageLoader } from './components/custom/page-loader'
+export { CategoryIcon } from './components/custom/category-icon'
+export { Logo } from './components/custom/logo'
 export { Spinner } from './components/primitives/spinner'
 export { EmptyState } from './components/custom/empty-state'
 

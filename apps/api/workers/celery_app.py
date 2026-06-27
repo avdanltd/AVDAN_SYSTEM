@@ -11,6 +11,7 @@ celery_app = Celery(
         "workers.tasks.escrow",
         "workers.tasks.notifications",
         "workers.tasks.cleanup",
+        "workers.tasks.embeddings",
     ],
 )
 
