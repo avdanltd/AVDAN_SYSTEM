@@ -134,9 +134,9 @@ export function CategoriesPage() {
       <DataTable
         data={categories}
         columns={columns}
+        keyExtractor={(row) => row.id}
         loading={isLoading}
-        emptyTitle="No categories yet"
-        emptyDescription="Create your first category so vendors can classify their products."
+        emptyMessage="No categories yet. Create your first category so vendors can classify their products."
       />
 
       <CategoryDialog

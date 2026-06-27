@@ -83,8 +83,8 @@ jobs:
           tags: |
             ${{ env.IMAGE_PREFIX }}/api:${{ steps.tag.outputs.sha }}
             ${{ env.IMAGE_PREFIX }}/api:stable
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
 
       - name: Build and push web-customer image
         uses: docker/build-push-action@v5
@@ -95,8 +95,8 @@ jobs:
           build-args: APP_NAME=web-customer
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-customer:${{ steps.tag.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-customer
+          cache-to: type=gha,mode=max,scope=web-customer
 
       - name: Build and push web-vendor image
         uses: docker/build-push-action@v5
@@ -107,8 +107,8 @@ jobs:
           build-args: APP_NAME=web-vendor
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-vendor:${{ steps.tag.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-vendor
+          cache-to: type=gha,mode=max,scope=web-vendor
 
       - name: Build and push web-admin image
         uses: docker/build-push-action@v5
@@ -119,8 +119,8 @@ jobs:
           build-args: APP_NAME=web-admin
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-admin:${{ steps.tag.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-admin
+          cache-to: type=gha,mode=max,scope=web-admin
 
       - name: Build and push web-hub image
         uses: docker/build-push-action@v5
@@ -131,8 +131,8 @@ jobs:
           build-args: APP_NAME=web-hub
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-hub:${{ steps.tag.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-hub
+          cache-to: type=gha,mode=max,scope=web-hub
 
       - name: Build and push web-rider image
         uses: docker/build-push-action@v5
@@ -143,8 +143,8 @@ jobs:
           build-args: APP_NAME=web-rider
           push: true
           tags: ${{ env.IMAGE_PREFIX }}/web-rider:${{ steps.tag.outputs.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=web-rider
+          cache-to: type=gha,mode=max,scope=web-rider
 
       - name: Set up SSH key
         run: |
