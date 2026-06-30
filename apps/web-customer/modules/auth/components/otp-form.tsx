@@ -23,7 +23,7 @@ function obfuscateEmail(email?: string): string {
     : `${local[0]}***`
   const domainParts = domain.split('.')
   const obscuredDomain = domainParts.length > 1
-    ? `${domainParts[0][0]}***.${domainParts[domainParts.length - 1]}`
+    ? `${domainParts[0]![0]}***.${domainParts[domainParts.length - 1]}`
     : domain
   return `${obscuredLocal}@${obscuredDomain}`
 }
