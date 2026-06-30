@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     # Push notifications — FCM legacy server key (empty = push disabled)
     fcm_server_key: str = ""
 
+    # Email notifications — Resend settings
+    resend_api_key: str = ""
+    # email_from: str = "AVDAN <noreply@avdanstore.com>"
+    email_from: str = "AVDAN <noreply@johnedeh.com>"
+
+
     # App
     environment: str = "development"
     frontend_urls: list[str] = ["http://localhost:3000"]

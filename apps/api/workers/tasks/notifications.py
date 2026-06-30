@@ -39,6 +39,14 @@ _TRIGGERS: dict[tuple[str | None, str], list[dict]] = {
 }
 
 
+@celery_app.task(name="workers.tasks.notifications.send_otp_email_task")
+def send_otp_email_task(email: str, name: str, otp: str) -> None:
+    from services.notification.emails import build_otp_email, send_email_via_resend
+    subject = "Verify your AVDAN Account"
+    html = build_otp_email(name, otp)
+    send_email_via_resend(email, subject, html)
+
+
 @celery_app.task(name="workers.tasks.notifications.send_order_notification")
 def send_order_notification(order_id: str, from_state: str | None, to_state: str) -> None:
     triggers = _TRIGGERS.get((from_state, to_state), [])
@@ -79,15 +87,18 @@ async def _dispatch_async(
             if not order:
                 return
 
-            # Resolve recipient user IDs
+            # Resolve recipient user info (id, name, email)
             recipient_map = await _resolve_recipients(db, order)
             now = datetime.now(UTC)
 
             for trigger in triggers:
                 role = trigger["recipient"]
-                user_id = recipient_map.get(role)
-                if not user_id:
+                recipient_info = recipient_map.get(role)
+                if not recipient_info:
                     continue
+                user_id = recipient_info["id"]
+                email = recipient_info["email"]
+                name = recipient_info["name"]
 
                 content = {
                     "title": trigger["title"],
@@ -106,6 +117,19 @@ async def _dispatch_async(
                     sent_at=now,
                 ))
 
+                # Attempt Email Dispatch via Resend
+                if email:
+                    from services.notification.emails import build_order_status_email, send_email_via_resend
+                    subject = f"AVDAN Order Update: {trigger['title']}"
+                    html = build_order_status_email(name, order_id, trigger["title"], trigger["body"])
+                    db.add(Notification(
+                        user_id=user_id,
+                        type=to_state.lower(),
+                        channel="email",
+                        content=content,
+                        sent_at=now if send_email_via_resend(email, subject, html) else None,
+                    ))
+
                 # Attempt FCM push
                 fcm_token = await _get_fcm_token(db, user_id)
                 if fcm_token:
@@ -118,18 +142,36 @@ async def _dispatch_async(
                     ))
 
 
-async def _resolve_recipients(db, order) -> dict[str, object]:
-    """Returns {"customer": UUID, "vendor": UUID}."""
+async def _resolve_recipients(db, order) -> dict[str, dict]:
+    """Returns {"customer": {"id": UUID, "name": str, "email": str}, "vendor": ...}."""
     from sqlalchemy import select
-
+    from services.auth.models import User
     from services.vendor.models import Vendor
 
-    recipient_map: dict = {"customer": order.customer_id}
+    recipient_map = {}
 
+    # Customer
+    cust_res = await db.execute(select(User).where(User.id == order.customer_id))
+    customer = cust_res.scalar_one_or_none()
+    if customer:
+        recipient_map["customer"] = {
+            "id": customer.id,
+            "name": customer.name,
+            "email": customer.email,
+        }
+
+    # Vendor
     vendor_result = await db.execute(select(Vendor).where(Vendor.id == order.vendor_id))
     vendor = vendor_result.scalar_one_or_none()
     if vendor:
-        recipient_map["vendor"] = vendor.user_id
+        v_user_res = await db.execute(select(User).where(User.id == vendor.user_id))
+        vendor_user = v_user_res.scalar_one_or_none()
+        if vendor_user:
+            recipient_map["vendor"] = {
+                "id": vendor_user.id,
+                "name": vendor_user.name,
+                "email": vendor_user.email,
+            }
 
     return recipient_map
 

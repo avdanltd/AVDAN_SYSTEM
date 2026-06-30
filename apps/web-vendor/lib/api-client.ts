@@ -38,7 +38,9 @@ class ApiClient {
 
     if (response.status === 401) {
       // Proxy handles refresh — if we still get 401 after refresh, redirect to login
-      window.location.href = '/login'
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
       throw new ApiClientError(401, 'UNAUTHORIZED', 'Session expired')
     }
 

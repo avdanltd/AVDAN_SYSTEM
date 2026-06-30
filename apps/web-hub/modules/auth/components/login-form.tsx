@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import {
   Button, Card, CardHeader, CardContent, CardTitle, CardDescription,
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input, Logo,
+  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input, PasswordInput, Logo,
 } from '@avdan/ui'
 
 import { loginSchema, type LoginInput } from '../schemas/auth.schemas'
@@ -20,8 +20,8 @@ export function LoginForm() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <Logo size="lg" className="mb-2" />
-          <CardTitle>Hub sign in</CardTitle>
-          <CardDescription>Welcome back — enter your credentials to continue</CardDescription>
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>Welcome back! Please enter your details</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -43,7 +43,7 @@ export function LoginForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl><Input placeholder="••••••••" type="password" {...field} /></FormControl>
+                    <FormControl><PasswordInput placeholder="••••••••" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

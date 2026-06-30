@@ -1,5 +1,10 @@
-from celery import Celery
+import os
+import sys
 
+# Ensure the apps/api directory is in Python's search path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
+from celery import Celery
 from core.config import settings
 
 celery_app = Celery(

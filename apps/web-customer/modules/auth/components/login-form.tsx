@@ -18,6 +18,7 @@ import {
   FormControl,
   FormMessage,
   Input,
+  PasswordInput,
   Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -63,7 +64,7 @@ export function LoginForm() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input placeholder="••••••••" type="password" {...field} />
+                      <PasswordInput placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
