@@ -47,9 +47,13 @@ async def register_customer(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    from core.config import settings
     svc = AuthService(db, redis)
     user, otp = await svc.register_customer(data)
-    return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
+    res = {"user_id": str(user.id), "message": "OTP sent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
 
 
 @router.post("/register/vendor", response_model=dict, status_code=201)
@@ -58,9 +62,28 @@ async def register_vendor(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    from core.config import settings
     svc = AuthService(db, redis)
     user, otp = await svc.register_vendor(data)
-    return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
+    res = {"user_id": str(user.id), "message": "OTP sent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
+
+
+@router.post("/resend-otp", response_model=dict)
+async def resend_otp(
+    data: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    from core.config import settings
+    svc = AuthService(db, redis)
+    otp = await svc.resend_otp(data.user_id)
+    res = {"message": "OTP resent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
 
 
 @router.post("/verify-otp", response_model=dict)

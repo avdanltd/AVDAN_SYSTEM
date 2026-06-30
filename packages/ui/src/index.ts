@@ -1,6 +1,7 @@
 // ─── Shadcn primitives (from src/components/ui/) ─────────────────────────────
 export { Button, buttonVariants } from './components/ui/button'
 export { Input } from './components/ui/input'
+export { PasswordInput } from './components/ui/password-input'
 export { Label } from './components/ui/label'
 export {
   Card,

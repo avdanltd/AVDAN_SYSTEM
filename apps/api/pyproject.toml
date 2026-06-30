@@ -25,6 +25,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.0",
     "pgvector>=0.3.0",
     "sentence-transformers>=3.0",
+    "resend>=2.6.0",
 ]
 
 [project.optional-dependencies]

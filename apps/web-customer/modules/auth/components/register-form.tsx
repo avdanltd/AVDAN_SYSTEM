@@ -21,6 +21,7 @@ import {
   FormControl,
   FormMessage,
   Input,
+  PasswordInput,
   Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -32,21 +33,23 @@ import { OtpForm } from './otp-form'
 export function RegisterForm() {
   const [step, setStep] = useState<'register' | 'otp'>('register')
   const [userId, setUserId] = useState<string | null>(null)
+  const [email, setEmail] = useState<string>('')
+
+  const registerForm = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
 
   const registerMutation = useMutation({
     mutationFn: authService.registerCustomer,
     onSuccess: (data) => {
       setUserId(data.user_id)
+      setEmail(registerForm.getValues('email'))
       setStep('otp')
-      toast.success('Check your phone for the OTP')
+      toast.success('Check your email for the OTP')
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  const registerForm = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
-
   if (step === 'otp' && userId) {
-    return <OtpForm userId={userId} onBack={() => setStep('register')} />
+    return <OtpForm userId={userId} email={email} onBack={() => setStep('register')} />
   }
 
   return (
@@ -109,7 +112,7 @@ export function RegisterForm() {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input placeholder="••••••••" type="password" {...field} />
+                      <PasswordInput placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -122,7 +125,7 @@ export function RegisterForm() {
                   <FormItem>
                     <FormLabel>Confirm password</FormLabel>
                     <FormControl>
-                      <Input placeholder="••••••••" type="password" {...field} />
+                      <PasswordInput placeholder="••••••••" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
