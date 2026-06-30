@@ -18,6 +18,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  PasswordInput,
   Button,
   Select,
   SelectContent,
@@ -102,7 +103,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="Min. 8 characters" {...field} />
+                    <PasswordInput placeholder="Min. 8 characters" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

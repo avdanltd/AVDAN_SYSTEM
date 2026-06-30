@@ -11,6 +11,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  PasswordInput,
   Card,
   CardContent,
   CardHeader,
@@ -58,7 +59,7 @@ export function LoginForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="••••••••" autoComplete="current-password" {...field} />
+                    <PasswordInput placeholder="••••••••" autoComplete="current-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

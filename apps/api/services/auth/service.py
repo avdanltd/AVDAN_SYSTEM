@@ -46,6 +46,11 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
         otp = await self._generate_otp(str(user.id))
+        
+        if user.email:
+            from workers.tasks.notifications import send_otp_email_task
+            send_otp_email_task.delay(user.email, user.name, otp)
+            
         return user, otp
 
     async def register_vendor(self, data: RegisterVendorRequest) -> tuple[User, str]:
@@ -70,6 +75,11 @@ class AuthService:
         self.db.add(profile)
 
         otp = await self._generate_otp(str(user.id))
+        
+        if user.email:
+            from workers.tasks.notifications import send_otp_email_task
+            send_otp_email_task.delay(user.email, user.name, otp)
+            
         return user, otp
 
     async def verify_otp(self, user_id: str, otp: str) -> User:
@@ -85,6 +95,16 @@ class AuthService:
         user.status = "active"
         await self.redis.delete(f"otp:{user_id}")
         return user
+
+    async def resend_otp(self, user_id: str) -> str:
+        user = await self.get_user_by_id(user_id)
+        otp = await self._generate_otp(str(user.id))
+        
+        if user.email:
+            from workers.tasks.notifications import send_otp_email_task
+            send_otp_email_task.delay(user.email, user.name, otp)
+            
+        return otp
 
     async def login(self, data: LoginRequest) -> tuple[str, str, str]:
         """Returns (access_token, refresh_token, jti)."""

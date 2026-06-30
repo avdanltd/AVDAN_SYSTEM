@@ -34,18 +34,19 @@ class SearchService:
             # pgvector cosine similarity — lower distance = more similar
             vec_literal = f"[{','.join(str(x) for x in vector)}]"
             sql = text(
-                f"""
+                """
                 SELECT p.id
                 FROM products p
                 JOIN vendors v ON p.vendor_id = v.id
                 WHERE p.available = true
                   AND v.status = 'active'
                   AND p.embedding IS NOT NULL
-                ORDER BY p.embedding <=> '{vec_literal}'::vector
+                  AND (p.embedding <=> CAST(:embedding AS vector)) < 0.65
+                ORDER BY p.embedding <=> CAST(:embedding AS vector)
                 LIMIT :limit
                 """
             )
-            rows = await self.db.execute(sql, {"limit": limit})
+            rows = await self.db.execute(sql, {"embedding": vec_literal, "limit": limit})
             ids = [r[0] for r in rows]
 
             if ids:
@@ -74,16 +75,17 @@ class SearchService:
         if vector is not None:
             vec_literal = f"[{','.join(str(x) for x in vector)}]"
             sql = text(
-                f"""
+                """
                 SELECT v.id
                 FROM vendors v
                 WHERE v.status = 'active'
                   AND v.embedding IS NOT NULL
-                ORDER BY v.embedding <=> '{vec_literal}'::vector
+                  AND (v.embedding <=> CAST(:embedding AS vector)) < 0.65
+                ORDER BY v.embedding <=> CAST(:embedding AS vector)
                 LIMIT :limit
                 """
             )
-            rows = await self.db.execute(sql, {"limit": limit})
+            rows = await self.db.execute(sql, {"embedding": vec_literal, "limit": limit})
             ids = [r[0] for r in rows]
 
             if ids:

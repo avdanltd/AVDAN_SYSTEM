@@ -32,11 +32,21 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   try {
     const { payload } = await jwtVerify(token, SECRET)
+    const role = String(payload.role ?? '')
+
+    if (role !== 'vendor') {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('error', 'unauthorized')
+      const response = NextResponse.redirect(loginUrl)
+      response.cookies.delete('avdan_token')
+      response.cookies.delete('avdan_refresh_token')
+      return response
+    }
 
     // Attach claims to headers for server components
     const response = NextResponse.next()
     response.headers.set('x-user-id', String(payload.sub ?? ''))
-    response.headers.set('x-user-role', String(payload.role ?? ''))
+    response.headers.set('x-user-role', role)
     return response
   } catch {
     // Token invalid or expired — attempt silent refresh
@@ -49,11 +59,34 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
         })
         if (refreshResponse.ok) {
           const setCookies = refreshResponse.headers.getSetCookie()
-          const response = NextResponse.next()
+          let newAccessToken = ''
           for (const cookie of setCookies) {
-            response.headers.append('Set-Cookie', cookie)
+            if (cookie.includes('avdan_token=')) {
+              const match = cookie.match(/avdan_token=([^;]+)/)
+              if (match) newAccessToken = match[1]
+            }
           }
-          return response
+
+          if (newAccessToken) {
+            const { payload: newPayload } = await jwtVerify(newAccessToken, SECRET)
+            const role = String(newPayload.role ?? '')
+            if (role !== 'vendor') {
+              const loginUrl = new URL('/login', request.url)
+              loginUrl.searchParams.set('error', 'unauthorized')
+              const response = NextResponse.redirect(loginUrl)
+              response.cookies.delete('avdan_token')
+              response.cookies.delete('avdan_refresh_token')
+              return response
+            }
+
+            const response = NextResponse.next()
+            for (const cookie of setCookies) {
+              response.headers.append('Set-Cookie', cookie)
+            }
+            response.headers.set('x-user-id', String(newPayload.sub ?? ''))
+            response.headers.set('x-user-role', role)
+            return response
+          }
         }
       } catch {
         // Refresh failed — fall through to redirect
