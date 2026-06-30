@@ -63,7 +63,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
           for (const cookie of setCookies) {
             if (cookie.includes('avdan_token=')) {
               const match = cookie.match(/avdan_token=([^;]+)/)
-              if (match) newAccessToken = match[1]
+              if (match) newAccessToken = match[1]!
             }
           }
 
