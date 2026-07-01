@@ -1,4 +1,4 @@
-"""Singleton sentence-transformers embedder.
+"""Singleton fastembed embedder (ONNX-based, no PyTorch dependency).
 
 Loaded lazily on first call so the FastAPI process stays fast to start.
 The heavy load happens in the Celery worker, not the API server —
@@ -25,12 +25,12 @@ def get_model() -> object:
         if _model is not None:
             return _model
         try:
-            from sentence_transformers import SentenceTransformer
-            logger.info("Loading sentence-transformers model %s", _MODEL_NAME)
-            _model = SentenceTransformer(_MODEL_NAME)
+            from fastembed import TextEmbedding
+            logger.info("Loading fastembed model %s", _MODEL_NAME)
+            _model = TextEmbedding(model_name=_MODEL_NAME)
             logger.info("Model loaded")
         except ImportError:
-            logger.warning("sentence-transformers not installed — semantic search disabled")
+            logger.warning("fastembed not installed — semantic search disabled")
             _model = None
     return _model
 
@@ -40,10 +40,10 @@ def encode(text: str) -> list[float] | None:
     if model is None:
         return None
     try:
-        from sentence_transformers import SentenceTransformer
-        m: SentenceTransformer = model  # type: ignore[assignment]
-        vector = m.encode(text, convert_to_numpy=True, normalize_embeddings=True)
-        return vector.tolist()
+        from fastembed import TextEmbedding
+        m: TextEmbedding = model  # type: ignore[assignment]
+        vectors = list(m.embed([text]))
+        return vectors[0].tolist()
     except Exception as exc:
         logger.error("Embedding failed: %s", exc)
         return None
