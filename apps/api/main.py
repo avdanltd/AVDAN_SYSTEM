@@ -40,6 +40,7 @@ from services.vendor.router import products_router, router as vendor_router
 configure_logging(level="DEBUG" if settings.environment == "development" else "INFO")
 
 _MEDIA_DIR = Path("media")
+_STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -89,6 +90,9 @@ def create_app() -> FastAPI:
     # Static files for QA evidence uploads
     _MEDIA_DIR.mkdir(parents=True, exist_ok=True)
     app.mount("/media", StaticFiles(directory=str(_MEDIA_DIR)), name="media")
+
+    # Static assets (logo, etc.) bundled with the image
+    app.mount("/static", StaticFiles(directory=str(_STATIC_DIR)), name="static")
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
