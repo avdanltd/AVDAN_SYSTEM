@@ -34,6 +34,7 @@ from services.orders.schemas import (
     PaginatedOrdersResponse,
 )
 from services.payment.schemas import EscrowStatusResponse, RefundRequest
+from services.qa.schemas import AssignHubRequest, CreateHubRequest, HubResponse
 from services.vendor.schemas import (
     AdminVendorResponse,
     PaginatedVendorsResponse,
@@ -408,3 +409,51 @@ async def update_platform_config(
     from services.analytics.service import AnalyticsService
     config = await AnalyticsService(db).update_config(data.updates, current_user.user_id)
     return PlatformConfigResponse(config=config)
+
+
+# ── Hub management ────────────────────────────────────────────────────────────
+
+def _hub_resp(hub: object) -> HubResponse:
+    from services.qa.models import AgentHub
+    h: AgentHub = hub  # type: ignore[assignment]
+    return HubResponse(
+        id=str(h.id),
+        name=h.name,
+        active=h.active,
+        capacity=h.capacity,
+        lat=float(h.lat) if h.lat is not None else None,
+        lng=float(h.lng) if h.lng is not None else None,
+    )
+
+
+@router.get("/hubs", response_model=list[HubResponse])
+async def list_hubs(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[HubResponse]:
+    svc = AdminService(db)
+    hubs = await svc.list_hubs()
+    return [_hub_resp(h) for h in hubs]
+
+
+@router.post("/hubs", response_model=HubResponse, status_code=201)
+async def create_hub(
+    data: CreateHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    svc = AdminService(db)
+    hub = await svc.create_hub(data.name, data.capacity, data.lat, data.lng)
+    return _hub_resp(hub)
+
+
+@router.patch("/users/{user_id}/hub", response_model=UserResponse)
+async def assign_agent_hub(
+    user_id: str,
+    data: AssignHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    svc = AdminService(db)
+    user = await svc.assign_agent_hub(user_id, data.hub_id)
+    return _user_response(user)
