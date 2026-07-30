@@ -8,6 +8,7 @@ dependencies = [
     "uvicorn[standard]>=0.34,<0.35",
     "gunicorn>=23,<24",
     "sqlalchemy>=2.0,<3.0",
+    "greenlet>=3.1",
     "alembic>=1.14,<2.0",
     "asyncpg>=0.30,<0.31",
     "pydantic>=2.10,<3.0",
