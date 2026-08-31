@@ -15,6 +15,7 @@ help:
 	@echo "  make dev          Run all apps concurrently (turbo run dev)"
 	@echo "  make dev-api      Run only the FastAPI backend"
 	@echo "  make dev-web      Run only the frontend apps (all web-*)"
+	@echo "  make dev-mobile   Run the app-rider Expo dev server"
 	@echo "  make install      Install JS + Python dependencies"
 	@echo "  make db-create    Create the local Postgres database (via DBngin)"
 	@echo "  make db-drop      Drop the local Postgres database"
@@ -40,6 +41,9 @@ dev-api:
 
 dev-web:
 	pnpm turbo run dev --filter="./apps/web-*"
+
+dev-mobile:
+	pnpm turbo run dev --filter=app-rider
 
 db-create:
 	@$(PSQL) -h $(DB_HOST) -p $(DB_PORT) -U $(DB_SUPERUSER) -tc \

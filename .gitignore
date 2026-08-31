@@ -13,6 +13,8 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+celerybeat-schedule*
+celerybeat.pid
 
 # Environment
 .env
@@ -71,3 +73,5 @@ docs/*
 
 apps/api/create_admin.py
 quickfix.md
+PROJECT_DESIGN_BRIEF.md
+styles/

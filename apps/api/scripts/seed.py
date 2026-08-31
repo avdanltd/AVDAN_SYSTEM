@@ -258,10 +258,10 @@ async def seed() -> None:
             user_id_map[u["email"]] = str(uid)
             phone = u.get("phone")
             await db.execute(text(
-                "INSERT INTO users (id, role, email, phone, password_hash, status) "
-                "VALUES (:id, :role, :email, :phone, :pw, 'active')"
+                "INSERT INTO users (id, role, email, phone, password_hash, name, status) "
+                "VALUES (:id, :role, :email, :phone, :pw, :name, 'active')"
             ), {"id": str(uid), "role": u["role"], "email": u["email"],
-                "phone": phone, "pw": PASSWORD_HASH})
+                "phone": phone, "pw": PASSWORD_HASH, "name": u["name"]})
         print(f"  ✓ {len(USERS)} users created")
 
         # 4. Vendor profiles (auth table) + Vendor rows + Products
@@ -333,6 +333,9 @@ async def seed() -> None:
                 "INSERT INTO agent_hubs (id, name, zone_id, lat, lng, capacity, active) "
                 "VALUES (:id, :name, :zone, 6.5244, 3.3792, 50, true)"
             ), {"id": str(hub_id), "name": hub_name, "zone": str(zone_id)})
+            await db.execute(text(
+                "UPDATE users SET hub_id = :hub_id WHERE id = :uid"
+            ), {"hub_id": str(hub_id), "uid": uid})
         print("  ✓ Agent hubs created")
 
         await db.commit()

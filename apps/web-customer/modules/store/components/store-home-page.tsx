@@ -3,7 +3,7 @@
 import { useEffect, useCallback, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight, Search, Truck } from 'lucide-react'
 import { CategoryIcon } from '@avdan/ui'
 import {
   Button,
@@ -27,7 +27,9 @@ const HERO_SLIDES = [
   {
     id: 1,
     image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1600&q=80&fit=crop',
-    headline: 'Shop from top local vendors',
+    eyebrow: 'Fresh On AVDAN',
+    headline: 'Shop from top',
+    headlineAccent: 'local vendors.',
     subline: 'Fresh products, fast delivery. Discover the best vendors near you.',
     cta: { label: 'Shop Now', href: ROUTES.products },
     ctaSecondary: { label: 'Browse Vendors', href: ROUTES.vendors },
@@ -35,7 +37,9 @@ const HERO_SLIDES = [
   {
     id: 2,
     image: 'https://images.unsplash.com/photo-1542838132-92c53300491e?w=1600&q=80&fit=crop',
-    headline: 'Fresh food at your doorstep',
+    eyebrow: 'Doorstep Delivery',
+    headline: 'Fresh food,',
+    headlineAccent: 'delivered fast.',
     subline: 'Order from local food vendors and get it delivered fast.',
     cta: { label: 'Browse Food', href: `${ROUTES.categories}/food-groceries` },
     ctaSecondary: { label: 'All Products', href: ROUTES.products },
@@ -43,7 +47,9 @@ const HERO_SLIDES = [
   {
     id: 3,
     image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&q=80&fit=crop',
-    headline: 'Electronics & gadgets',
+    eyebrow: 'Trending Now',
+    headline: 'Electronics',
+    headlineAccent: '& gadgets.',
     subline: 'Find the latest tech from trusted vendors across Lagos.',
     cta: { label: 'Shop Electronics', href: `${ROUTES.categories}/electronics` },
     ctaSecondary: { label: 'View All', href: ROUTES.products },
@@ -51,7 +57,9 @@ const HERO_SLIDES = [
   {
     id: 4,
     image: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=1600&q=80&fit=crop',
-    headline: 'Fashion & style',
+    eyebrow: 'Style Edit',
+    headline: 'Fashion',
+    headlineAccent: '& style.',
     subline: 'Discover clothing and accessories from top fashion vendors.',
     cta: { label: 'Shop Fashion', href: `${ROUTES.categories}/fashion-clothing` },
     ctaSecondary: { label: 'All Vendors', href: ROUTES.vendors },
@@ -97,7 +105,7 @@ function HeroCarousel() {
         <CarouselContent className="-ml-0">
           {HERO_SLIDES.map((slide) => (
             <CarouselItem key={slide.id} className="pl-0">
-              <div className="relative h-[420px] w-full overflow-hidden sm:h-[520px] lg:h-[600px]">
+              <div className="relative h-[480px] w-full overflow-hidden bg-secondary sm:h-[560px] lg:h-[640px]">
                 {/* Background image */}
                 <Image
                   src={slide.image}
@@ -107,32 +115,32 @@ function HeroCarousel() {
                   sizes="100vw"
                   priority={slide.id === 1}
                 />
-                {/* Dark overlay for text legibility */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/20" />
+                {/* Soft light wash so dark editorial text stays legible over photography */}
+                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
 
                 {/* Slide content */}
                 <div className="absolute inset-0 flex items-center">
                   <div className="mx-auto w-full max-w-8xl px-6 sm:px-8 lg:px-12">
-                    <div className="max-w-xl">
-                      <h1 className="text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-5xl xl:text-6xl">
+                    <div className="max-w-xl space-y-6">
+                      <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary">
+                        {slide.eyebrow}
+                      </span>
+                      <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
                         {slide.headline}
+                        <br />
+                        <span className="italic text-primary">{slide.headlineAccent}</span>
                       </h1>
-                      <p className="mt-4 text-base text-white/80 sm:text-lg lg:text-xl">
+                      <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
                         {slide.subline}
                       </p>
-                      <div className="mt-6 flex flex-wrap gap-3">
-                        <Button size="lg" asChild className="bg-white text-foreground hover:bg-white/90">
+                      <div className="flex flex-wrap gap-3 pt-2">
+                        <Button size="lg" asChild className="shadow-card">
                           <Link href={slide.cta.href}>
                             <ShoppingBag className="mr-2 h-4 w-4" />
                             {slide.cta.label}
                           </Link>
                         </Button>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          asChild
-                          className="border-white/40 bg-white/10 text-white backdrop-blur-sm hover:bg-white/20"
-                        >
+                        <Button size="lg" variant="outline" asChild className="bg-background/80 backdrop-blur-sm">
                           <Link href={slide.ctaSecondary.href}>{slide.ctaSecondary.label}</Link>
                         </Button>
                       </div>
@@ -147,14 +155,14 @@ function HeroCarousel() {
         {/* Prev / Next arrows */}
         <button
           onClick={() => api?.scrollPrev()}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/40"
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-card backdrop-blur-sm transition-colors hover:bg-background"
           aria-label="Previous slide"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={() => api?.scrollNext()}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/40"
+          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-card backdrop-blur-sm transition-colors hover:bg-background"
           aria-label="Next slide"
         >
           <ChevronRight className="h-5 w-5" />
@@ -168,7 +176,7 @@ function HeroCarousel() {
               onClick={() => api?.scrollTo(i)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
-                i === current ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80',
+                i === current ? 'w-6 bg-primary' : 'w-2 bg-foreground/20 hover:bg-foreground/40',
               )}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -189,11 +197,14 @@ function SectionHeader({
   linkLabel?: string
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <h2 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h2>
+    <div className="flex items-center gap-4">
+      <h2 className="font-display text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+        {title}
+      </h2>
+      <div className="h-px flex-1 bg-border" />
       <Link
         href={href}
-        className="flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+        className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary hover:underline"
       >
         {linkLabel} <ArrowRight className="h-3.5 w-3.5" />
       </Link>
@@ -206,10 +217,10 @@ function CategoryGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="flex flex-col items-center gap-2">
-            <div className="h-16 w-16 animate-pulse rounded-2xl bg-secondary" />
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex flex-col items-center gap-4 rounded-xl border border-border p-6 sm:p-8">
+            <div className="h-16 w-16 animate-pulse rounded-full bg-secondary" />
             <div className="h-3 w-16 animate-pulse rounded bg-secondary" />
           </div>
         ))}
@@ -220,19 +231,17 @@ function CategoryGrid() {
   if (!categories?.length) return null
 
   return (
-    <div className="grid grid-cols-4 gap-3 sm:grid-cols-8">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
       {categories.map((cat) => (
         <Link
           key={cat.id}
           href={ROUTES.category(cat.slug)}
-          className="group flex flex-col items-center gap-2 text-center"
+          className="group flex flex-col items-center justify-center gap-4 rounded-xl border border-border bg-card p-6 text-center transition-all duration-300 hover:shadow-card sm:p-8"
         >
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary transition-all duration-200 group-hover:bg-primary/10 group-hover:scale-105">
-            <CategoryIcon name={cat.icon} className="h-7 w-7 text-muted-foreground group-hover:text-primary" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/5 transition-colors group-hover:bg-primary/10">
+            <CategoryIcon name={cat.icon} className="h-7 w-7 text-primary" />
           </div>
-          <span className="line-clamp-1 text-xs font-medium text-muted-foreground group-hover:text-foreground">
-            {cat.name}
-          </span>
+          <span className="line-clamp-1 text-sm font-semibold text-foreground">{cat.name}</span>
         </Link>
       ))}
     </div>
@@ -258,14 +267,14 @@ export function StoreHomePage() {
         </section>
 
         {/* Featured Products */}
-        <section className="space-y-5">
+        <section className="-mx-4 space-y-5 bg-secondary/40 px-4 py-12 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
           <SectionHeader title="Popular Right Now" href={ROUTES.products} />
           {loadingFeatured ? (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
               {Array.from({ length: 8 }).map((_, i) => <ProductCardSkeleton key={i} />)}
             </div>
           ) : (
-            <ProductGrid products={featuredData?.items} loading={false} />
+            <ProductGrid products={featuredData?.items} loading={false} cardBadgeLabel="Popular" />
           )}
         </section>
 
@@ -297,28 +306,103 @@ export function StoreHomePage() {
           )}
         </section>
 
-        {/* CTA strip — image background */}
-        <section className="relative -mx-4 overflow-hidden sm:-mx-6 lg:-mx-8">
-          <div className="relative h-56 sm:h-64">
-            <Image
-              src="https://images.unsplash.com/photo-1472851294608-062f824d29cc?w=1600&q=80&fit=crop"
-              alt="Browse all categories"
-              fill
-              className="object-cover"
-              sizes="100vw"
-            />
-            <div className="absolute inset-0 bg-primary/70" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-6">
-              <h2 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
-                Explore all categories
+        {/* Trusted by — real featured vendors, not stock wordmarks */}
+        {!loadingVendors && (vendorsData?.items?.length ?? 0) > 0 && (
+          <section className="space-y-8 text-center">
+            <div className="space-y-2">
+              <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
+                Trusted by Local Vendors
               </h2>
-              <p className="mt-2 text-white/80 sm:text-lg">
-                From electronics to fashion — find exactly what you need.
+              <p className="mx-auto max-w-xl text-sm text-muted-foreground">
+                Real vendors already selling on AVDAN — a growing marketplace built on speed and
+                trust.
               </p>
-              <Button size="lg" asChild className="mt-6 bg-white text-foreground hover:bg-white/90">
-                <Link href={ROUTES.categories}>Browse all categories</Link>
-              </Button>
             </div>
+            <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-4">
+              {vendorsData?.items?.map((vendor) => (
+                <span
+                  key={vendor.id}
+                  className="text-lg font-bold tracking-tight text-muted-foreground/70 grayscale transition-colors hover:text-foreground hover:grayscale-0"
+                >
+                  {vendor.name}
+                </span>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Stats / CTA banner */}
+        <section>
+          <div className="relative flex flex-col items-start gap-10 overflow-hidden rounded-2xl bg-foreground px-8 py-12 text-background sm:px-12 sm:py-16 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-xl space-y-4">
+              <h2 className="font-display text-2xl font-semibold sm:text-3xl">
+                Fast delivery, total confidence.
+              </h2>
+              <p className="text-background/70">
+                Thousands of orders move across Lagos every week — verified vendors, tracked
+                riders, and escrow-protected payments from checkout to doorstep.
+              </p>
+              <div className="grid grid-cols-2 gap-8 pt-4">
+                <div>
+                  <p className="font-display text-2xl font-bold text-background">Verified</p>
+                  <p className="mt-1 text-xs uppercase tracking-wider text-background/60">
+                    Every Vendor
+                  </p>
+                </div>
+                <div>
+                  <p className="font-display text-2xl font-bold text-brand-accent">Live</p>
+                  <p className="mt-1 text-xs uppercase tracking-wider text-background/60">
+                    Order Tracking
+                  </p>
+                </div>
+              </div>
+            </div>
+            <Button
+              size="lg"
+              asChild
+              className="shrink-0 bg-brand-accent text-brand-accent-foreground hover:bg-brand-accent/90"
+            >
+              <Link href={ROUTES.vendors}>Explore Vendors</Link>
+            </Button>
+          </div>
+        </section>
+
+        {/* How AVDAN Works */}
+        <section className="space-y-12 border-t border-border pt-12 text-center">
+          <div className="space-y-2">
+            <h2 className="font-display text-2xl font-semibold text-foreground sm:text-3xl">
+              How AVDAN Works
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              From browse to doorstep in three simple steps.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+            {[
+              {
+                icon: Search,
+                title: 'Discover',
+                copy: 'Browse vendors and products curated for your neighborhood.',
+              },
+              {
+                icon: ShoppingBag,
+                title: 'Order',
+                copy: 'Checkout securely with payments held in escrow until delivery.',
+              },
+              {
+                icon: Truck,
+                title: 'Receive',
+                copy: 'Track your rider in real time from pickup to your door.',
+              },
+            ].map((step) => (
+              <div key={step.title} className="flex flex-col items-center gap-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <step.icon className="h-7 w-7" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-foreground">{step.title}</h3>
+                <p className="max-w-xs text-sm text-muted-foreground">{step.copy}</p>
+              </div>
+            ))}
           </div>
         </section>
       </div>

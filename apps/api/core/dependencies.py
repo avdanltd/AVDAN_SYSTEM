@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from fastapi import Cookie, Depends
+from fastapi import Cookie, Depends, Header
 
 from core.exceptions import AuthException, ForbiddenException
 from core.security import decode_token
@@ -14,11 +14,16 @@ class CurrentUser:
 
 async def get_current_user(
     avdan_token: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
 ) -> CurrentUser:
-    if not avdan_token:
+    token = avdan_token
+    if not token and authorization and authorization.lower().startswith("bearer "):
+        token = authorization[7:]
+
+    if not token:
         raise AuthException("Authentication required")
 
-    payload = decode_token(avdan_token)
+    payload = decode_token(token)
     if not payload:
         raise AuthException("Invalid or expired token")
 

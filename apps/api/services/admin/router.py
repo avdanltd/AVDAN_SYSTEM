@@ -116,6 +116,7 @@ def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
         rating=float(v.rating),
+        created_at=v.created_at.isoformat(),
     )
 
 
@@ -158,6 +159,7 @@ def _item_resp(item: object) -> OrderItemResponse:
         id=str(i.id),
         product_id=str(i.product_id),
         product_name=i.product_name,
+        product_image_url=i.product_image_url,
         price_kobo=i.price_kobo,
         quantity=i.quantity,
         subtotal_kobo=i.subtotal_kobo,
@@ -189,6 +191,7 @@ def _order_resp(order: object) -> OrderResponse:
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
     )
 
 
@@ -205,6 +208,7 @@ def _order_detail_resp(order: object) -> OrderDetailResponse:
         items=[_item_resp(i) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
         created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
     )
 
 

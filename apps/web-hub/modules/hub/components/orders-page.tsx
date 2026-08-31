@@ -131,15 +131,17 @@ function OrdersTable({ tab }: { tab: TabValue }) {
   ]
 
   return (
-    <DataTable
-      columns={columns}
-      data={orders}
-      keyExtractor={(row) => row.id}
-      loading={isLoading}
-      skeletonRows={6}
-      emptyMessage="No orders in this view."
-      onRowClick={(row) => router.push(ROUTES.order(row.id))}
-    />
+    <div className="rounded-lg border border-border bg-background shadow-card">
+      <DataTable
+        columns={columns}
+        data={orders}
+        keyExtractor={(row) => row.id}
+        loading={isLoading}
+        skeletonRows={6}
+        emptyMessage="No orders in this view."
+        onRowClick={(row) => router.push(ROUTES.order(row.id))}
+      />
+    </div>
   )
 }
 
@@ -149,7 +151,7 @@ export function OrdersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Orders</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Orders</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage inbound, QA, and dispatched orders.
         </p>

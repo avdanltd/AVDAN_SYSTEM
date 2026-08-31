@@ -9,6 +9,12 @@ class InitiatePaymentResponse(BaseModel):
     escrow_id: str
 
 
+class VerifyPaymentResponse(BaseModel):
+    paid: bool
+    order_id: str
+    status: str = Field(description="The order's status after verification")
+
+
 class EscrowStatusResponse(BaseModel):
     id: str
     order_id: str

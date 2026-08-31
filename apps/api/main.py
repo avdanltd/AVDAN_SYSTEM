@@ -34,6 +34,7 @@ from services.payment.router import router as payment_router
 from services.payment.webhook_router import webhook_router
 from services.qa.router import router as hub_router
 from services.search.router import router as search_router
+from services.storage.router import router as uploads_router
 from services.tracking.router import ws_router
 from services.vendor.router import products_router, router as vendor_router
 
@@ -99,6 +100,7 @@ def create_app() -> FastAPI:
     app.include_router(categories_router, prefix="/categories", tags=["categories"])
     app.include_router(products_router, prefix="/products", tags=["products"])
     app.include_router(search_router, prefix="/search", tags=["search"])
+    app.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
     app.include_router(vendor_router, prefix="/vendors", tags=["vendors"])
     app.include_router(orders_router, prefix="/orders", tags=["orders"])
     app.include_router(payment_router, prefix="/payment", tags=["payment"])

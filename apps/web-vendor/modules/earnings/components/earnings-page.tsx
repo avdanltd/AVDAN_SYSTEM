@@ -25,7 +25,7 @@ export function EarningsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Earnings</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Earnings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Your revenue summary and payment status.
         </p>
@@ -54,7 +54,7 @@ export function EarningsPage() {
       </div>
 
       {data && (
-        <Card>
+        <Card className="shadow-card">
           <CardContent className="p-6">
             <h2 className="text-sm font-semibold text-foreground">Commission Information</h2>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -69,9 +69,9 @@ export function EarningsPage() {
         </Card>
       )}
 
-      <Card>
+      <Card className="shadow-card">
         <CardContent className="p-6">
-          <h2 className="text-sm font-semibold text-foreground">Earnings History</h2>
+          <h2 className="font-display text-sm font-semibold text-foreground">Earnings History</h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Detailed earnings history with per-order breakdowns is coming in a future update.
           </p>

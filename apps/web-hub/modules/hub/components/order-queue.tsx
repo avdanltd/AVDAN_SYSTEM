@@ -32,8 +32,8 @@ function OrderCard({ order }: { order: HubOrder }) {
   return (
     <div
       className={cn(
-        'flex flex-col gap-4 rounded-lg border border-border bg-background p-4 transition-shadow hover:shadow-sm sm:flex-row sm:items-center sm:gap-6',
-        canQa && 'border-amber-200 bg-amber-50/30',
+        'flex flex-col gap-4 rounded-lg border border-border bg-background p-4 shadow-card transition-shadow hover:shadow-sm sm:flex-row sm:items-center sm:gap-6',
+        canQa && 'border-warning/40 bg-warning-muted',
       )}
     >
       {/* Order info */}
@@ -92,7 +92,7 @@ function OrderCard({ order }: { order: HubOrder }) {
         {canQa && (
           <Button
             size="sm"
-            className="h-10 min-w-[90px] bg-amber-600 hover:bg-amber-700 text-white"
+            className="h-10 min-w-[90px] bg-warning text-warning-foreground hover:bg-warning/90"
             onClick={handleStartQa}
           >
             Start QA

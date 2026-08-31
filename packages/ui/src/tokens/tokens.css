@@ -41,6 +41,12 @@
   --info-foreground: 0 0% 100%;
   --info-muted: 214 100% 97%;
 
+  /* Signal Orange — the sparing "premium" accent (logo echo, featured badges, one CTA per
+     screen). Kept as its own token, distinct from --warning, even though the hex currently
+     matches — they mean different things and may diverge later. */
+  --brand-accent: 38 92% 50%;
+  --brand-accent-foreground: 225 60% 10%;
+
   --radius: 0.5rem;
 }
 
@@ -87,6 +93,9 @@
   --color-info-foreground: hsl(var(--info-foreground));
   --color-info-muted: hsl(var(--info-muted));
 
+  --color-brand-accent: hsl(var(--brand-accent));
+  --color-brand-accent-foreground: hsl(var(--brand-accent-foreground));
+
   /* Typography */
   --font-sans: 'Bricolage Grotesque', system-ui, sans-serif;
   --font-display: 'Playfair Display', Georgia, serif;
@@ -96,4 +105,8 @@
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) + 4px);
   --radius-xl: calc(var(--radius) + 8px);
+
+  /* Warm-toned elevation (DESIGN.md) — navy-tinted shadows instead of generic grey */
+  --shadow-card: 0 4px 12px -2px rgba(10, 18, 41, 0.08);
+  --shadow-modal: 0 20px 40px -4px rgba(10, 18, 41, 0.12);
 }

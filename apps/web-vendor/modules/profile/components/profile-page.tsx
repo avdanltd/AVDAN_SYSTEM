@@ -416,17 +416,17 @@ function PayoutAccountForm() {
 
 export function ProfilePage() {
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Profile</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage your account and business information.
         </p>
       </div>
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Account Information</CardTitle>
+          <CardTitle className="font-display text-base">Account Information</CardTitle>
         </CardHeader>
         <Separator />
         <CardContent className="pt-6">
@@ -434,9 +434,9 @@ export function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Business Profile</CardTitle>
+          <CardTitle className="font-display text-base">Business Profile</CardTitle>
         </CardHeader>
         <Separator />
         <CardContent className="pt-6">
@@ -444,9 +444,9 @@ export function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Payout Account</CardTitle>
+          <CardTitle className="font-display text-base">Payout Account</CardTitle>
           <p className="text-sm text-muted-foreground">
             Link your Nigerian bank account to receive payments after order delivery.
           </p>

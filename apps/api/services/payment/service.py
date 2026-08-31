@@ -20,7 +20,7 @@ class PaymentService:
         self.db = db
 
     async def initiate_payment(
-        self, order_id: str, customer_id: str
+        self, order_id: str, customer_id: str, is_mobile: bool = False
     ) -> tuple[str, str, str]:
         """Returns (payment_url, reference, escrow_id)."""
         order = await self._get_order(order_id)
@@ -45,8 +45,13 @@ class PaymentService:
             raise ValidationException("Customer email required for payment")
 
         provider = get_provider("paystack")
+        # Mobile gets a deep link so the OS hands control back to the app when checkout finishes.
+        # Web keeps an https URL — a custom scheme means nothing in a browser tab.
+        callback_url = (
+            settings.payment_callback_url_mobile if is_mobile else settings.payment_callback_url
+        )
         charge = await provider.initiate_charge(
-            order_id, order.total_kobo, user.email, settings.payment_callback_url
+            order_id, order.total_kobo, user.email, callback_url
         )
 
         escrow = EscrowTransaction(
@@ -83,6 +88,54 @@ class PaymentService:
             actor_role="system",
             metadata={"provider": "paystack", "provider_ref": provider_ref},
         )
+
+    async def verify_and_apply(self, reference: str, customer_id: str | None = None) -> dict:
+        """
+        Ask Paystack directly whether a reference was paid, and apply the same transition the
+        webhook would.
+
+        This exists because `PENDING -> PAID` previously had exactly one path: the webhook. That
+        made the mobile checkout fragile (the app had no way to know payment succeeded when it
+        came back from the browser) and made local development impossible without a public
+        tunnel. The webhook remains the source of truth and the retry safety net; this is the
+        client-driven confirmation that runs the moment the user returns.
+
+        Idempotent: it delegates to `handle_charge_success`, which no-ops once escrow is HELD.
+        """
+        escrow = await self._get_escrow_by_ref("paystack", reference)
+        if not escrow:
+            raise NotFoundException("Unknown payment reference")
+
+        order = await self._get_order(str(escrow.order_id))
+
+        # A customer may only verify their own order. Called without a customer_id (server-side)
+        # the check is skipped.
+        if customer_id is not None and str(order.customer_id) != customer_id:
+            raise ForbiddenException("Access denied")
+
+        # Already applied — report the settled state without calling Paystack again.
+        if escrow.status in (EscrowStatus.HELD, EscrowStatus.RELEASED):
+            return {"paid": True, "status": order.status, "order_id": str(order.id)}
+
+        provider = get_provider("paystack")
+        result = await provider.verify_payment(reference)
+
+        if not result.paid:
+            return {"paid": False, "status": order.status, "order_id": str(order.id)}
+
+        # Guard against a mismatched amount before crediting the order. Paystack returns the
+        # amount actually charged; if it does not match what we recorded, something is wrong and
+        # a human should look rather than the order silently becoming PAID.
+        if result.amount_kobo != escrow.amount_kobo:
+            raise AppError(
+                409,
+                "AMOUNT_MISMATCH",
+                "Paid amount does not match the order total. Contact support.",
+            )
+
+        await self.handle_charge_success(reference, result.raw_data)
+        refreshed = await self._get_order(str(escrow.order_id))
+        return {"paid": True, "status": refreshed.status, "order_id": str(refreshed.id)}
 
     async def get_escrow_for_order(
         self, order_id: str, requesting_user_id: str, requesting_role: str

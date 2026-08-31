@@ -26,6 +26,7 @@ def _item_resp(item: object) -> OrderItemResponse:
         id=str(i.id),
         product_id=str(i.product_id),
         product_name=i.product_name,
+        product_image_url=i.product_image_url,
         price_kobo=i.price_kobo,
         quantity=i.quantity,
         subtotal_kobo=i.subtotal_kobo,
@@ -45,13 +46,14 @@ def _event_resp(event: object) -> OrderEventResponse:
     )
 
 
-def _order_resp(order: object) -> OrderResponse:
+def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
         id=str(o.id),
         customer_id=str(o.customer_id),
         vendor_id=str(o.vendor_id),
+        vendor_name=vendor_name,
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_address=o.delivery_address,
@@ -61,13 +63,14 @@ def _order_resp(order: object) -> OrderResponse:
     )
 
 
-def _order_detail_resp(order: object) -> OrderDetailResponse:
+def _order_detail_resp(order: object, vendor_name: str | None = None) -> OrderDetailResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderDetailResponse(
         id=str(o.id),
         customer_id=str(o.customer_id),
         vendor_id=str(o.vendor_id),
+        vendor_name=vendor_name,
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_address=o.delivery_address,
@@ -76,6 +79,21 @@ def _order_detail_resp(order: object) -> OrderDetailResponse:
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )
+
+
+async def _vendor_names(db: AsyncSession, order_list: list) -> dict:
+    """Batch-fetch {vendor_id: vendor_name} for a list of orders — Order has no
+    `vendor` relationship (see services/orders/models.py), so this mirrors the
+    pattern already used in services/qa/router.py rather than lazy-loading one."""
+    from sqlalchemy import select
+
+    from services.vendor.models import Vendor
+
+    vendor_ids = list({o.vendor_id for o in order_list})
+    if not vendor_ids:
+        return {}
+    res = await db.execute(select(Vendor).where(Vendor.id.in_(vendor_ids)))
+    return {v.id: v.name for v in res.scalars().all()}
 
 
 # ── Customer endpoints ────────────────────────────────────────────────────────
@@ -88,7 +106,8 @@ async def create_order(
 ) -> OrderResponse:
     svc = OrderService(db)
     order = await svc.create_order(current_user.user_id, data)
-    return _order_resp(order)
+    vendor_names = await _vendor_names(db, [order])
+    return _order_resp(order, vendor_name=vendor_names.get(order.vendor_id))
 
 
 @router.get("", response_model=PaginatedOrdersResponse)
@@ -100,8 +119,9 @@ async def list_my_orders(
 ) -> PaginatedOrdersResponse:
     svc = OrderService(db)
     orders, total = await svc.list_customer_orders(current_user.user_id, page, page_size)
+    vendor_names = await _vendor_names(db, orders)
     return PaginatedOrdersResponse(
-        items=[_order_resp(o) for o in orders],
+        items=[_order_resp(o, vendor_name=vendor_names.get(o.vendor_id)) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -116,7 +136,8 @@ async def get_my_order(
 ) -> OrderDetailResponse:
     svc = OrderService(db)
     order = await svc.get_customer_order(current_user.user_id, order_id)
-    return _order_detail_resp(order)
+    vendor_names = await _vendor_names(db, [order])
+    return _order_detail_resp(order, vendor_name=vendor_names.get(order.vendor_id))
 
 
 @router.post("/{order_id}/cancel", response_model=OrderResponse)
@@ -127,7 +148,8 @@ async def cancel_order(
 ) -> OrderResponse:
     svc = OrderService(db)
     order = await svc.cancel_order(current_user.user_id, order_id)
-    return _order_resp(order)
+    vendor_names = await _vendor_names(db, [order])
+    return _order_resp(order, vendor_name=vendor_names.get(order.vendor_id))
 
 
 # ── Vendor endpoints ──────────────────────────────────────────────────────────

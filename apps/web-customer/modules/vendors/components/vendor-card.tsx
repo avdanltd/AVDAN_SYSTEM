@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Star } from 'lucide-react'
-import { Card, Avatar, AvatarFallback, AvatarImage, Badge, Button, cn } from '@avdan/ui'
+import { Card, Avatar, AvatarFallback, AvatarImage, Badge, cn } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import type { Vendor } from '../types'
 
@@ -74,15 +74,9 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
               <span className="text-xs text-muted-foreground">No ratings yet</span>
             )}
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={(e) => e.preventDefault()}
-              asChild
-            >
-              <Link href={ROUTES.vendor(vendor.slug)}>Visit Store</Link>
-            </Button>
+            <span className="inline-flex h-7 items-center rounded-md border border-input px-3 text-xs font-medium text-foreground transition-colors group-hover:bg-accent">
+              Visit Store
+            </span>
           </div>
         </div>
       </Card>

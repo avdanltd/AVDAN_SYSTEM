@@ -12,6 +12,14 @@ AVDAN is a multi-role logistics and commerce platform connecting Customers, Vend
 
 Full architecture detail is in `ARCHITECTURE.md`. Read it before building anything.
 
+**Also read before starting work:**
+- `STATUS_BACKEND.md` / `STATUS_FRONTEND.md` — what is actually built vs. merely written. These
+  have been reconciled against the codebase; trust them over assumptions, but re-verify before
+  claiming something is missing.
+- `BACKLOG_HARMONISATION.md` — the current agreed work queue and the reasoning behind its order.
+- `RUNBOOK_ORDER_E2E.md` — how to bring the whole stack up and drive one order end to end,
+  including which account and which hostname each role must use.
+
 ---
 
 ## Monorepo Structure
@@ -23,10 +31,15 @@ avdan/
 │   ├── web-customer/           # Next.js 16 — customer-facing app
 │   ├── web-vendor/             # Next.js 16 — vendor dashboard
 │   ├── web-admin/              # Next.js 16 — admin panel
-│   └── web-hub/                # Next.js 16 — agent hub portal
+│   ├── web-hub/                # Next.js 16 — agent hub portal
+│   ├── web-rider/               # Next.js 16 — rider web portal (web-first; being superseded by app-rider)
+│   ├── app-rider/               # React Native + Expo — rider mobile app (Bearer-token auth, see below)
+│   ├── app-vendor/              # React Native + Expo — vendor mobile app (Metro port 8082)
+│   └── app-customer/            # React Native + Expo — customer mobile app (Metro port 8083)
 ├── packages/
 │   ├── types/                  # @avdan/types — generated + hand-written TS types
-│   ├── ui/                     # @avdan/ui — shared component library
+│   ├── ui/                     # @avdan/ui — shared WEB component library (Tailwind + Shadcn)
+│   ├── mobile/                 # @avdan/mobile — shared REACT NATIVE layer (see below)
 │   └── config/                 # @avdan/config — ESLint, Prettier, tsconfig base
 ├── infra/
 │   ├── docker/                 # Dockerfiles per service
@@ -41,8 +54,31 @@ avdan/
 └── pnpm-workspace.yaml
 ```
 
-The rider mobile app (`app-rider`) is **Phase 4** and is NOT scaffolded in the initial build.
-Do not create it. Do not reference it in code. Add it when `STATUS_FRONTEND.md` Phase 4 begins.
+`apps/app-rider` (React Native + Expo, managed workflow) is the rider mobile app — see `STATUS_FRONTEND.md` Phase 8.
+`apps/app-vendor` is the vendor mobile app, built to the same pattern — see `STATUS_FRONTEND.md` Phase 9.
+It runs Metro on **port 8082** so it can serve alongside `app-rider` on 8081.
+`apps/app-customer` is the customer mobile app — see `STATUS_FRONTEND.md` Phase 10. Metro on
+**port 8083**. Checkout uses `expo-web-browser`'s `openAuthSessionAsync` (the OS's own hardened
+browser, not an embedded WebView) and returns via the `avdancustomer://checkout/callback` deep
+link; `POST /payment/verify/{reference}` confirms payment the moment the app regains control,
+rather than waiting on the webhook.
+`apps/web-rider` is the earlier web-first rider portal; it stays running as-is.
+
+**Decision 2026-08-22: all web apps stay.** Mobile is additive, not a replacement — web-vendor
+keeps desktop bulk catalog editing, web-customer keeps SEO. Do not delete a web app.
+
+**`@avdan/mobile` (`packages/mobile/`) is the shared layer for every React Native app** — design
+tokens, `ThemeProvider`/`useTheme`, UI primitives, the `AvdanMark` SVG, the HTTP client, secure
+storage, toasts, formatters and the auth module. Import from `@avdan/mobile`; do not copy these
+files into an app. `packages/ui` is **web-only** (Tailwind + Shadcn) and cannot be used in RN.
+
+Two things stay per-app on purpose: the status-label map (`src/constants/status.ts`, built with
+the package's `createStatusLabel` factory — the same order state reads differently to a rider and
+a vendor) and the login form. The api-client takes its base URL and 401 behaviour by injection:
+call `configureApiClient({ baseUrl, onUnauthorized })` once from the app's root layout.
+
+**Decision 2026-08-22/23:** all three mobile apps (rider, vendor, customer) are now built,
+sharing `@avdan/mobile`. See `BACKLOG_HARMONISATION.md` for what is still open in each.
 
 ---
 
@@ -60,7 +96,26 @@ Do not create it. Do not reference it in code. Add it when `STATUS_FRONTEND.md` 
 | Task scheduler | Celery Beat (single instance only) |
 | Real-time | FastAPI native WebSockets + Redis Pub/Sub |
 | Process manager | Gunicorn + Uvicorn workers (production) |
-| Auth | JWT via PyJWT, stored as httpOnly cookie |
+| Auth | JWT via PyJWT, stored as httpOnly cookie (web) or returned in the login body for `X-Client-Platform: mobile` clients (see Mobile Auth below) |
+
+### Mobile (React Native + Expo apps, e.g. `app-rider`)
+| Item | Value |
+|------|-------|
+| Framework | Expo (managed workflow) + Expo Router (file-based, mirrors Next.js App Router) |
+| Language | TypeScript (strict mode) |
+| State — server | TanStack Query v5 (same as web) |
+| State — client | Zustand v5 (same as web) |
+| Forms | React Hook Form + Zod (same as web) — or plain Zod `safeParse` for simple forms |
+| HTTP client | `lib/api-client.ts`, same three-layer rule as web, but Bearer-token auth instead of cookies |
+| Token storage | `expo-secure-store`, never AsyncStorage/localStorage |
+| Notifications | `react-native-toast-message` (RN equivalent of Sonner) |
+| Build/distribute | EAS Build + EAS Update (OTA); no store submission config until Apple/Google accounts exist |
+
+**Mobile auth contract:** every request from a mobile app sends header `X-Client-Platform: mobile`.
+`POST /auth/login` and `POST /auth/refresh` detect this header and include `access_token`/`refresh_token`
+in the JSON response body (in addition to still setting cookies, which mobile ignores). `get_current_user`
+(`apps/api/core/dependencies.py`) accepts `Authorization: Bearer <token>` as a fallback when no cookie is
+present. Web behavior is completely unchanged when the header is absent — do not remove the cookie path.
 
 ### Frontend (all Next.js apps)
 | Item | Value |
@@ -454,3 +509,7 @@ Logic and UI are separated at every level by design.
 - Never use `tailwind.config.js` — Tailwind v4 uses CSS-first config in `globals.css`
 - Never use `next/router` — App Router uses `next/navigation`
 - Never use Pages Router patterns in App Router code
+
+## CV / experience log
+
+The engineering work on this project is tracked for CV-building purposes in `~/projects/me/my-experience.md`, under its `## AVDAN` section (that file has one section per project across everything the user works on — see `~/projects/me/status.md` for the cross-project tracker this belongs to). Whenever a session produces a new learning point worth that file — a non-trivial architectural/domain-modeling decision (and the reasoning), a hard bug diagnosed and fixed, a security or data-integrity fix, or a piece of engineering process enforced — append a concrete entry to that section before ending the session. Create the section if it's missing. Write entries as resume-bullet-ready facts: specific problem → specific solution → specific impact, not generic summaries, and not anything already fully covered there. **This is a team project** — the user is majority contributor (~69% of commits) but not sole author; when a learning point could plausibly be a teammate's distinct work, check before attributing it solely to the user. Don't touch other projects' sections in that file.

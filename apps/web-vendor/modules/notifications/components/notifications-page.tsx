@@ -89,10 +89,10 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Notifications</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Notifications</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up'}
           </p>
@@ -110,7 +110,7 @@ export function NotificationsPage() {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-background">
+      <div className="overflow-hidden rounded-lg border border-border bg-background shadow-card">
         {notifications.length === 0 ? (
           <EmptyState
             title="No notifications"

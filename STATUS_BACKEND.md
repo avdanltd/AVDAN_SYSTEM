@@ -9,10 +9,16 @@
 
 ## Current Status
 
-**Active Phase:** Phase 12 — Categories + Products API + Semantic Search
-**Active Milestone:** 12.1 Categories System
-**Last Completed:** Phase 11 — Production Hardening ✓ (2026-06-16)
-**Blocking Issues:** None
+**Active Phase:** Phase 14 — Live Verification
+**Active Milestone:** 14.1 Boot the stack (infra → migrations → seed)
+**Last Completed:** Phase 13 — Seed Scripts ✓ code-complete (unrun)
+**Blocking Issues:** Nothing in Phases 1–13 has ever been run against a live database. Every
+milestone above is "code exists", not "feature works". Phase 14 exists specifically to close this.
+
+> **Reconciled 2026-08-22.** Phases 12 and 13 were still showing unchecked on this board while the
+> code for both was fully written and registered (`services/categories/`, `services/search/`,
+> migrations 0012–0014, both seed scripts). The security/OTP/pgvector pass tracked in
+> `fixes-tasks.md` was also complete and unreflected here. Ticked to match the codebase.
 
 ---
 
@@ -132,6 +138,14 @@
 - [x] Accessing protected endpoint without cookie returns 401
 - [x] Accessing admin endpoint as customer returns 403
 - [x] Refresh token rotation works — old token cannot be reused
+
+### 2.7 Mobile Bearer-Token Auth ✓ (added for app-rider)
+- [x] `get_current_user` (`core/dependencies.py`) accepts `Authorization: Bearer <token>` as a fallback when the `avdan_token` cookie is absent — cookie still checked first, web behavior unchanged
+- [x] `TokenResponse` (`services/auth/schemas.py`) has optional `access_token`/`refresh_token` fields
+- [x] `POST /auth/login` includes tokens in the JSON body when request header `X-Client-Platform: mobile` is present; absent the header, response is identical to before
+- [x] `POST /auth/refresh` accepts `refresh_token` via JSON body as a fallback when no cookie is present (mobile clients can't rely on a persisted cookie jar)
+- [x] `POST /auth/logout` accepts `refresh_token` via JSON body the same way, for revocation from mobile
+- [x] Verified via curl: cookie-based web flow unchanged (tokens null in body); mobile flow returns real tokens; Bearer-only `/auth/me` and `/dispatch/me/orders` succeed with no cookie at all; no-auth request still 401s
 
 **Phase 2 complete when:** Full auth cycle works end-to-end. Cookies set correctly. Protected endpoints enforced. Tests pass.
 
@@ -378,69 +392,266 @@
 
 ---
 
-## Phase 12 — Categories + Products Public API + Semantic Search
+## Phase 12 — Categories + Products Public API + Semantic Search ✓
 
 > Required by: web-customer full ecommerce redesign, category management in web-admin, category selection in web-vendor.
-> Detail tasks tracked in `quickfix.md`.
 
-### 12.1 Categories System
-- [ ] Migration 0012: `categories` table (id, name, slug, description, icon, sort_order, active, created_at, updated_at)
-- [ ] Migration 0012 or 0013: add `category_id UUID NOT NULL REFERENCES categories(id)` to `products`
-- [ ] `services/categories/models.py` — SQLAlchemy Category model
-- [ ] `services/categories/schemas.py` — CategoryOut, CategoryCreate, CategoryUpdate
-- [ ] `services/categories/service.py` — CRUD
-- [ ] `services/categories/router.py` — routes:
-  - [ ] `GET /categories` — public, list active (sorted by sort_order)
-  - [ ] `POST /admin/categories` — create (admin only)
-  - [ ] `PATCH /admin/categories/{id}` — update (admin only)
-  - [ ] `DELETE /admin/categories/{id}` — deactivate (admin only)
-- [ ] Register categories router in `main.py`
-- [ ] Update `ProductCreate` and `ProductUpdate` schemas: `category_id` required
-- [ ] Update product create endpoint to validate category FK
+### 12.1 Categories System ✓
+- [x] Migration `0012_categories.py` — `categories` table + `category_id` FK on `products`
+- [x] `services/categories/models.py` — SQLAlchemy Category model
+- [x] `services/categories/schemas.py` — CategoryResponse, CategoryCreate, CategoryUpdate
+- [x] `services/categories/service.py` — CRUD (`list_categories`, `create`, `update`, `deactivate`)
+- [x] `services/categories/router.py` — routes:
+  - [x] `GET /categories` — public, list active (sorted by sort_order)
+  - [x] `POST /categories` — create (admin only, via `require_role("admin")`)
+  - [x] `PATCH /categories/{id}` — update (admin only)
+  - [x] `DELETE /categories/{id}` — deactivate (admin only)
+- [x] Categories router registered in `main.py` at prefix `/categories`
+- [x] `ProductCreate` / `ProductUpdate` carry `category_id`; product create validates the category FK
 
-### 12.2 Products Public Endpoint
-- [ ] `GET /products` — public, paginated. Params: page, limit, category_id, vendor_id, search, min_price_kobo, max_price_kobo, sort (price_asc/desc/newest/popular). Response includes vendor_name, vendor_slug, category_name
-- [ ] `GET /products/{id}` — public, single product detail with vendor info + category + 4 related products from same vendor
-- [ ] Register both in vendor/products router
+> **Deviation from original plan (intentional):** admin category routes live under `/categories`
+> guarded by `require_role("admin")`, not under a separate `/admin/categories` prefix. One router,
+> one resource path, role-gated per method. Frontend clients must call `/categories` for writes.
 
-### 12.3 pgvector Semantic Search
-- [ ] `uv add pgvector sentence-transformers` in pyproject.toml
-- [ ] Migration: `CREATE EXTENSION IF NOT EXISTS vector`; add `embedding vector(384)` to products and vendors; add ivfflat cosine indexes
-- [ ] `services/search/embedder.py` — singleton sentence-transformers loader (`all-MiniLM-L6-v2`, 384 dim)
-- [ ] `workers/tasks/embeddings.py`:
-  - [ ] `generate_product_embedding(product_id)` — text = name + description + category_name
-  - [ ] `generate_vendor_embedding(vendor_id)` — text = name + description
-  - [ ] `backfill_all_embeddings()` — runs both for all existing rows
-- [ ] Hook product create/update → enqueue `generate_product_embedding.delay(product_id)`
-- [ ] Hook vendor create/update → enqueue `generate_vendor_embedding.delay(vendor_id)`
-- [ ] `services/search/service.py` + `router.py`:
-  - [ ] `GET /search?q=&type=products|vendors|all&limit=20` — cosine similarity on embeddings, fallback to tsvector
-- [ ] Register search router in `main.py`
-- [ ] `apps/api/scripts/backfill_embeddings.py` — one-shot script to run after seed
+### 12.2 Products Public Endpoint ✓
+- [x] `GET /products` — public, paginated (`products_router` in `services/vendor/router.py:109`)
+- [x] `GET /products/{id}` — public, single product detail (`services/vendor/router.py:140`)
+- [x] Both registered in `main.py` at prefix `/products`
 
-**Phase 12 complete when:** Categories CRUD works, products can be fetched without going through vendor endpoint, semantic search returns relevant results for test queries.
+### 12.3 pgvector Semantic Search ✓
+- [x] `pgvector` + `sentence-transformers` added to `pyproject.toml`
+- [x] Migration `0013_pgvector_embeddings.py` — `CREATE EXTENSION vector`, `embedding vector(384)` on products and vendors
+- [x] Migration `0014_search_optimizations.py` — HNSW cosine indexes (replacing IVFFlat) + `pg_trgm` GIN indexes on name/description
+- [x] `services/search/embedder.py` — singleton sentence-transformers loader (`all-MiniLM-L6-v2`, 384 dim)
+- [x] `workers/tasks/embeddings.py` — `generate_product_embedding`, `generate_vendor_embedding`, `backfill_all_embeddings`
+- [x] Product create/update → enqueues `generate_product_embedding.delay(...)` (`services/vendor/service.py:234,259`)
+- [ ] **Gap:** vendor create/update does NOT enqueue `generate_vendor_embedding` — the task exists and
+      `backfill_all_embeddings` covers it, but vendor rows edited after a backfill keep a stale embedding
+- [x] `services/search/service.py` + `router.py` — `GET /search?q=&type=&limit=` with cosine similarity + tsvector/trgm fallback
+- [x] Search router registered in `main.py` at prefix `/search`
+- [x] SQL injection fixed — vectors bound via SQLAlchemy `bindparam`, not string interpolation
+- [x] `apps/api/scripts/backfill_embeddings.py` — one-shot post-seed script
+
+**Phase 12 status:** code-complete. Not yet exercised against a running database — no query has been
+run through `/search` to confirm embeddings are generated and results are relevant.
 
 ---
 
-## Phase 13 — Seed Scripts
+## Phase 13 — Seed Scripts ✓
 
-### 13.1 User + Catalog Seed
-- [ ] `apps/api/scripts/seed.py`:
-  - [ ] Idempotent check (skips if admin@avdan.com exists)
-  - [ ] Creates 1 delivery zone (Lagos Zone)
-  - [ ] Creates 8 categories (Electronics, Food & Groceries, Fashion & Clothing, Health & Beauty, Home & Kitchen, Sports & Fitness, Baby & Kids, Books & Stationery)
-  - [ ] Creates 21 users: 1 admin, 1 support, 8 vendors, 5 customers, 4 riders, 2 hub agents — all with `Avdan@2024` password, status=active
-  - [ ] Creates 8 vendor profiles (one per vendor user, status=active, realistic Nigerian business names)
-  - [ ] Creates ~88 products spread across vendors and categories with realistic NGN kobo prices
-  - [ ] Image URLs: Unsplash CDN or placeholder image service
+### 13.1 User + Catalog Seed ✓
+- [x] `apps/api/scripts/seed.py` (369 lines):
+  - [x] Idempotent check (skips if admin@avdan.com exists)
+  - [x] Creates delivery zone
+  - [x] Creates 8 categories (Electronics, Food & Groceries, Fashion & Clothing, Health & Beauty, Home & Kitchen, Sports & Fitness, Baby & Kids, Books & Stationery)
+  - [x] Creates users: admin, support, vendors, customers, riders, hub agents — all `Avdan@2024`, status=active
+  - [x] Creates vendor profiles with Nigerian business names
+  - [x] Creates products across vendors and categories with NGN kobo prices
+  - [x] Image URLs via CDN
+- [ ] Never actually executed against a database — idempotency and FK correctness unverified
 
-### 13.2 Orders Seed
-- [ ] `apps/api/scripts/seed_orders.py`:
-  - [ ] 15 sample orders in states: PENDING(2), PAID(3), VENDOR_ACCEPTED(2), PREPARING(1), DELIVERED(4), COMPLETED(2), CANCELLED(1)
-  - [ ] Correct order_events rows for each transition
-  - [ ] escrow_transactions for PAID+ orders
+### 13.2 Orders Seed ✓
+- [x] `apps/api/scripts/seed_orders.py` (245 lines):
+  - [x] Sample orders across PENDING / PAID / VENDOR_ACCEPTED / PREPARING / DELIVERED / COMPLETED / CANCELLED
+  - [x] Correct `order_events` rows generated per transition
+  - [x] `escrow_transactions` for PAID+ orders (HELD, or RELEASED when COMPLETED)
+- [ ] Never actually executed against a database
 
-**Phase 13 complete when:** After running both scripts the system has populated vendors, products, customers, riders, agents, orders. Every frontend page has real data to display.
+**Phase 13 status:** code-complete, unrun. This is the first thing to execute when the stack boots.
+
+---
+
+## Phase 14 — Live Verification (NOT STARTED — the real blocker)
+
+> Everything above is marked complete on the strength of code existing. Nothing in Phases 1–13 has
+> been confirmed working against a running Postgres + Redis + FastAPI stack. This phase closes that.
+
+- [x] 14.1 Postgres + Redis reachable — **running via DBngin, not Docker** (Postgres 16.2 on :5432,
+      Redis 8.8 on :6379). `pgvector` 0.6.0 and `pg_trgm` are both present in the DBngin extension
+      dir, so migration 0013/0014 requirements are satisfied. Docker is not needed for local dev.
+- [x] 14.2 `alembic_version` is at `0014` — all 14 migrations already applied to the `avdan` database
+- [x] 14.3 Database is already seeded: 21 users, 8 categories, 8 vendors, 78 products, 15 orders, 4 riders
+- [ ] 14.4 `backfill_embeddings.py` / `GET /search?q=` — **not yet exercised**
+- [x] 14.5 FastAPI boots clean; `GET /health` returns ok on both `localhost:8000` and the LAN IP
+- [x] 14.6 `generate-types.sh` run successfully — `packages/types/src/generated.ts` went from an
+      8-line placeholder to **5,259 lines** of real types off the live OpenAPI spec. **Not yet
+      committed, and `pnpm turbo run type-check` has not been re-run across the web apps — expect
+      drift to surface there.**
+- [x] 14.7 Full order lifecycle end-to-end — **verified live 2026-08-31**, all 9 hand-offs, via the
+      exact REST endpoints each frontend calls (cookie auth for customer/vendor/admin/hub, mobile
+      Bearer auth for the rider leg, matching what `app-rider` sends): create order → real Paystack
+      checkout URL → signed webhook → `PENDING → PAID` → vendor accept/ready → admin assign (rider_id
+      set, status correctly stays `READY_FOR_PICKUP`, confirming the 2026-08-22 fix) → rider
+      pickup/transit → hub receive/QA pass → rider deliver → `DELIVERED → PAYMENT_RELEASE_PENDING`
+      automatic chain. `order_events` audit trail complete and correctly ordered (13 rows). Manually
+      invoked `release_escrow` on the order (bypassing the 48h wait): failed cleanly with
+      `AppError('Vendor has not set up payout account')`, no state corruption, order still
+      `PAYMENT_RELEASE_PENDING` — exactly the documented §7 blocker, not a crash.
+- [x] 14.8 Mobile auth contract confirmed live: `POST /auth/login` with `X-Client-Platform: mobile`
+      returns `access_token` + `refresh_token` in the body; `Authorization: Bearer` is accepted by
+      `/auth/me` and all `/dispatch/me/*` routes
+
+### 14.9 Bugs found and fixed during live verification (2026-08-22)
+
+These were all invisible to type-checking and to code review — only running the stack surfaced them.
+
+- [x] **Rider order deadlock** (`services/dispatch/service.py`, `get_rider_orders`). The status
+      filter listed only PICKED_UP / IN_TRANSIT_TO_HUB / AT_HUB / OUT_FOR_DELIVERY. It omitted
+      **READY_FOR_PICKUP** and **QA_PASSED** — the two states where the rider is the actor for the
+      next transition. An order assigned to a rider was therefore invisible to the only person who
+      could advance it. Fixed by adding both states to the filter.
+- [x] **`assign_rider` fabricated a pickup** (`services/dispatch/service.py`). Assigning a rider
+      auto-transitioned the order READY_FOR_PICKUP → PICKED_UP with `actor_role="rider"`, recording
+      a pickup that never physically happened and making the rider's own Confirm Pickup action
+      unreachable. Assignment now sets `rider_id` and stops; the order stays READY_FOR_PICKUP until
+      the rider confirms. (`get_db()` commits, so the write persists without a transition.)
+      **Note: this changes admin dispatch semantics — the admin Dispatch page will now show the
+      order still in READY_FOR_PICKUP after assigning. Verify that page still reads correctly.**
+- [x] **Seed never wrote `users.name`** (`scripts/seed.py`). Every user dict defined a `name`, but
+      the INSERT statement omitted the column, so all 21 users had `name = NULL` — the rider app's
+      Profile screen rendered blank. Fixed in the script and backfilled all 21 existing rows.
+- [x] **Dead `QA_PASSED` action in the rider app** (`app-rider/src/modules/rider/types.ts`). The app
+      offered a "Start Last Mile Delivery" button on QA_PASSED that called `/deliver` → DELIVERED,
+      which the state machine rejects (QA_PASSED may only go to OUT_FOR_DELIVERY). It was also
+      unreachable, since `services/qa/service.py:120-126` advances QA_IN_PROGRESS → QA_PASSED →
+      OUT_FOR_DELIVERY in one agent request. Removed.
+- [x] **Active Delivery card vanished mid-delivery** (`app-rider/.../dashboard.tsx`). `ACTIVE_STATUSES`
+      omitted IN_TRANSIT_TO_HUB and AT_HUB, so the card disappeared the moment a rider marked
+      in-transit — while still carrying the package. Both added.
+
+### 14.9b Second wave — found while building the premium rider app (2026-08-22)
+
+- [x] **Delivered orders vanished into a dead end.** `OrderDetail` filtered the *active* order
+      list client-side, so the instant an order became DELIVERED it left that list and the screen
+      rendered "Order not found". Riders also had no history at all. Fixed with two new endpoints:
+      `GET /dispatch/me/orders/history` (terminal states, newest first) and
+      `GET /dispatch/me/orders/{id}` (one order, ANY status, rider-scoped). The history route is
+      declared **above** the `{order_id}` route — otherwise FastAPI matches "history" as an id.
+- [x] **`GET /dispatch/me` added.** The app had no way to read its own online/offline state on
+      launch and always assumed offline, which could contradict what dispatch actually saw.
+- [x] **Seed never wrote `users.name`** — see 14.9. Fixed in the script and backfilled.
+
+### 14.9c Third wave — found while building app-vendor (2026-08-22)
+
+- [x] **Every vendor product write returned HTTP 500.** `_product_response` in
+      `services/vendor/router.py` reads `product.category.name`, but `_get_product_for_user`
+      never eager-loaded the relationship — under the async engine that lazy load raises
+      `greenlet_spawn has not been called; can't call await_only() here`. This broke **create,
+      update AND the availability toggle**, on web-vendor as well as mobile, meaning vendor
+      catalog management had never worked end to end. Fixed with `selectinload(Product.category)`
+      in `_get_product_for_user` plus a `_load_product_with_category` reload after create (a
+      freshly added instance has no relationship populated either). Verified: create 201,
+      availability 200, update 200, delete 204.
+- [x] **`commission_rate` is a fraction, not a percent** (`0.1` for 10%) — not a bug, but easy to
+      render 100x wrong. web-vendor's earnings page already multiplies by 100; the mobile app now
+      matches.
+- [ ] **`GET /orders/vendor/incoming` returns unpaid PENDING orders.** A vendor cannot act on one.
+      Filter it out server-side — see `BACKLOG_HARMONISATION.md` §5.
+- [x] **QA evidence upload moved off local disk to R2** (2026-08-22). Previously wrote under
+      `./media/qa-evidence/`, which did not survive a restart and broke with >1 API replica.
+      web-hub's multipart call is unchanged. **But see the Cloudflare gap below.**
+- [ ] **`PENDING -> PAID` has no non-webhook path.** Add `POST /payment/verify/{reference}` so the
+      mobile checkout can confirm on return and local dev stops needing an HTTPS tunnel —
+      see `BACKLOG_HARMONISATION.md` §3.
+- [ ] **No vendor has a payout account**, so `release_escrow` raises `VENDOR_PAYOUT_NOT_CONFIGURED`
+      for all 8 seeded vendors — escrow release cannot succeed for anybody yet.
+
+### 14.9d Object storage (2026-08-22)
+
+- [x] `services/storage/` — Cloudflare R2 client, one bucket `avdan-media`, prefix-split:
+      `products/` + `vendor-logos/` public via `cdn.avdanstore.com`, `qa-evidence/` private.
+- [x] `POST /uploads/presign` — role-gated presigned PUT; server chooses the key; `content_length`
+      pinned into the signature. `GET /uploads/qa-evidence/{order_id}/{filename}` — role-checked,
+      307s to a 5-minute presigned read.
+- [x] Verified live end to end against the real bucket, including the full authorisation matrix.
+      Test objects deleted.
+- [x] **SECURITY — Cloudflare WAF rule added and verified (2026-08-22).** `cdn.avdanstore.com` is
+      bound to the whole bucket and originally served `/qa-evidence/...` publicly, bypassing the
+      API role check. A WAF rule now blocks that prefix on the CDN hostname. Verified against a
+      **real uploaded object**: CDN 403 with no bytes leaked, public prefixes still 404 (reachable),
+      authorised agent still 307, presigned read still 200 with correct bytes.
+- [x] **Bucket CORS applied and verified (2026-08-22).** 20 explicit origins, `PUT/GET/HEAD`,
+      `content-type`, no wildcard. Real preflight tested: allowed origin 204 with that origin
+      echoed back, disallowed origin 403. Applied with a temporary admin token, since reverted —
+      the running app only ever needs Object Read & Write.
+- [x] **Migration 0015 — `order_items.product_image_url`.** Order lines are snapshots by design
+      (`product_name`/`price_kobo` frozen at purchase), so the image is snapshotted too rather
+      than joined live from `products` — a live join would show today's picture on an old order.
+      Backfilled 30 existing rows. Populated in all four `OrderItemResponse` constructors.
+
+### 14.9e Payments + payout (2026-08-22)
+
+- [x] **`POST /payment/verify/{reference}`** — removes the single-path dependency on the webhook.
+      Customer-scoped, 404 on unknown reference, 409 on amount mismatch. Idempotency verified:
+      webhook + two verify calls produced exactly one `PENDING -> PAID` event.
+- [x] **Per-platform payment callback** — `initiate_payment` reads `X-Client-Platform` and returns
+      the `avdancustomer://` deep link for mobile, the https URL for web.
+- [x] **`scripts/tunnel_webhook.sh`** — cloudflared quick tunnel for testing REAL Paystack webhooks
+      locally (signature verification, retries, and the app-closed-mid-payment case that
+      verify-on-return cannot exercise).
+- [x] **Vendor payout screens** in `app-vendor` — bank picker, verify-before-save, replaces the
+      "use the web dashboard" card.
+- [x] **`docs/ESCROW_MODEL.md`** — why transfers-from-balance is the only viable escrow mechanism
+      with Paystack, and why subaccounts cannot work for this product.
+- [ ] **No `transfer.failed` webhook handler.** A queued-then-failed payout would leave the order
+      COMPLETED with the vendor unpaid. See `BACKLOG_HARMONISATION.md` §7.
+- [ ] **Transfer OTP must be disabled** on the Paystack account or automated payouts cannot run.
+
+### 14.11 First real Celery worker run (2026-08-31) — every post-transition notification was silently dead
+
+Celery worker + Beat had **never been run locally** (see 14.12). The first real run surfaced a bug
+invisible to every other form of testing:
+
+- [x] **Any Celery task touching `Order`/`Vendor` crashed with
+      `InvalidRequestError: ... expression 'Category' failed to locate a name`** in whichever
+      prefork worker process handled it first — nondeterministically, since each of the 12 worker
+      processes has its own independent SQLAlchemy mapper registry (separate OS process via
+      `fork()`). `workers/tasks/embeddings.py` already carried a per-function guard import
+      (`import services.categories.models`) for this exact issue, added when Phase 12 shipped, but
+      `workers/tasks/notifications.py` (**every order-status notification**) and
+      `workers/tasks/escrow.py` (**escrow release**) never got the same guard. On a fresh worker
+      backlog of 8 queued `send_order_notification` tasks, 5 crashed outright. In practice: **no
+      order-status notification (in-app, email, or push) has ever actually been delivered**,
+      because Celery had never run — this would have shipped straight to production silently
+      dropping notifications on roughly half of all task executions.
+      **Fixed at the root** in `workers/celery_app.py`: every `services/*/models.py` module is now
+      imported once in the master process before the prefork pool forks, so the mapper registry is
+      fully built exactly once and inherited by every child — no per-task guard needed anywhere.
+      Verified: restarted worker + beat, backlog drained with zero `InvalidRequestError`s, then a
+      full order lifecycle produced 8 correct notification rows (in-app + email, vendor_accepted /
+      out_for_delivery / delivered) for the right recipients.
+
+### 14.12 Known issues found but NOT fixed
+
+- [ ] **`rider_profiles` is dead schema.** Both `riders` (4 rows, the real table, FK target of
+      `orders.rider_id`) and `rider_profiles` (0 rows) exist. `get_or_create_rider` reads
+      `rider_profiles` as an existence gate before creating a `riders` row — which means rider
+      auto-provisioning is effectively broken for any user without a `rider_profiles` row. It works
+      today only because seed creates `riders` rows directly. Decide whether to drop the table or
+      populate it.
+- [ ] **`/auth/me` returns `created_at: ""`** — an empty string rather than a timestamp. Harmless
+      until something tries to parse or format it.
+- [x] **Escrow tail CLOSED (2026-08-22).** Previously nothing anywhere transitioned an order out of
+      `DELIVERED`, so every delivered order sat there forever and the vendor was never paid —
+      `workers/tasks/escrow.py` only polled for orders ALREADY in `PAYMENT_RELEASE_PENDING`.
+      **Product decision taken: the 48h release clock starts automatically when the rider marks
+      delivered** (no customer receipt-confirmation step). Implemented in
+      `DispatchService.rider_transition`: on `DELIVERED` it immediately chains
+      `DELIVERED -> PAYMENT_RELEASE_PENDING` with `actor_role="system"` — the same two-step pattern
+      the hub QA flow uses. Entering the state stamps `updated_at`, which is exactly the timestamp
+      the worker's 48h cutoff measures from. Verified live: the rider deliver endpoint now returns
+      `PAYMENT_RELEASE_PENDING` and both `order_events` rows are written.
+      Remaining chain (`PAYMENT_RELEASED -> COMPLETED`) was already implemented in
+      `PaymentService.release_escrow` and is reachable now.
+      **Still gated on:** Celery worker + Beat running, and each vendor having
+      `paystack_recipient_code` set (release raises `VENDOR_PAYOUT_NOT_CONFIGURED` without it).
+- [ ] **Celery worker + Beat are not running locally**, so even once the above is fixed the release
+      chain won't advance without starting them.
+- [ ] **Live secret in `apps/api/.env`**: `resend_api_key` is a real-looking Resend key in plaintext.
+      The file is gitignored and untracked (verified), so it is not in git history — but rotate it
+      if it has ever been shared.
+
+
 
 ---
 

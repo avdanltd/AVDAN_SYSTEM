@@ -10,9 +10,14 @@ import { ROUTES } from '@/config/routes'
 const ACTIVE_STATUSES = [
   'PENDING', 'PAID', 'VENDOR_ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP',
   'PICKED_UP', 'IN_TRANSIT_TO_HUB', 'AT_HUB', 'QA_IN_PROGRESS', 'QA_PASSED',
-  'OUT_FOR_DELIVERY',
+  'OUT_FOR_DELIVERY', 'VENDOR_REMEDIATION', 'DISPUTED',
 ]
-const COMPLETED_STATUSES = ['DELIVERED', 'COMPLETED', 'PAYMENT_RELEASED']
+// DELIVERED and PAYMENT_RELEASE_PENDING both read as "done" to the buyer — escrow
+// bookkeeping between the two is invisible to them (same collapse app-customer's
+// order-detail progress trail already does). DISPUTE_RESOLVED always resolves onward
+// to PAYMENT_RELEASED or REFUND_INITIATED next, so it's a momentary state, not a
+// distinct bucket of its own.
+const COMPLETED_STATUSES = ['DELIVERED', 'PAYMENT_RELEASE_PENDING', 'PAYMENT_RELEASED', 'COMPLETED', 'DISPUTE_RESOLVED']
 const CANCELLED_STATUSES = ['CANCELLED', 'VENDOR_REJECTED', 'QA_FAILED', 'FAILED_DELIVERY', 'REFUND_INITIATED']
 
 function formatPrice(kobo: number): string {

@@ -23,6 +23,7 @@ class OrderItemResponse(BaseModel):
     id: str
     product_id: str
     product_name: str
+    product_image_url: str | None = None
     price_kobo: int
     quantity: int
     subtotal_kobo: int

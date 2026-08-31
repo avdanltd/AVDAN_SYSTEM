@@ -124,7 +124,7 @@ export function OrdersPage() {
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Orders</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">Orders</h1>
           <p className="text-sm text-muted-foreground">{total} total orders</p>
         </div>
       </div>
@@ -183,7 +183,7 @@ export function OrdersPage() {
         />
       </div>
 
-      <div className="rounded-lg border border-border bg-background">
+      <div className="rounded-lg border border-border bg-background shadow-card">
         <DataTable
           columns={columns}
           data={orders}

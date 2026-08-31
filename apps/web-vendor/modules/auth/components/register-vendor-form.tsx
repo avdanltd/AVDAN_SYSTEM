@@ -33,7 +33,18 @@ export function RegisterVendorForm() {
   const [userId, setUserId] = useState<string | null>(null)
   const [email, setEmail] = useState<string>('')
 
-  const form = useForm<VendorRegisterInput>({ resolver: zodResolver(vendorRegisterSchema) })
+  const form = useForm<VendorRegisterInput>({
+    resolver: zodResolver(vendorRegisterSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      business_name: '',
+      business_type: '',
+      description: '',
+    },
+  })
 
   const registerMutation = useMutation({
     mutationFn: (data: VendorRegisterInput) =>

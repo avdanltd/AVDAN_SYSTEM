@@ -8,6 +8,8 @@ class OverviewResponse(BaseModel):
     riders_online: int
     revenue_today_kobo: int
     gmv_today_kobo: int
+    orders_today: int
+    pending_disputes: int
 
 
 class OrderVolumePoint(BaseModel):

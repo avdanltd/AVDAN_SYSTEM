@@ -67,6 +67,9 @@ class OrderService:
                     "product": product,
                     "product_id": product.id,
                     "product_name": product.name,
+                    # Snapshot the primary image with the name and price, so a later catalogue
+                    # edit cannot change what an existing order shows.
+                    "product_image_url": (product.image_urls or [None])[0],
                     "price_kobo": product.price_kobo,
                     "quantity": item.quantity,
                     "subtotal_kobo": subtotal,
@@ -91,6 +94,7 @@ class OrderService:
                     order_id=order.id,
                     product_id=item_data["product_id"],
                     product_name=item_data["product_name"],
+                    product_image_url=item_data["product_image_url"],
                     price_kobo=item_data["price_kobo"],
                     quantity=item_data["quantity"],
                     subtotal_kobo=item_data["subtotal_kobo"],

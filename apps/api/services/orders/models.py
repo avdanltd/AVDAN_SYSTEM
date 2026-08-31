@@ -49,8 +49,11 @@ class OrderItem(BaseModel):
         ForeignKey("products.id", ondelete="RESTRICT"),
         nullable=False,
     )
-    # Snapshots — price/name at order time, never changed
+    # Snapshots — price/name/image at order time, never changed
     product_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    # Nullable: a product may genuinely have no image, and rows predating migration 0015 were
+    # backfilled on a best-effort basis from the product's image at that moment.
+    product_image_url: Mapped[str | None] = mapped_column(String(1024), nullable=True)
     price_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     subtotal_kobo: Mapped[int] = mapped_column(Integer, nullable=False)

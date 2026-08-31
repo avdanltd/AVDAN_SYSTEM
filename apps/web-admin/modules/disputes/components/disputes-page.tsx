@@ -97,7 +97,7 @@ function DisputeTable({
   ]
 
   return (
-    <div className="rounded-lg border border-border bg-background">
+    <div className="rounded-lg border border-border bg-background shadow-card">
       <DataTable
         columns={columns}
         data={disputes}
@@ -121,7 +121,7 @@ export function DisputesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Disputes</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Disputes</h1>
         <p className="text-sm text-muted-foreground">Review and resolve customer disputes</p>
       </div>
 

@@ -1,5 +1,5 @@
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Cookie, Depends, Response
+from fastapi import APIRouter, Body, Cookie, Depends, Header, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -8,7 +8,9 @@ from core.exceptions import AuthException
 from core.redis import get_redis
 from services.auth.schemas import (
     LoginRequest,
+    LogoutRequest,
     PushTokenRequest,
+    RefreshRequest,
     RegisterCustomerRequest,
     RegisterVendorRequest,
     TokenResponse,
@@ -103,6 +105,7 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+    x_client_platform: str | None = Header(default=None),
 ) -> TokenResponse:
     from core.config import settings
 
@@ -112,39 +115,56 @@ async def login(
     secure = settings.is_production
     response.set_cookie("avdan_token", access_token, secure=secure, **_COOKIE_OPTS)
     response.set_cookie("avdan_refresh_token", refresh_token, secure=secure, **_COOKIE_OPTS)
-    return TokenResponse(message="Login successful")
+
+    is_mobile = (x_client_platform or "").lower() == "mobile"
+    return TokenResponse(
+        message="Login successful",
+        access_token=access_token if is_mobile else None,
+        refresh_token=refresh_token if is_mobile else None,
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     response: Response,
     avdan_refresh_token: str | None = Cookie(default=None),
+    data: RefreshRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+    x_client_platform: str | None = Header(default=None),
 ) -> TokenResponse:
-    if not avdan_refresh_token:
+    token = avdan_refresh_token or (data.refresh_token if data else None)
+    if not token:
         raise AuthException("Refresh token missing")
 
     from core.config import settings
 
     svc = AuthService(db, redis)
-    access_token, new_refresh_token = await svc.refresh_tokens(avdan_refresh_token)
+    access_token, new_refresh_token = await svc.refresh_tokens(token)
 
     secure = settings.is_production
     response.set_cookie("avdan_token", access_token, secure=secure, **_COOKIE_OPTS)
     response.set_cookie("avdan_refresh_token", new_refresh_token, secure=secure, **_COOKIE_OPTS)
-    return TokenResponse(message="Token refreshed")
+
+    is_mobile = (x_client_platform or "").lower() == "mobile"
+    return TokenResponse(
+        message="Token refreshed",
+        access_token=access_token if is_mobile else None,
+        refresh_token=new_refresh_token if is_mobile else None,
+    )
 
 
 @router.post("/logout")
 async def logout(
     response: Response,
     avdan_refresh_token: str | None = Cookie(default=None),
+    data: LogoutRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    token = avdan_refresh_token or (data.refresh_token if data else None)
     svc = AuthService(db, redis)
-    await svc.logout(avdan_refresh_token)
+    await svc.logout(token)
     response.delete_cookie("avdan_token", path="/")
     response.delete_cookie("avdan_refresh_token", path="/")
     return {"message": "Logged out"}
