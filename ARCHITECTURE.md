@@ -21,7 +21,7 @@ AVDAN is a multi-sided logistics and commerce platform. Six actor types. Five fr
 |------|-----------|----------------|
 | Customer | web-customer | Browse vendors, place orders, track delivery, pay |
 | Vendor | web-vendor | Accept orders, manage catalog, view earnings |
-| Rider | web-rider (web-first; native app future phase) | Receive jobs, navigate, confirm delivery |
+| Rider | app-rider (React Native + Expo); web-rider kept running until fully replaced | Receive jobs, navigate, confirm delivery |
 | Agent Hub | web-hub | QA inspection, inbound/outbound dispatch |
 | Admin | web-admin | Full platform oversight, config, financials |
 | Support | web-admin (support role) | Dispute resolution, user help |
@@ -154,6 +154,13 @@ from services.payment.models import EscrowTransaction  # never do this
 4. All subsequent requests include cookies automatically
 5. FastAPI dependency `get_current_user` decodes the JWT from the cookie
 6. On 401, proxy.ts silently calls `/auth/refresh` and retries once
+
+**Mobile (React Native) variant:** native apps can't rely on httpOnly cookies. A mobile client sends
+`X-Client-Platform: mobile` on every request. `/auth/login` and `/auth/refresh` detect this header and
+return `access_token`/`refresh_token` in the JSON body (cookies are still set too, harmlessly ignored by
+the mobile client). The app stores both in `expo-secure-store` and sends `Authorization: Bearer <token>`
+on every request. `get_current_user` checks the cookie first, then falls back to the `Authorization`
+header — so this is purely additive and does not change web behavior.
 
 ### Payment Provider Abstraction
 
@@ -519,7 +526,18 @@ sonner = "^1.x"
 
 ## What Intentionally Does Not Exist Yet
 
-- `apps/app-rider/` — Native mobile app, future phase. `apps/web-rider/` is the current web-first implementation.
+- ~~`apps/app-customer/`~~ — **built 2026-08-23.** Shares `@avdan/mobile` (built first, on
+  purpose — see `BACKLOG_HARMONISATION.md` §1). Uses the R2-backed product images and the
+  `POST /payment/verify/{reference}` endpoint, both completed before this app was started.
+- ~~`packages/mobile/`~~ — **built 2026-08-22** as `@avdan/mobile`: the shared React Native layer
+  (tokens, theme context, UI primitives, brand mark, api-client, secure storage, toast, formatters,
+  auth module), consumed by `app-rider` and `app-vendor`. `packages/ui/` remains web-only.
+- `services/storage/` on the API — planned Cloudflare R2 (S3-compatible) client plus an image
+  upload endpoint. Today the only upload in the codebase (hub QA evidence) writes to local disk,
+  which does not survive a restart and breaks with more than one API replica.
+
+**Already built, contrary to earlier drafts of this file:** `apps/app-vendor/` exists as of
+2026-08-22 (Expo SDK 54, Metro port 8082). See `STATUS_FRONTEND.md` Phase 9.
 - Kafka — Phase 3, use Redis Pub/Sub now
 - TimescaleDB — Phase 3, use partitioned PostgreSQL now
 - Service mesh — Phase 3

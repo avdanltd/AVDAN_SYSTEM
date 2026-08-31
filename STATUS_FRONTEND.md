@@ -9,9 +9,137 @@
 
 ## Current Status
 
-**Active Phase:** Phase 3A — Full Ecommerce Redesign (web-customer) + Category Management (web-admin + web-vendor)
-**Last Completed:** Phase 7 — Admin Panel ✓ code-complete (2026-06-09), pending live backend test
-**Blocking Issues:** Backend Phase 12 (categories + /products endpoint + pgvector) must be done first
+**Active Phase:** Phase 9 — Vendor Mobile App (`app-vendor`); Phase 8 (rider) code-complete, awaiting device test
+**Active Milestone:** 9.x app-vendor built and bundling; all apps to be device-tested together
+**Last Completed:** Doc reconciliation (2026-08-22) — Phase 3A and backend Phases 12–13 ticked to
+match the codebase; both were fully built while their checklists showed unticked.
+**Blocking Issues:** None blocking mobile. Backend Phase 12 is done, so Phase 3A's old blocker is gone.
+
+### Session handoff — state as of 2026-08-22
+
+**Next task:** device-test all three mobile apps together (a real order end to end across
+rider/vendor/customer), then work through the remaining `BACKLOG_HARMONISATION.md` items
+(§6 escrow payout robustness, §7 smaller items). `app-customer` is built — see Phase 10 below.
+
+Done: §1 `@avdan/mobile`, §3 payment (backend + `app-customer` client), §4 vendor payout screens, §2 in full, and `app-customer` itself (Phase 10) — R2 backend, Cloudflare WAF rule (verified against a real
+object), bucket CORS, `app-vendor` product-image upload, and migration `0015` putting a snapshotted
+`product_image_url` on order lines with thumbnails in both apps.
+
+**R2 token:** must sit at **Object Read & Write**. It was briefly elevated to Admin to apply the
+CORS policy and has been reverted. Only re-elevate to change bucket configuration.
+
+**Nothing is committed.** `apps/app-rider/` and `apps/app-vendor/` are both **untracked** in git,
+along with `RUNBOOK_ORDER_E2E.md`, `BACKLOG_HARMONISATION.md` and
+`apps/api/scripts/simulate_paystack_webhook.py`. Two full mobile apps exist only on disk — commit
+before doing anything destructive.
+
+**Local environment**
+- Postgres 16.2 + Redis 8.8 run under **DBngin**, not Docker. Database `avdan`, user `avdan`,
+  password `avdan_dev`. Already migrated to head (`0014`) and seeded.
+- `psql` is not on PATH; it lives at `/Users/Shared/DBngin/postgresql/16.2/bin/`.
+- The dev machine's LAN IP was `172.20.10.3` (an iPhone hotspot range — it will change on a
+  different network). Both mobile apps' `.env.local` point at it, and the API's `FRONTEND_URLS`
+  allows it.
+- Celery worker and Beat are **not** running.
+
+**Ports:** API 8000 · web-customer 3000 · web-vendor 3001 · web-admin 3002 · web-hub 3003 ·
+app-rider Metro 8081 · app-vendor Metro 8082.
+
+**Gotcha that wastes time if forgotten:** auth is an httpOnly cookie and **cookies ignore port
+numbers**, so all the localhost web apps share one session. Use different hostnames
+(`localhost` / `127.0.0.1` / the LAN IP) per role — see `RUNBOOK_ORDER_E2E.md` §1.
+
+**Verified working end to end (via API):** mobile auth contract, rider order lifecycle including
+the new history endpoints, vendor accept/reject/ready, vendor product create/update/availability/
+delete, escrow hold starting on delivery, Paystack `PENDING -> PAID` through a signed webhook.
+
+**Never verified on a physical device:** neither mobile app has been through a real device test.
+Both bundle cleanly through Metro and pass `tsc --noEmit`.
+
+### Agreed order of work (set 2026-08-22)
+1. ✓ Reconcile STATUS docs to the real state of the codebase
+2. ✓ Boot the stack and run `generate-types.sh` — `generated.ts` went from an 8-line placeholder
+   to 5,259 real lines. **Not yet committed, and `pnpm turbo run type-check` has not been re-run
+   across the web apps — expect drift to surface there.**
+3. ~ Boot `app-rider` on a physical device — served and bundling, but no full device walk yet
+4. ✓ `app-rider` UI to production-grade premium (Phase 8.10)
+5. ☐ Android EAS build (free — no Apple Developer account, so iOS-native milestones stay open)
+6. ✓ `app-vendor` built 2026-08-22 (decision: build all apps, then test everything at once)
+7. **Harmonisation + foundations** — `@avdan/mobile` shared package, R2 storage/image upload,
+   payment verify endpoint, vendor payout screens. Tracked in `BACKLOG_HARMONISATION.md`.
+   Sequenced BEFORE app-customer on purpose: extracting shared code costs 2 app migrations now
+   and 3 later, and app-customer's riskiest feature (payment) depends on the verify endpoint.
+8. `app-customer` — RN app #3, not started
+9. Return to web: Stitch polish pass on web-customer core flow
+10. Android EAS builds; HTTPS tunnel only for exercising Paystack's own retry/signature behaviour
+
+**Standing constraint:** no paid Apple Developer account. iOS is Expo Go only — foreground location
+works, background location and APNs push do not. Do not mark 8.3 or 8.7 complete on iOS evidence.
+
+---
+
+## Active Initiative — Design System Alignment (Stitch-driven)
+
+> Full workflow, the reusable prompt template, AND the actual next 5 ready-to-paste prompts
+> (§7 — Product Detail, Vendor Storefront, Cart, Checkout, Order Detail + Tracking):
+> `/styles/avdan-stitch-roadmap.md`.
+> Source-of-truth design spec (colors/type/spacing/elevation): `/styles/stitch_avdan_*/DESIGN.md`
+> (all three are identical — one system, not three).
+
+**Why:** UI had drifted inconsistent across apps; this locks one brand system (Royal Blue
+`#135BEC` primary, Signal Orange `#F59F0A` sparing accent, Playfair Display + Bricolage Grotesque)
+and applies it everywhere, screen by screen, reusing real data/hooks rather than rebuilding logic.
+
+### Done
+- [x] Design tokens: `packages/ui/src/tokens/tokens.css` — added `--brand-accent` (Signal Orange,
+      distinct from `--warning`), `--shadow-card`/`--shadow-modal` (warm-toned elevation), `Badge`
+      `accent` variant, `StatsCard` `tone="accent"` prop, `StatsCard` icon container → `rounded-full`.
+- [x] `app-rider` now actually loads Playfair Display + Bricolage Grotesque (`@expo-google-fonts/*`
+      via `useFonts` in `src/app/_layout.tsx`) — previously never loaded despite being "set up."
+      `constants/theme.ts` fixed to match web hex values exactly + added accent/shadow presets.
+- [x] **Anchor screen 1** — web-customer Home (`modules/store/components/store-home-page.tsx`):
+      hero, category grid, product cards restyled; added Trusted-by band, stats/CTA banner, How
+      AVDAN Works section; "Popular" accent badge on the Popular Right Now rail.
+- [x] **Anchor screen 2** — web-admin Dashboard (`modules/analytics/components/dashboard-page.tsx`
+      + `components/layout/sidebar.tsx`): Playfair sidebar wordmark, real "Emergency Dispatch" CTA,
+      live "updated Xs ago" indicator, fixed off-brand chart colors, disputes as a real DataTable,
+      working CSV export.
+- [x] **Anchor screen 3** — app-rider Home (`modules/rider/components/dashboard.tsx`): new large
+      tap-toggle (`status-toggle.tsx`) replacing the plain `Switch`, real Active Delivery card
+      (no fabricated recipient/distance fields), real derived stat tiles, converted navigation
+      from a bare `Stack` to a `Tabs` layout (Home/Orders/Profile) with a new Profile screen.
+- [x] web-admin remaining 8 pages polished directly (no Stitch pass needed — already fully built,
+      just needed the token/shadow/heading-font treatment): Users, Orders, Vendors, Disputes,
+      Escrow, Dispatch, Hubs, Analytics, Config. Fixed the same off-brand chart-color bug in
+      `analytics-page.tsx` (`hsl(199 89% 48%)` — leftover from the pre-rebrand placeholder, see
+      the "Notes for Agent" fix below). Added one accent-tone flagship stat per screen (Total GMV,
+      Total Held).
+- [x] **web-vendor** (Dashboard, Orders, Products, Earnings, Notifications, Profile) + **web-hub**
+      (Dashboard, Orders, QA Workflow, Analytics, Order Detail, Profile) — same direct polish as
+      web-admin: `font-display` headings, `shadow-card` on Card/table wrappers, sidebar got the
+      same two-line Playfair wordmark + app-name subtitle treatment as admin's ("Vendor Portal" /
+      "Agent Hub"). Also found and fixed several raw hardcoded `green-6xx`/`amber-6xx` Tailwind
+      colors (PASS button, QA-pending stat, ready-order count badge, product-availability badge,
+      hub queue's in-progress row highlight) → real `success`/`warning` theme tokens — same class
+      of bug as the `hsl(199 89% 48%)` chart-color one, just via Tailwind palette classes instead
+      of raw hsl(). No off-brand recharts colors found in either app (neither uses charts).
+
+### Next (in order)
+> Re-sequenced 2026-08-22: `app-rider` polish moved ahead of the web-customer pass, because the
+> rider app is about to be device-tested and is the pilot that unblocks all future RN apps.
+
+0. **app-rider full premium pass** — every screen (Login, Home, Orders, Order Detail, Profile) to
+   production quality, not just the Home anchor screen. See Phase 8 below.
+1. **web-customer core flow, via Stitch** (ready-to-paste prompts in
+   `/styles/avdan-stitch-roadmap.md` §7): Product Detail → Vendor Storefront → Cart (drawer) → Checkout → Order Detail + Live
+   Tracking. Build each directly against the existing real hooks/services once a Stitch result
+   comes back — same pattern as Home.
+2. **web-rider** — low-priority interim polish only (being superseded by `app-rider` per
+   ARCHITECTURE.md; don't over-invest here).
+3. **Secondary pages across all apps** — Profile, Notifications, Config screens wherever they
+   still use pre-rebrand styling; reuse whichever sibling screen is the closest style reference.
+4. Mobile: `app-customer` / `app-vendor` do not exist yet and stay out of scope until explicitly
+   instructed (per ARCHITECTURE.md "What Intentionally Does Not Exist Yet").
 
 ---
 
@@ -51,7 +179,10 @@
 - [ ] Each app's ESLint config extends `@avdan/config/eslint.config.mjs` — eslint.config.mjs not created per app yet
 
 ### 1.3 @avdan/types Package
-- [x] `packages/types/src/generated.ts` — placeholder (empty export until `generate-types.sh` runs)
+- [ ] **`packages/types/src/generated.ts` is STILL the empty placeholder** (8 lines, all types are
+      `Record<string, never>`). Every API type consumed by all 6 apps is therefore hand-written,
+      which CLAUDE.md explicitly forbids, and none of it has been checked against the real OpenAPI
+      schema. Highest-value single fix once the backend boots.
 - [x] `packages/types/src/index.ts` — re-exports from generated + hand-written types (UserRole, OrderStatus, ApiError, etc.)
 - [x] `packages/types/package.json` — exports `./src/index.ts` as main entry
 - [ ] `scripts/generate-types.sh` verified — needs FastAPI running on localhost:8000
@@ -341,63 +472,73 @@
 
 ---
 
-## Phase 3A — Full Ecommerce Redesign + Category Management
+## Phase 3A — Full Ecommerce Redesign + Category Management ✓ (structure) / partial (polish)
 
-> Requires Backend Phase 12 complete (categories table, GET /products, pgvector search).
-> Detail tasks tracked in `quickfix.md`. Mark complete here when all quickfix.md tasks are done and verified.
+> Reconciled 2026-08-22 by auditing the codebase. Every item below was already built while this
+> checklist still showed all boxes unticked. Backend Phase 12 (categories, `GET /products`,
+> pgvector search) is also complete, so the stated blocker is gone.
 
-### 3A.1 — Backend wiring: new service + hook layer (web-customer)
-- [ ] `modules/products/types.ts` — ProductListing, ProductDetail
-- [ ] `modules/products/services/products.service.ts` — getProducts(params), getProduct(id)
-- [ ] `modules/products/hooks/use-products.ts`, `use-product.ts`
-- [ ] `modules/categories/types.ts` — Category
-- [ ] `modules/categories/services/categories.service.ts` — getCategories()
-- [ ] `modules/categories/hooks/use-categories.ts`
-- [ ] `modules/search/services/search.service.ts` — search(q, type)
-- [ ] `modules/search/hooks/use-search.ts` — debounced
+### 3A.1 — Backend wiring: new service + hook layer (web-customer) ✓
+- [x] `modules/products/types.ts` — ProductListing, ProductDetail
+- [x] `modules/products/services/products.service.ts` — getProducts(params), getProduct(id)
+- [x] `modules/products/hooks/use-products.ts`, `use-product.ts`
+- [x] `modules/categories/types.ts` — Category
+- [x] `modules/categories/services/categories.service.ts` — getCategories()
+- [x] `modules/categories/hooks/use-categories.ts`
+- [x] `modules/search/services/search.service.ts` — search(q, type)
+- [x] `modules/search/hooks/use-search.ts` — debounced
 
-### 3A.2 — Reusable ProductCard + ProductGrid (web-customer)
-- [ ] `modules/products/components/product-card.tsx` — image, category badge, name, vendor link, price, Add to Cart, out-of-stock overlay
-- [ ] `modules/products/components/product-card-skeleton.tsx`
-- [ ] `modules/products/components/product-grid.tsx` — responsive, loading/empty/error states
+### 3A.2 — Reusable ProductCard + ProductGrid (web-customer) ✓
+- [x] `modules/products/components/product-card.tsx`
+- [x] `modules/products/components/product-card-skeleton.tsx`
+- [x] `modules/products/components/product-grid.tsx` — responsive, loading/empty/error states
+- [x] Also built (not on the original list): `product-pagination.tsx`, `product-filters.tsx`,
+      `vendor-card.tsx`, `vendor-card-skeleton.tsx`, `vendor-grid.tsx`
 
-### 3A.3 — Header + Footer (web-customer)
-- [ ] Navbar redesign: categories mega-dropdown, search bar + toggle (Products|Vendors), cart, auth
-- [ ] Mobile navbar: bottom tab bar or Sheet hamburger
-- [ ] Footer: 4-column links + newsletter + social + payment badge
+### 3A.3 — Header + Footer (web-customer) ✓
+- [x] Navbar redesign: categories dropdown, search bar + Products|Vendors toggle, cart, auth
+- [x] Mobile navbar: Sheet hamburger
+- [x] Footer redesign
 
-### 3A.4 — Homepage redesign (web-customer)
-- [ ] Hero (full-bleed), category grid, featured products (8), top vendors (4), new arrivals (8)
-- [ ] `store-home-page.tsx` replaces `vendors-home-page.tsx`
+### 3A.4 — Homepage redesign (web-customer) ✓
+- [x] `store-home-page.tsx` — hero, category grid, product rails, Trusted-by band, stats/CTA banner,
+      "How AVDAN Works" (done during the Design System Alignment initiative)
+- [x] Replaces `vendors-home-page.tsx` as `/` (the old file still exists, now used for `/vendors`)
 
-### 3A.5 — New pages (web-customer)
-- [ ] `/products` — all products with filters
-- [ ] `/products/[id]` — product detail with related products
-- [ ] `/categories` — all categories grid
-- [ ] `/categories/[slug]` — category products page
-- [ ] `/search` — search results with Products|Vendors toggle
-- [ ] Enhanced `/vendors` — vendor grid with filters
-- [ ] Enhanced `/vendors/[slug]` — store page with category tabs
+### 3A.5 — New pages (web-customer) ✓
+- [x] `/products` — `products-page.tsx` with filters
+- [x] `/products/[id]` — `product-detail-page.tsx`
+- [x] `/categories` — `all-categories-page.tsx`
+- [x] `/categories/[slug]` — `category-products-page.tsx`
+- [x] `/search` — `search-results-page.tsx` with Products|Vendors toggle
+- [x] `/vendors` — `vendors-page.tsx` + vendor grid with filters
+- [x] `/vendors/[slug]` — `vendor-detail-page.tsx`
 
-### 3A.6 — Enhanced existing pages (web-customer)
-- [ ] Cart drawer redesign (thumbnails, quantity stepper, empty state)
-- [ ] Checkout redesign (2-col, step indicator)
-- [ ] Payment success/failed redesign
-- [ ] Orders page redesign (tabs + order cards)
-- [ ] Order detail redesign (timeline stepper)
-- [ ] My Account redesign (tabs, stats, edit via Dialog)
-- [ ] Notifications redesign (icons per type, mark all read)
+### 3A.6 — Enhanced existing pages (web-customer) ✓ (built; polish pass outstanding)
+- [x] Cart drawer — `cart-drawer.tsx`
+- [x] Checkout — `checkout-page.tsx` (+ `/checkout/success`, `/checkout/failed` routes)
+- [x] Orders page — `orders-page.tsx`
+- [x] Order detail — `order-detail-page.tsx` (+ `/orders/[id]/track` with `tracking-page.tsx`, `tracking-map.tsx`)
+- [x] My Account — `profile/`
+- [x] Notifications — `notifications/`
+- [ ] **Outstanding: the Stitch visual-polish pass** on Product Detail, Vendor Storefront, Cart,
+      Checkout, Order Detail + Tracking. These screens are functionally complete against real hooks
+      but still carry pre-rebrand styling. Ready-to-paste prompts: `/styles/avdan-stitch-roadmap.md` §7.
 
-### 3A.7 — Routes update (web-customer)
-- [ ] `config/routes.ts` — add products, product, categories, category, search
+### 3A.7 — Routes update (web-customer) ✓
+- [x] `config/routes.ts` — products, product(id), categories, category(slug), search all present
 
-### 3A.8 — Category management (web-admin)
-- [ ] Category CRUD module + page + sidebar nav item
+### 3A.8 — Category management (web-admin) ✓
+- [x] `modules/categories/components/categories-page.tsx` + `category-dialog.tsx` + sidebar nav item
+- [ ] Note: admin writes must target `POST/PATCH/DELETE /categories` (role-gated), **not**
+      `/admin/categories` — see the deviation note in `STATUS_BACKEND.md` 12.1. Verify the service
+      layer points at the right path when the backend goes live.
 
-### 3A.9 — Category on product form (web-vendor)
-- [ ] Category Select field on product create/edit form
+### 3A.9 — Category on product form (web-vendor) ✓
+- [x] `category_id` Select field with Zod validation in `modules/catalog/components/product-form.tsx`
 
-**Phase 3A complete when:** Every page in web-customer is visually polished, categories are admin-managed, vendors select categories when creating products, semantic search returns relevant results, homepage shows real products and vendors from seed data.
+**Phase 3A remaining:** the visual polish pass (3A.6) and live verification against seed data.
+Structurally it is done.
 
 ---
 
@@ -440,14 +581,14 @@
 ### Rider App Screen Map
 ```
 (auth)
-  /login               → RHF login form, same credentials as other apps
+  /login               → login form, same credentials as other apps
 (main)
   /                    → Active order card (if assigned) + Go Online toggle
   /orders              → List of assigned orders by status
-  /orders/[id]         → Order detail: items, pickup address, delivery address
-  /orders/[id]/pickup  → Confirm pickup screen (big button → PICKED_UP)
-  /orders/[id]/transit → Mark in transit to hub (IN_TRANSIT_TO_HUB)
-  /orders/[id]/deliver → Confirm delivery + optional photo proof (DELIVERED / FAILED_DELIVERY)
+  /orders/[id]         → Order detail: items, delivery address, inline action buttons
+                         (pickup/transit/deliver/fail rendered from ORDER_ACTIONS based on
+                         current status — matches web-rider's proven pattern; no separate
+                         per-action confirm screens, one tap on the detail screen is enough)
 ```
 
 ### State Transitions the Rider Controls
@@ -459,33 +600,269 @@ OUT_FOR_DELIVERY  → DELIVERED          (rider confirms delivery)
 OUT_FOR_DELIVERY  → FAILED_DELIVERY    (rider reports failed attempt)
 ```
 
-### Backend Endpoints the Rider App Uses (all already built)
+### Backend Endpoints the Rider App Uses (all already existed — corrected 2026-07-30)
 | Endpoint | Purpose |
 |----------|---------|
-| `POST /auth/login` | Auth |
-| `GET /auth/me` | Session |
+| `POST /auth/login` | Auth (send `X-Client-Platform: mobile` to get tokens in body) |
+| `POST /auth/refresh` | Token refresh (send `refresh_token` in body — no cookie available) |
+| `GET /auth/me` | Session, via `Authorization: Bearer` |
 | `POST /dispatch/me/availability` | Toggle online/offline |
 | `POST /dispatch/me/location` | Broadcast GPS every 5s |
-| `GET /orders` | Rider's assigned orders (needs rider-scoped filter — add to Phase 8) |
-| `POST /orders/{id}/pickup` | PICKED_UP transition (add endpoint in Phase 8) |
-| `POST /orders/{id}/transit` | IN_TRANSIT_TO_HUB (add endpoint in Phase 8) |
-| `POST /orders/{id}/deliver` | DELIVERED + photo (add endpoint in Phase 8) |
-| `POST /orders/{id}/fail-delivery` | FAILED_DELIVERY (add endpoint in Phase 8) |
+| `GET /dispatch/me/orders` | Rider's assigned orders — already rider-scoped, no change needed |
+| `POST /dispatch/me/orders/{id}/pickup` | PICKED_UP transition — already existed |
+| `POST /dispatch/me/orders/{id}/transit` | IN_TRANSIT_TO_HUB — already existed |
+| `POST /dispatch/me/orders/{id}/deliver` | DELIVERED — already existed |
+| `POST /dispatch/me/orders/{id}/fail` | FAILED_DELIVERY — already existed |
 
-### Missing Backend Work (do in Phase 8 before building screens)
-- Rider-scoped order list endpoint (`GET /orders` currently only covers customers)
-- Rider state transition endpoints (pickup, transit, deliver, fail-delivery) — state machine already has these transitions, just need the HTTP endpoints
-- These are small additions to `services/orders/router.py`
+### Missing Backend Work — corrected 2026-07-30
+This list was wrong: `/dispatch/me/...` already covered every rider order-transition need (see
+`services/dispatch/router.py`) and `QA_PASSED → OUT_FOR_DELIVERY` is agent-triggered from the hub
+QA flow, not rider-triggered, so there was never a gap there. The real gap, found and fixed during
+`app-rider` scaffolding: **all auth was httpOnly-cookie-only**, which doesn't work for a standalone
+mobile client. Fixed additively (see `STATUS_BACKEND.md` 2.7) — web behavior is unchanged.
+
+### Current Stack (verified 2026-08-22)
+| Item | Value |
+|------|-------|
+| Expo SDK | **54** (`expo ~54.0.36`) — matches the Expo Go build on the test iPhone |
+| React Native | 0.81.5 |
+| React | 19.1.0 |
+| Router | `expo-router` ~6.0.24, `typedRoutes: true`, `reactCompiler: true` |
+| Auth | Bearer tokens in `expo-secure-store` (never AsyncStorage) |
+| Type-check | `tsc --noEmit` passes clean |
+
+### Screens built
+```
+(auth)/login                    login-form.tsx
+(main)/                         dashboard.tsx + status-toggle.tsx   [Tabs: Home]
+(main)/orders                   orders-list.tsx                     [Tabs: Orders]
+(main)/orders/[id]              order-detail.tsx
+(main)/profile                  profile.tsx                         [Tabs: Profile]
+```
 
 ### Milestones
-- [ ] 8.1 Expo project scaffolded (`app-rider/`) with EAS config, all permissions declared
-- [ ] 8.2 Auth flow complete (login, session hydration, logout)
-- [ ] 8.3 Go Online toggle + GPS broadcast running (foreground + background)
-- [ ] 8.4 Assigned order list + order detail screens
-- [ ] 8.5 Pickup → Hub Transit flow with state transitions
-- [ ] 8.6 Last-mile delivery flow (OUT_FOR_DELIVERY → DELIVERED / FAILED_DELIVERY)
-- [ ] 8.7 Push notifications working (FCM Android + APNs iOS)
-- [ ] 8.8 EAS Build produces working `.apk` (Android) and `.ipa` (iOS) — tested on real devices
+- [x] 8.1 Expo project scaffolded (`app-rider/`) with EAS config, all permissions declared
+- [x] 8.2 Auth flow complete (login, session hydration, logout) — pending live device test
+- [x] 8.3 Go Online toggle + GPS broadcast wired — verified on physical iPhone via Expo Go (foreground-only fallback path). Background location (expo-task-manager + foreground service) requires custom `Info.plist`/`AndroidManifest` entries baked into a real native build — **Expo Go cannot provide this** (shared, precompiled binary), so `use-location-broadcast.ts` tries the background-capable path first and falls back to `watchPositionAsync` (foreground only) when it throws. True background broadcasting needs an EAS development build — untested until then.
+- [x] 8.4 Assigned order list + order detail screens — pending live device test
+- [x] 8.5 Pickup → Hub Transit flow with state transitions — pending live device test
+- [x] 8.6 Last-mile delivery flow (OUT_FOR_DELIVERY → DELIVERED / FAILED_DELIVERY) — pending live device test
+- [ ] 8.7 Push notifications working (FCM Android + APNs iOS) — device token registration wired to reuse existing `PATCH /auth/me/push-token`; not yet exercised on a real device
+      **iOS blocked:** APNs needs a paid Apple Developer account. Android-only until that exists.
+- [ ] 8.8 EAS Build produces working `.apk` (Android) — Android build is free and is the target.
+      `.ipa` / TestFlight deferred until an Apple Developer account exists.
+
+### New milestones (added 2026-08-22 — the actual current work)
+- [ ] **8.9 Live device test via Expo Go (SDK 54) on physical iPhone**
+  - [ ] Backend stack booted and seeded (depends on `STATUS_BACKEND.md` Phase 14.1–14.3)
+  - [ ] `EXPO_PUBLIC_API_URL` pointed at the dev machine's **LAN IP**, not `localhost` — a phone
+        cannot reach the host's loopback. Same for `EXPO_PUBLIC_WS_URL`.
+  - [ ] FastAPI `FRONTEND_URLS` / CORS permits that LAN origin
+  - [ ] Login as a seeded rider account (`Avdan@2024`) — tokens land in secure-store, session hydrates
+  - [ ] Go Online toggle flips availability; `POST /dispatch/me/location` receives foreground pings
+  - [ ] Assigned orders list renders real seeded orders
+  - [ ] Full rider transition walk on-device: READY_FOR_PICKUP → PICKED_UP → IN_TRANSIT_TO_HUB,
+        then OUT_FOR_DELIVERY → DELIVERED, plus a FAILED_DELIVERY case
+  - [ ] Token refresh survives a 15-min access-token expiry on-device
+- [ ] **8.10 Production-grade UI pass across every rider screen**
+  - [ ] Login — branded, keyboard-aware, real error states
+  - [ ] Home — refine the existing anchor-screen work; loading/empty/offline states
+  - [ ] Orders list — real empty state, pull-to-refresh, status grouping
+  - [ ] Order detail — timeline, address block, prominent action buttons, optimistic transitions
+  - [ ] Profile — earnings/stats, logout confirm
+  - [ ] Cross-cutting: safe-area handling, haptics on primary actions, skeletons (not spinners),
+        toast consistency, tap targets ≥44pt, no layout shift on data arrival
+- [x] **8.10 Production-grade UI pass — DONE 2026-08-22.** Full rebuild of the rider app's
+      presentation layer against the real brand:
+  - [x] **Real brand assets, no placeholders.** The app icon was still the stock Expo chevron.
+        Traced the arrowhead geometry out of `apps/api/static/logo.png` (outer edge `x = 50 - 0.5y`,
+        inner edge `x = 50 - 0.1325y` in a 100x100 box) and regenerated every icon from vector —
+        iOS icon, Android adaptive fore/back/monochrome, splash, favicon. `components/brand-logo.tsx`
+        renders the mark as `react-native-svg`, so it is crisp at any size and recolours per theme.
+        The bitmap wordmark is NOT used: its lettering is dark navy and disappears on dark grounds,
+        so the wordmark is set in Playfair instead.
+  - [x] **Light + dark mode.** `constants/theme.ts` now exports full light and dark palettes derived
+        from the logo's own gradients (badge `#3062D2`->`#0A2480`, arrow `#FAD96B`->`#F28614`).
+        `theme/theme-context.tsx` provides light/dark/system with the choice persisted in
+        `expo-secure-store`. Every screen, primitive, toast and status chip resolves through tokens.
+  - [x] **Branded loader** — `BrandLoader` (the AVDAN arrow breathing) replaces the bare
+        `ActivityIndicator` at app boot; lists and detail screens use real skeletons, not spinners.
+  - [x] Screens rebuilt: Login (branded hero, show/hide password, focus states), Home (greeting,
+        live availability from the server, real stat tiles, pull-to-refresh), Orders
+        (**Active | History** segmented control), Order Detail (single-order query, progress trail,
+        itemised receipt, confirm-guard on destructive actions), Profile (grouped settings).
+  - [x] **New screens that were missing:** `profile/edit` (name + phone via `PATCH /auth/me`, Zod
+        validated, sends only changed fields) and `profile/appearance` (theme picker with live preview).
+  - [x] Cross-cutting: safe-area insets throughout, 44pt minimum touch targets, branded toasts with
+        title + detail, nested-ScrollView bug fixed on Home/Profile/Orders.
+  - [x] `tsc --noEmit` passes clean.
+- [ ] **8.11 Android EAS build** (`eas build -p android --profile preview`) installed and walked
+      end-to-end on a physical Android device — this is where 8.3 background location and 8.7 push
+      finally become provable
+
+---
+
+## Phase 9 — Vendor Mobile App (`app-vendor`) — code-complete 2026-08-22
+
+> Built after `app-rider`, following the same structure. Decision taken 2026-08-22: build every
+> app first, then device-test all of them together. **All web apps stay** — mobile is additive,
+> not a replacement (web-vendor keeps desktop bulk catalog editing; web-customer keeps SEO).
+
+### Stack
+Identical to `app-rider`: Expo SDK 54, RN 0.81.5, expo-router 6, TanStack Query v5, Zustand,
+Zod, Bearer tokens in `expo-secure-store`, `react-native-svg` brand mark, light/dark/system theming.
+Runs on Metro **port 8082** so it can serve alongside app-rider on 8081.
+
+### Brand
+Same AVDAN mark, inverted lockup — **gold ground with a deep-navy arrow**, against the rider app's
+blue ground with gold arrow. Same two brand colours, instantly separable on a phone that has both
+apps installed. All icons generated from the traced vector geometry, no placeholders.
+
+### Screens
+```
+(auth)/login
+(main)/                        dashboard.tsx          [Tabs: Home]
+(main)/orders                  orders-list.tsx        [Tabs: Orders]  New | Active | Completed
+(main)/orders/[id]             order-detail.tsx       accept / reject (with reason) / mark ready
+(main)/catalog                 catalog.tsx            [Tabs: Catalog] search + availability toggle
+(main)/catalog/new             product-form.tsx
+(main)/catalog/[id]            product-form.tsx       edit + delete
+(main)/profile                 profile.tsx            [Tabs: Profile] earnings summary
+(main)/profile/edit            profile-edit.tsx
+(main)/profile/storefront      storefront-edit.tsx    store name + description
+(main)/profile/appearance      appearance.tsx
+```
+
+### Milestones
+- [x] 9.1 Project scaffolded, deps installed, `tsc --noEmit` clean
+- [x] 9.2 Auth flow (reuses the mobile Bearer contract) — pending live device test
+- [x] 9.3 Dashboard: new-order alert, revenue + awaiting-payout tiles, needs-action list
+- [x] 9.4 Orders: three-bucket segmented list, detail with vendor journey trail
+- [x] 9.5 Order actions: accept (PAID → VENDOR_ACCEPTED → PREPARING in one request),
+      reject with a required written reason, mark ready for pickup
+- [x] 9.6 Catalog: list from `GET /vendors/me` (there is **no** list-my-products endpoint —
+      products are embedded in the vendor detail payload), live search, availability toggle
+- [x] 9.7 Product create / edit / delete with Zod validation; price entered in naira and
+      converted to kobo on submit
+- [x] 9.8 Profile, storefront editing, appearance; light + dark verified via tokens
+- [x] 9.9 iOS bundle builds clean through Metro (11.3 MB, no resolution errors)
+- [ ] 9.10 Live device test — not yet run
+- [ ] 9.11 Push notifications for new orders — the single highest-value mobile feature for a
+      vendor, and not yet wired. `PATCH /auth/me/push-token` already exists.
+- [ ] 9.12 Android EAS build
+
+### Deliberately not built
+- **Payout / bank account setup.** Verifying a bank account is a multi-step Paystack flow
+  (`/vendors/me/banks` → `/payout-account/verify` → `/payout-account`). The profile screen shows a
+  warning card pointing at the web dashboard when no payout account exists, rather than shipping a
+  half flow. Note this blocks escrow release — `release_escrow` raises
+  `VENDOR_PAYOUT_NOT_CONFIGURED` without it.
+- **Product image upload.** `expo-image-picker` is installed and permissions are declared, but
+  there is no image upload endpoint on the API yet — products carry `image_urls` only. Existing
+  images are preserved on edit; new ones cannot be added from mobile.
+
+### Fixed after first build (2026-08-22)
+- [x] Availability toggle threw an error on device — root cause was a backend 500, not the app.
+      See `STATUS_BACKEND.md` 14.9c.
+- [x] `commission_rate` rendered 100x low (API returns a fraction).
+- [x] `PENDING` orders no longer filed under "Completed".
+
+### Shared package — done 2026-08-22
+The duplication between `app-rider` and `app-vendor` is gone. Both now consume **`@avdan/mobile`**
+(`packages/mobile/`): design tokens, theme context, UI primitives, brand mark, api-client, secure
+storage, toast, formatters and the auth module — 17 files, one copy.
+
+Per-app by design: the status-label map (`src/constants/status.ts`, built from the package's
+`createStatusLabel` factory) and the login form. Note `packages/ui` could not be reused for any of
+this — it is Tailwind + Shadcn and none of it runs in React Native.
+
+Verified: `tsc --noEmit` clean on the package and both apps, and both iOS bundles built through
+Metro and asserted on for correct per-app content. No `metro.config.js` was needed.
+
+---
+
+## Phase 10 — Customer Mobile App (`app-customer`) — built 2026-08-23
+
+> Built third, deliberately, on the foundations laid by §1–§4 of `BACKLOG_HARMONISATION.md` — the
+> shared package, R2 image storage, and the payment verify endpoint all existed before this app
+> was started, so nothing here needed to be reworked mid-build.
+
+### Stack
+Same as the other two: Expo SDK 54, RN 0.81.5, expo-router 6, TanStack Query v5, Zustand, Zod,
+Bearer tokens in `expo-secure-store`, `@avdan/mobile` for theme/UI/auth. Runs on Metro **port 8083**
+alongside app-rider (8081) and app-vendor (8082) — all three verified running simultaneously.
+
+### Brand
+Primary lockup — deep royal-blue ground, gold arrow — straight from the source logo. Distinct from
+app-rider's lighter blue and app-vendor's inverted gold-ground treatment.
+
+### Payment — the actual design decision this app needed
+No official Paystack React Native SDK exists. `react-native-paystack-webview` (a community
+WebView wrapper) was rejected — that is the "web mixed into mobile" outcome, and it would put card
+entry inside a JS-controlled WebView.
+
+**Used instead: `expo-web-browser`'s `openAuthSessionAsync`.** Opens checkout in the OS's own
+hardened browser (SFSafariViewController / Chrome Custom Tab), returns via the
+`avdancustomer://checkout/callback` deep link (scheme matches `payment_callback_url_mobile` on the
+API exactly). Card details never touch app JavaScript. On return, `use-checkout.ts` always calls
+`POST /payment/verify/{reference}` rather than trusting the redirect — the webhook remains
+authoritative, verify is what lets the app answer "did that work?" immediately. `openAuthSessionAsync`
+resolving `dismiss` (user swiped the browser away) still triggers a verify call, since dismissing
+does not mean the payment did not go through.
+
+**Caught before it could break EAS builds:** `expo-web-browser` was initially listed in
+`app.config.ts`'s `plugins` array. It ships no config plugin — it's a pure JS API — and listing it
+would have failed `expo prebuild`/EAS with "does not contain a valid config plugin". Removed;
+confirmed the bundle is unaffected (identical byte size before and after).
+
+### The one real backend constraint this app had to design around
+`POST /orders` takes a single `vendor_id` — there is no multi-vendor order on this backend. So the
+**cart is grouped by vendor** (`cart.store.ts`'s `groupByVendor`), and checkout pays for one
+vendor's items at a time; a basket spanning three sellers is shown honestly as three separate
+checkouts rather than discovered as a failure at the API. This shaped the cart and checkout screens
+directly — it is not a UI choice, it is the schema.
+
+### Screens
+```
+(auth)/login
+(main)/                          home.tsx                    [Tabs: Home]
+(main)/products, /products/[id]  products-list, product-detail
+(main)/categories, /[id]         categories-list, category-products
+(main)/vendors, /[slug]          vendors-list, vendor-detail  [Tabs: Stores]
+(main)/search                    search.tsx (debounced, products+vendors)
+(main)/cart                      cart.tsx                    [Tabs: Cart, badge = item count]
+(main)/checkout                  checkout.tsx (address form + pay)
+(main)/orders, /[id]             orders-list, order-detail    [Tabs: Orders]
+(main)/profile, /edit, /appearance                            [Tabs: Profile]
+app/checkout/callback.tsx        deep-link landing safety net (outside the tab group)
+```
+
+### Milestones
+- [x] 10.1 Scaffolded on `@avdan/mobile`; zero duplicated theme/UI/auth code from day one
+- [x] 10.2 Full catalogue browse: home, products, categories, vendor storefronts, debounced search
+- [x] 10.3 Cart: per-vendor grouping, stock-capped quantity, `expo-secure-store` persistence,
+      hydrated at boot alongside the auth session
+- [x] 10.4 Checkout: address form (Zod, mirrors `DeliveryAddress`), order creation, OS-browser
+      payment, verify-on-return, explicit multi-vendor-checkout messaging
+- [x] 10.5 Orders: active/past tabs, buyer-facing progress trail (collapsed from the full internal
+      state machine — QA and escrow states are invisible to the customer), pay-now retry for a
+      `PENDING` order
+- [x] 10.6 Product-image snapshots (migration 0015) rendered on order line items
+- [x] 10.7 Profile, appearance, edit — same pattern as the other two apps
+- [x] 10.8 `tsc --noEmit` clean; iOS bundle builds through Metro (11.9 MB, zero resolution errors,
+      zero cross-app string contamination verified against both sibling bundles)
+- [ ] 10.9 Live device test — not yet run on any of the three apps
+- [ ] 10.10 Push notifications for order status changes
+- [ ] 10.11 Android EAS build
+
+### Deliberately not built
+- **Saved delivery addresses.** The API has no address-book endpoint — `delivery_address` is
+  captured per order, not stored against the customer. Checkout asks each time. A saved-addresses
+  feature needs a backend endpoint first.
+- **Order tracking map.** `app-rider` broadcasts live location; nothing customer-facing consumes it
+  yet. The order detail screen shows the buyer-facing status trail, not a map.
+- **Notification center.** `GET /notifications` exists and is unused by this app — same shape as
+  the gap already noted for the other two apps.
 
 ---
 
@@ -516,8 +893,21 @@ OUT_FOR_DELIVERY  → FAILED_DELIVERY    (rider reports failed attempt)
 
 ## Notes for Agent
 
+- **Reconciled 2026-08-22.** Phase 3A and backend Phases 12–13 were audited against the codebase and
+  ticked; both were fully built while their checklists showed unticked. Trust the code over an
+  unticked box in this file, and re-audit before assuming something is missing.
+- **The `@avdan/types` placeholder is the biggest silent liability in the repo.** `generated.ts` is
+  8 lines of `Record<string, never>`. Everything typed as an API response in all 6 apps is
+  hand-written and unvalidated. Run `scripts/generate-types.sh` the moment FastAPI is up, then
+  `pnpm turbo run type-check` and expect real drift to surface.
 - Phases 2–7 are code-complete as of 2026-06-09. All require live backend verification.
 - When starting a session, run `pnpm turbo run type-check` to check all apps before touching code.
 - `generate-types.sh` must be run once the backend is live to regenerate `@avdan/types/generated.ts`.
 - All apps pass TypeScript strict mode checks as of 2026-06-09.
-- Brand color placeholder: `--primary: 199 89% 48%` (#0ea5e9). Change `:root { --primary: ... }` in `packages/ui/src/tokens/tokens.css` to rebrand.
+- Brand is final, not a placeholder: `--primary: 220 85% 50%` (#135BEC, Royal Blue) and
+  `--brand-accent: 38 92% 50%` (#F59F0A, Signal Orange — sparing use only) in
+  `packages/ui/src/tokens/tokens.css`. The old `199 89% 48%` (#0ea5e9, cyan) placeholder is gone
+  from tokens.css but check for it before hardcoding any new chart/inline color — it was still
+  leaking into recharts `stroke`/`fill` props (which don't read CSS vars) in both
+  `dashboard-page.tsx` and `analytics-page.tsx` well after the rebrand, since nothing type-checks
+  a raw hex/hsl string against the token file. Fixed 2026-07-30; grep for `hsl(199` if it recurs.
