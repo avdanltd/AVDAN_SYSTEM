@@ -235,7 +235,9 @@ class VendorService:
             generate_product_embedding.delay(str(product.id))
         except Exception:
             pass
-        return product
+        # Re-select with `category` loaded — a newly added instance has no relationship
+        # populated, and the serializer touching it would trigger an async lazy load.
+        return await self._load_product_with_category(product.id)
 
     async def update_product(
         self, user_id: str, product_id: str, data: UpdateProductRequest
@@ -319,13 +321,27 @@ class VendorService:
             raise NotFoundException("Vendor not found")
         return vendor
 
+    async def _load_product_with_category(self, product_id: uuid.UUID) -> Product:
+        result = await self.db.execute(
+            select(Product)
+            .where(Product.id == product_id)
+            .options(selectinload(Product.category))
+        )
+        return result.scalar_one()
+
     async def _get_product_for_user(self, user_id: str, product_id: str) -> Product:
         vendor = await self._get_vendor_for_user(user_id)
         result = await self.db.execute(
-            select(Product).where(
+            # `category` MUST be eager-loaded: the router's _product_response reads
+            # `product.category.name`, and under the async engine a lazy load there raises
+            # "greenlet_spawn has not been called". Without this every vendor product write
+            # (create / update / availability) returned a 500.
+            select(Product)
+            .where(
                 Product.id == uuid.UUID(product_id),
                 Product.vendor_id == vendor.id,
             )
+            .options(selectinload(Product.category))
         )
         product = result.scalar_one_or_none()
         if not product:

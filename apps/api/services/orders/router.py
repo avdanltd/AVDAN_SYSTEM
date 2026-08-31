@@ -26,6 +26,7 @@ def _item_resp(item: object) -> OrderItemResponse:
         id=str(i.id),
         product_id=str(i.product_id),
         product_name=i.product_name,
+        product_image_url=i.product_image_url,
         price_kobo=i.price_kobo,
         quantity=i.quantity,
         subtotal_kobo=i.subtotal_kobo,

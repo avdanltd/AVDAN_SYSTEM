@@ -37,6 +37,16 @@ class UpdateProfileRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     message: str
+    access_token: str | None = None
+    refresh_token: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str | None = None
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
 
 
 class UserResponse(BaseModel):

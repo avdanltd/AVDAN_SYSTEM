@@ -1,5 +1,3 @@
-import uuid
-from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,7 +14,6 @@ from services.qa.service import QAService
 
 router = APIRouter()
 
-_EVIDENCE_DIR = Path("media") / "qa-evidence"
 
 
 def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
@@ -35,6 +32,7 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
                 id=str(i.id),
                 product_id=str(i.product_id),
                 product_name=i.product_name,
+                product_image_url=i.product_image_url,
                 price_kobo=i.price_kobo,
                 quantity=i.quantity,
                 subtotal_kobo=i.subtotal_kobo,
@@ -128,17 +126,25 @@ async def upload_evidence(
     current_user: CurrentUser = Depends(require_role("agent")),
     db: AsyncSession = Depends(get_db),
 ) -> EvidenceUploadResponse:
-    _EVIDENCE_DIR.mkdir(parents=True, exist_ok=True)
-
-    ext = Path(file.filename or "file").suffix or ".jpg"
-    filename = f"{order_id}_{uuid.uuid4().hex[:8]}{ext}"
-    filepath = _EVIDENCE_DIR / filename
+    # Stored on R2, not local disk. The previous implementation wrote under ./media, which did
+    # not survive a container restart and broke outright with more than one API replica.
+    from services.storage.service import StorageService
 
     contents = await file.read()
-    with open(filepath, "wb") as f:
-        f.write(contents)
+    content_type = file.content_type or "image/jpeg"
 
-    url = f"/media/qa-evidence/{filename}"
+    storage = StorageService()
+    key = await storage.put_object(
+        prefix="qa-evidence",
+        body=contents,
+        content_type=content_type,
+        scope_id=order_id,
+    )
+
+    # QA evidence is dispute material, so it is NOT public. What we record is the API read path,
+    # which role-checks the caller and then redirects to a short-lived presigned URL.
+    filename = key.rsplit("/", 1)[-1]
+    url = f"/uploads/qa-evidence/{order_id}/{filename}"
 
     svc = QAService(db)
     await svc.add_evidence_url(current_user.user_id, order_id, url)

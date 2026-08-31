@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.analytics.models import DEFAULT_PLATFORM_CONFIG, AuditLog, PlatformConfig
 from services.dispatch.models import Rider
+from services.dispute.models import Dispute
 from services.orders.models import Order
 from services.orders.state_machine import OrderStatus
 from services.payment.models import EscrowStatus, EscrowTransaction
@@ -54,11 +55,23 @@ class AnalyticsService:
             )
         )).scalar_one())
 
+        orders_today = (await self.db.execute(
+            select(func.count()).select_from(Order).where(Order.created_at >= today_start)
+        )).scalar_one()
+
+        pending_disputes = (await self.db.execute(
+            select(func.count()).select_from(Dispute).where(
+                Dispute.status.in_(["open", "under_review"])
+            )
+        )).scalar_one()
+
         return {
             "active_orders": active_orders,
             "riders_online": riders_online,
             "revenue_today_kobo": revenue_today,
             "gmv_today_kobo": gmv_today,
+            "orders_today": orders_today,
+            "pending_disputes": pending_disputes,
         }
 
     async def get_order_volume(self, period: str = "day") -> dict:
@@ -70,15 +83,16 @@ class AnalyticsService:
         else:
             since = datetime.now(UTC) - timedelta(days=30)
 
+        period_expr = func.date_trunc(trunc, Order.created_at)
         result = await self.db.execute(
             select(
-                func.date_trunc(trunc, Order.created_at).label("period"),
+                period_expr.label("period"),
                 func.count().label("order_count"),
                 func.coalesce(func.sum(Order.total_kobo), 0).label("volume_kobo"),
             )
             .where(Order.created_at >= since)
-            .group_by(func.date_trunc(trunc, Order.created_at))
-            .order_by(func.date_trunc(trunc, Order.created_at))
+            .group_by(period_expr)
+            .order_by(period_expr)
         )
         return {
             "period_type": trunc,

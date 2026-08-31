@@ -129,24 +129,18 @@ class DispatchService:
             if not candidates:
                 raise AppError(404, "NO_RIDERS_AVAILABLE", "No online riders available in this zone")
 
+            # Vendor has no lat/lng column (zone_id only) — no coordinates to refine
+            # by distance against, so the nearest available rider in-zone is first-match.
             nearest = candidates[0]
-            if vendor and vendor.lat and vendor.lng:
-                def _dist(r: Rider) -> float:
-                    if r.lat and r.lng:
-                        return _haversine_km(float(r.lat), float(r.lng), float(vendor.lat), float(vendor.lng))  # type: ignore[arg-type]
-                    return float("inf")
-                nearest = min(candidates, key=_dist)
 
-        # Assign rider to order via state machine
+        # Assign the rider and STOP. Assignment is not a state transition: the order stays
+        # READY_FOR_PICKUP until the rider physically collects it and taps Confirm Pickup
+        # (READY_FOR_PICKUP → PICKED_UP, actor_role="rider" — see state_machine.py:54).
+        # Previously this auto-transitioned to PICKED_UP on behalf of the rider, which
+        # fabricated a pickup that had not happened and made the rider's own Confirm Pickup
+        # action unreachable. get_db() commits, so the rider_id write persists on its own.
         order.rider_id = nearest.id
-        order_svc = OrderService(self.db)
-        await order_svc.transition(
-            order_id=order_id,
-            to_state=OrderStatus.PICKED_UP,
-            actor_id=str(nearest.user_id),
-            actor_role="rider",
-            metadata={"assigned_rider_id": str(nearest.id)},
-        )
+        await self.db.flush()
         return nearest
 
     async def get_rider_orders(self, user_id: str) -> list[Order]:
@@ -157,15 +151,66 @@ class DispatchService:
             .where(
                 Order.rider_id == rider.id,
                 Order.status.in_([
+                    # READY_FOR_PICKUP and QA_PASSED must be included: they are the two states
+                    # where the rider is the actor for the next transition (READY_FOR_PICKUP →
+                    # PICKED_UP, QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned
+                    # order invisible to the rider who alone could advance it — a deadlock.
+                    OrderStatus.READY_FOR_PICKUP,
                     OrderStatus.PICKED_UP,
                     OrderStatus.IN_TRANSIT_TO_HUB,
                     OrderStatus.AT_HUB,
+                    OrderStatus.QA_PASSED,
                     OrderStatus.OUT_FOR_DELIVERY,
                 ]),
             )
             .options(selectinload(Order.items))
         )
         return list(result.scalars().all())
+
+    async def get_rider_order_history(
+        self, user_id: str, limit: int = 50, offset: int = 0
+    ) -> list[Order]:
+        """Terminal-state orders this rider handled. Separate from the active list so a
+        completed delivery leaves the working queue without vanishing from the app entirely."""
+        from sqlalchemy.orm import selectinload
+        rider = await self.get_or_create_rider(user_id)
+        result = await self.db.execute(
+            select(Order)
+            .where(
+                Order.rider_id == rider.id,
+                Order.status.in_([
+                    OrderStatus.DELIVERED,
+                    OrderStatus.FAILED_DELIVERY,
+                    OrderStatus.PAYMENT_RELEASE_PENDING,
+                    OrderStatus.PAYMENT_RELEASED,
+                    OrderStatus.COMPLETED,
+                    OrderStatus.DISPUTED,
+                    OrderStatus.DISPUTE_RESOLVED,
+                    OrderStatus.CANCELLED,
+                ]),
+            )
+            .options(selectinload(Order.items))
+            .order_by(Order.updated_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return list(result.scalars().all())
+
+    async def get_rider_order(self, user_id: str, order_id: str) -> Order:
+        """A single order scoped to this rider, in ANY status. The app's order-detail screen
+        used to filter the active list client-side, so a just-delivered order rendered
+        'Order not found' the instant it left that list."""
+        from sqlalchemy.orm import selectinload
+        rider = await self.get_or_create_rider(user_id)
+        result = await self.db.execute(
+            select(Order)
+            .where(Order.id == uuid.UUID(order_id), Order.rider_id == rider.id)
+            .options(selectinload(Order.items))
+        )
+        order = result.scalar_one_or_none()
+        if not order:
+            raise NotFoundException("Order not found or not assigned to this rider")
+        return order
 
     async def rider_transition(self, user_id: str, order_id: str, to_state: str) -> Order:
         rider = await self.get_or_create_rider(user_id)
@@ -179,13 +224,30 @@ class DispatchService:
         if not order:
             raise NotFoundException("Order not found or not assigned to this rider")
         order_svc = OrderService(self.db)
-        return await order_svc.transition(
+        order = await order_svc.transition(
             order_id=order_id,
             to_state=to_state,
             actor_id=user_id,
             actor_role="rider",
             metadata={},
         )
+
+        # Delivery starts the escrow hold. Nothing else in the codebase moved an order out of
+        # DELIVERED, so every delivered order used to sit there forever and the vendor was never
+        # paid — `workers/tasks/escrow.py` only ever polled for orders ALREADY in
+        # PAYMENT_RELEASE_PENDING. Chaining here (same pattern the hub QA flow uses for
+        # QA_PASSED -> OUT_FOR_DELIVERY) closes the lifecycle: entering the state stamps
+        # `updated_at`, which is the timestamp the 48h release cutoff is measured from.
+        if to_state == OrderStatus.DELIVERED:
+            order = await order_svc.transition(
+                order_id=order_id,
+                to_state=OrderStatus.PAYMENT_RELEASE_PENDING,
+                actor_id=None,
+                actor_role="system",
+                metadata={"trigger": "rider_delivered", "rider_id": str(rider.id)},
+            )
+
+        return order
 
     async def get_available_riders(self, zone_id: str | None) -> list[Rider]:
         query = select(Rider).where(Rider.online.is_(True))
@@ -213,9 +275,15 @@ class DispatchService:
             select(Order).where(
                 Order.rider_id == rider.id,
                 Order.status.in_([
+                    # READY_FOR_PICKUP and QA_PASSED must be included: they are the two states
+                    # where the rider is the actor for the next transition (READY_FOR_PICKUP →
+                    # PICKED_UP, QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned
+                    # order invisible to the rider who alone could advance it — a deadlock.
+                    OrderStatus.READY_FOR_PICKUP,
                     OrderStatus.PICKED_UP,
                     OrderStatus.IN_TRANSIT_TO_HUB,
                     OrderStatus.AT_HUB,
+                    OrderStatus.QA_PASSED,
                     OrderStatus.OUT_FOR_DELIVERY,
                 ]),
             )

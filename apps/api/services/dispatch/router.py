@@ -35,6 +35,20 @@ def _rider_resp(rider: object) -> RiderResponse:
 
 # ── Rider endpoints ───────────────────────────────────────────────────────────
 
+@router.get("/me", response_model=RiderResponse)
+async def get_my_rider_profile(
+    current_user: CurrentUser = Depends(require_role("rider")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> RiderResponse:
+    """The caller's own rider record. Without this the mobile app had no way to learn its
+    real online/offline state on launch and always assumed offline, which could contradict
+    what dispatch actually saw."""
+    svc = DispatchService(db, redis)
+    rider = await svc.get_or_create_rider(current_user.user_id)
+    return _rider_resp(rider)
+
+
 @router.post("/me/availability", response_model=RiderResponse)
 async def set_availability(
     data: AvailabilityUpdate,
@@ -80,40 +94,76 @@ async def assign_rider(
     )
 
 
+def _order_item_resp(i: object) -> OrderItemResponse:
+    from services.orders.models import OrderItem
+    it: OrderItem = i  # type: ignore[assignment]
+    return OrderItemResponse(
+        id=str(it.id),
+        product_id=str(it.product_id),
+        product_name=it.product_name,
+        product_image_url=it.product_image_url,
+        price_kobo=it.price_kobo,
+        quantity=it.quantity,
+        subtotal_kobo=it.subtotal_kobo,
+    )
+
+
+def _order_resp(o: object) -> OrderResponse:
+    from services.orders.models import Order
+    order: Order = o  # type: ignore[assignment]
+    return OrderResponse(
+        id=str(order.id),
+        customer_id=str(order.customer_id),
+        vendor_id=str(order.vendor_id),
+        status=order.status,
+        total_kobo=order.total_kobo,
+        delivery_address=order.delivery_address,
+        items=[_order_item_resp(i) for i in (order.items or [])],
+        created_at=order.created_at.isoformat(),
+        updated_at=order.updated_at.isoformat(),
+    )
+
+
 @router.get("/me/orders", response_model=list[OrderResponse])
 async def get_my_orders(
     current_user: CurrentUser = Depends(require_role("rider")),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> list[OrderResponse]:
-    from services.orders.models import Order, OrderItem
+    """Active work queue only — orders the rider still has to act on."""
     svc = DispatchService(db, redis)
     orders = await svc.get_rider_orders(current_user.user_id)
+    return [_order_resp(o) for o in orders]
 
-    def _item(i: OrderItem) -> OrderItemResponse:
-        return OrderItemResponse(
-            id=str(i.id),
-            product_id=str(i.product_id),
-            product_name=i.product_name,
-            price_kobo=i.price_kobo,
-            quantity=i.quantity,
-            subtotal_kobo=i.subtotal_kobo,
-        )
 
-    def _order(o: Order) -> OrderResponse:
-        return OrderResponse(
-            id=str(o.id),
-            customer_id=str(o.customer_id),
-            vendor_id=str(o.vendor_id),
-            status=o.status,
-            total_kobo=o.total_kobo,
-            delivery_address=o.delivery_address,
-            items=[_item(i) for i in (o.items or [])],
-            created_at=o.created_at.isoformat(),
-            updated_at=o.updated_at.isoformat(),
-        )
+# NOTE: this route MUST stay declared above /me/orders/{order_id}, otherwise FastAPI
+# matches the literal path segment "history" as an order_id and returns a 422/404.
+@router.get("/me/orders/history", response_model=list[OrderResponse])
+async def get_my_order_history(
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    current_user: CurrentUser = Depends(require_role("rider")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> list[OrderResponse]:
+    """Completed/terminal orders this rider handled, newest first."""
+    svc = DispatchService(db, redis)
+    orders = await svc.get_rider_order_history(current_user.user_id, limit=limit, offset=offset)
+    return [_order_resp(o) for o in orders]
 
-    return [_order(o) for o in orders]
+
+@router.get("/me/orders/{order_id}", response_model=OrderResponse)
+async def get_my_order(
+    order_id: str,
+    current_user: CurrentUser = Depends(require_role("rider")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> OrderResponse:
+    """One order in ANY status, scoped to this rider — so the detail screen survives
+    the order leaving the active queue after delivery."""
+    svc = DispatchService(db, redis)
+    order = await svc.get_rider_order(current_user.user_id, order_id)
+    return _order_resp(order)
 
 
 @router.post("/me/orders/{order_id}/pickup", response_model=dict)
