@@ -12,6 +12,8 @@ interface StatsCardProps {
   loading?: boolean
   className?: string
   valueClassName?: string
+  /** 'accent' reserves the premium Signal-Orange icon treatment for the one standout stat per screen. */
+  tone?: 'primary' | 'accent'
 }
 
 export function StatsCard({
@@ -23,6 +25,7 @@ export function StatsCard({
   loading = false,
   className,
   valueClassName,
+  tone = 'primary',
 }: StatsCardProps) {
   return (
     <Card className={cn('relative overflow-hidden', className)}>
@@ -52,7 +55,14 @@ export function StatsCard({
             )}
           </div>
           {icon && (
-            <div className="ml-4 shrink-0 rounded-lg bg-primary/10 p-3 text-primary">{icon}</div>
+            <div
+              className={cn(
+                'ml-4 shrink-0 rounded-full p-3',
+                tone === 'accent' ? 'bg-brand-accent/10 text-brand-accent' : 'bg-primary/10 text-primary',
+              )}
+            >
+              {icon}
+            </div>
           )}
         </div>
       </CardContent>
