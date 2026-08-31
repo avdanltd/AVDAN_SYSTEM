@@ -1,0 +1,33 @@
+{
+  "name": "@avdan/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.64.1",
+    "expo-constants": "*",
+    "expo-router": "*",
+    "expo-secure-store": "*",
+    "lucide-react-native": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-svg": "*",
+    "react-native-toast-message": "*",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.3"
+  },
+  "dependencies": {
+    "@avdan/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.1.17",
+    "typescript": "~5.9.3"
+  }
+}
