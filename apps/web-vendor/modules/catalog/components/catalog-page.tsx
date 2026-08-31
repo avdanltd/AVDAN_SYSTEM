@@ -34,7 +34,7 @@ function ProductCard({ product }: { product: Product }) {
 
   return (
     <>
-      <Card className="flex flex-col">
+      <Card className="flex flex-col shadow-card">
         <CardContent className="flex-1 p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0 flex-1">
@@ -47,7 +47,7 @@ function ProductCard({ product }: { product: Product }) {
             </div>
             <Badge
               variant={product.available ? 'default' : 'secondary'}
-              className={product.available ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}
+              className={product.available ? 'bg-success-muted text-success hover:bg-success-muted' : ''}
             >
               {product.available ? 'Available' : 'Unavailable'}
             </Badge>
@@ -148,7 +148,7 @@ export function CatalogPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Products</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Products</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {isLoading ? 'Loading…' : `${products.length} product${products.length !== 1 ? 's' : ''}`}
           </p>

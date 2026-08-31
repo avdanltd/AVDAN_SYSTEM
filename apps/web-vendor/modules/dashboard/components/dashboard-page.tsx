@@ -67,7 +67,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Welcome back — here&apos;s what&apos;s happening today.
         </p>
@@ -76,36 +76,36 @@ export function DashboardPage() {
       {/* Stats grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatsCard
-          title="Orders Today"
-          value={stats?.orders_today ?? 0}
+          title="Total Orders"
+          value={stats?.total_orders ?? 0}
           loading={statsLoading}
           icon={<ShoppingBag className="h-5 w-5" />}
         />
         <StatsCard
-          title="Revenue Today"
-          value={stats ? formatPrice(stats.revenue_today_kobo) : '—'}
+          title="Total Revenue"
+          value={stats ? formatPrice(stats.total_revenue_kobo) : '—'}
           loading={statsLoading}
           icon={<TrendingUp className="h-5 w-5" />}
         />
         <StatsCard
-          title="Pending Orders"
-          value={stats?.pending_orders ?? 0}
+          title="Active Orders"
+          value={stats?.active_orders ?? 0}
           loading={statsLoading}
           icon={<Clock className="h-5 w-5" />}
-          valueClassName={stats?.pending_orders ? 'text-amber-600' : undefined}
+          valueClassName={stats?.active_orders ? 'text-amber-600' : undefined}
         />
         <StatsCard
-          title="Avg Rating"
-          value={stats?.avg_rating != null ? stats.avg_rating.toFixed(1) : 'N/A'}
+          title="Completed Orders"
+          value={stats?.completed_orders ?? 0}
           loading={statsLoading}
           icon={<Star className="h-5 w-5" />}
         />
       </div>
 
       {/* Recent orders */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-base font-semibold">Recent Orders</CardTitle>
+          <CardTitle className="font-display text-base font-semibold">Recent Orders</CardTitle>
           <Link href={ROUTES.orders}>
             <Button variant="outline" size="sm">
               View All Orders
