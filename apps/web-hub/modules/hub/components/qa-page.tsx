@@ -144,7 +144,7 @@ export function QaPage({ orderId }: QaPageProps) {
   const shortId = order.id.slice(0, 8).toUpperCase()
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className=" max-w-2xl space-y-6">
       {/* Back + Header */}
       <div>
         <Link href={ROUTES.orders}>

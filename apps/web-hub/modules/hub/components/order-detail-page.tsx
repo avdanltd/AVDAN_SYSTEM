@@ -29,7 +29,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="max-w-2xl space-y-6">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-48 w-full" />
       </div>
@@ -57,7 +57,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const canQa = order.status === 'QA_IN_PROGRESS'
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-6">
       {/* Back + header */}
       <div>
         <Link href={ROUTES.orders}>
