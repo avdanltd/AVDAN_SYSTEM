@@ -14,9 +14,10 @@ import {
   Settings,
   Building2,
   Tag,
+  Siren,
 } from 'lucide-react'
 
-import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
+import { Avatar, AvatarFallback, Separator, cn, Logo, Button } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 
@@ -50,8 +51,11 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center border-b border-border px-6">
-        <Logo size="md" suffix="Admin" />
+      <div className="flex h-20 flex-col justify-center gap-1 border-b border-border px-6">
+        <Logo size="sm" />
+        <span className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Operations Hub
+        </span>
       </div>
 
       <nav className="flex-1 px-3 py-4">
@@ -78,6 +82,18 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
           })}
         </ul>
       </nav>
+
+      <div className="px-3 pb-3">
+        <Button
+          asChild
+          className="w-full justify-start gap-2 bg-foreground text-background hover:bg-foreground/90"
+        >
+          <Link href={ROUTES.dispatch} onClick={onNav}>
+            <Siren className="h-4 w-4 shrink-0" />
+            Emergency Dispatch
+          </Link>
+        </Button>
+      </div>
 
       <Separator />
       <div className="flex items-center gap-3 px-4 py-4">

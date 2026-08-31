@@ -72,16 +72,16 @@ export function ConfigPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Platform Configuration</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Platform Configuration</h1>
         <p className="text-sm text-muted-foreground">
           Adjust platform-wide settings. Changes take effect immediately.
         </p>
       </div>
 
       {/* Config Form */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
+          <CardTitle className="font-display">Settings</CardTitle>
           <CardDescription>Commission, delivery fees, and operational parameters</CardDescription>
         </CardHeader>
         <CardContent>
@@ -175,9 +175,9 @@ export function ConfigPage() {
 
       {/* Audit Log — only if endpoint exists */}
       {!auditError && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Audit Log</CardTitle>
+            <CardTitle className="font-display">Audit Log</CardTitle>
             <CardDescription>Recent admin actions on the platform</CardDescription>
           </CardHeader>
           <CardContent>

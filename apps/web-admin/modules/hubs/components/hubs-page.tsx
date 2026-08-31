@@ -216,7 +216,7 @@ export function HubsPage() {
     <div className="flex flex-col gap-4 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Hubs</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">Hubs</h1>
           <p className="text-sm text-muted-foreground">{hubs.length} hub{hubs.length !== 1 ? 's' : ''} registered</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
@@ -225,7 +225,7 @@ export function HubsPage() {
         </Button>
       </div>
 
-      <div className="rounded-lg border border-border bg-background">
+      <div className="rounded-lg border border-border bg-background shadow-card">
         <DataTable
           columns={columns}
           data={hubs}

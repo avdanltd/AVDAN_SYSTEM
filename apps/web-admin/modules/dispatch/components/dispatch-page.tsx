@@ -249,7 +249,7 @@ function AllRidersList() {
   const { data: riders, isLoading } = useAllRiders()
 
   return (
-    <Card>
+    <Card className="shadow-card">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium">All Riders</CardTitle>
       </CardHeader>
@@ -313,7 +313,7 @@ export function DispatchPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Dispatch</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Dispatch</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Assign riders to ready orders and monitor active deliveries.
           </p>

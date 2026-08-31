@@ -118,7 +118,7 @@ export function EscrowPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Escrow Overview</h1>
+        <h1 className="font-display text-2xl font-semibold text-foreground">Escrow Overview</h1>
         <p className="text-sm text-muted-foreground">
           Monitor held payments — releases are automated via Celery Beat
         </p>
@@ -131,6 +131,7 @@ export function EscrowPage() {
           value={formatKobo(totalHeldKobo)}
           icon={<DollarSign className="h-5 w-5" />}
           subtitle="Awaiting automatic release"
+          tone="accent"
         />
         <StatsCard
           title="Pending Release Count"

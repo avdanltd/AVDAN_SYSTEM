@@ -36,6 +36,9 @@ import { formatKobo } from '@/lib/format'
 import { usePlatformOverview } from '../hooks/use-platform-overview'
 import { useOrderVolume } from '../hooks/use-order-volume'
 
+const BRAND_PRIMARY = '#135BEC'
+const BORDER_COLOR = 'hsl(214 32% 91%)'
+
 type Period = 'day' | 'week' | 'month'
 
 const PERIOD_DAYS: Record<Period, string> = {
@@ -54,7 +57,7 @@ export function AnalyticsPage() {
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Analytics</h1>
+          <h1 className="font-display text-2xl font-semibold text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground">Platform-wide metrics and trends</p>
         </div>
         <div className="flex items-center gap-2">
@@ -99,9 +102,10 @@ export function AnalyticsPage() {
         />
         <StatsCard
           title="Total GMV"
-          value={overview ? formatKobo(overview.gmv_kobo) : '—'}
+          value={overview ? formatKobo(overview.gmv_today_kobo) : '—'}
           icon={<DollarSign className="h-5 w-5" />}
           loading={overviewLoading}
+          tone="accent"
         />
         <StatsCard
           title="Pending Disputes"
@@ -115,9 +119,9 @@ export function AnalyticsPage() {
       </div>
 
       {/* Order Volume Chart */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Order Volume — {PERIOD_DAYS[period]}</CardTitle>
+          <CardTitle className="font-display">Order Volume — {PERIOD_DAYS[period]}</CardTitle>
           <CardDescription>Number of orders placed in the selected period</CardDescription>
         </CardHeader>
         <CardContent className="h-72">
@@ -131,32 +135,32 @@ export function AnalyticsPage() {
               >
                 <defs>
                   <linearGradient id="colorOrdersAnalytics" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="hsl(199 89% 48%)" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="hsl(199 89% 48%)" stopOpacity={0} />
+                    <stop offset="5%" stopColor={BRAND_PRIMARY} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={BRAND_PRIMARY} stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 32% 91%)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER_COLOR} />
                 <XAxis
-                  dataKey="date"
+                  dataKey="period"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v: string) => v.slice(5)}
+                  tickFormatter={(v: string) => v.slice(5, 10)}
                 />
                 <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{
                     background: 'white',
-                    border: '1px solid hsl(214 32% 91%)',
+                    border: `1px solid ${BORDER_COLOR}`,
                     borderRadius: 8,
                   }}
                 />
                 <Legend />
                 <Area
                   type="monotone"
-                  dataKey="count"
+                  dataKey="order_count"
                   name="Orders"
-                  stroke="hsl(199 89% 48%)"
+                  stroke={BRAND_PRIMARY}
                   fillOpacity={1}
                   fill="url(#colorOrdersAnalytics)"
                   strokeWidth={2}
@@ -168,9 +172,9 @@ export function AnalyticsPage() {
       </Card>
 
       {/* Revenue Chart */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle>Revenue — {PERIOD_DAYS[period]}</CardTitle>
+          <CardTitle className="font-display">Revenue — {PERIOD_DAYS[period]}</CardTitle>
           <CardDescription>Daily revenue in ₦ for the selected period</CardDescription>
         </CardHeader>
         <CardContent className="h-72">
@@ -182,13 +186,13 @@ export function AnalyticsPage() {
                 data={volumeData?.data ?? []}
                 margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(214 32% 91%)" />
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER_COLOR} />
                 <XAxis
-                  dataKey="date"
+                  dataKey="period"
                   tick={{ fontSize: 12 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v: string) => v.slice(5)}
+                  tickFormatter={(v: string) => v.slice(5, 10)}
                 />
                 <YAxis
                   tick={{ fontSize: 12 }}
@@ -199,18 +203,13 @@ export function AnalyticsPage() {
                 <Tooltip
                   contentStyle={{
                     background: 'white',
-                    border: '1px solid hsl(214 32% 91%)',
+                    border: `1px solid ${BORDER_COLOR}`,
                     borderRadius: 8,
                   }}
                   formatter={(value: unknown) => [formatKobo(Number(value)), 'Revenue']}
                 />
                 <Legend />
-                <Bar
-                  dataKey="revenue_kobo"
-                  name="Revenue"
-                  fill="hsl(142 76% 36%)"
-                  radius={[4, 4, 0, 0]}
-                />
+                <Bar dataKey="volume_kobo" name="Revenue" fill={BRAND_PRIMARY} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}

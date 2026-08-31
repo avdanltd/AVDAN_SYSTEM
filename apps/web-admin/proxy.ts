@@ -102,5 +102,5 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: ['/((?!login|register|_next|favicon).*)'],
+  matcher: ['/((?!login|register|_next|favicon|.*\\.(?:png|jpg|jpeg|svg|gif|webp|ico)$).*)'],
 }
