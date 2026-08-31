@@ -75,14 +75,14 @@ export function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Profile</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Profile</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Manage your agent account details.
         </p>
       </div>
 
       {/* Identity card */}
-      <Card>
+      <Card className="shadow-card">
         <CardContent className="flex items-center gap-5 pt-6">
           <Avatar className="h-16 w-16 shrink-0">
             <AvatarFallback className="text-xl font-semibold">
@@ -110,9 +110,9 @@ export function ProfilePage() {
       </Card>
 
       {/* Edit form */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Edit Details</CardTitle>
+          <CardTitle className="font-display text-base">Edit Details</CardTitle>
           <CardDescription>Update your name and phone number.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -173,9 +173,9 @@ export function ProfilePage() {
       </Card>
 
       {/* Read-only info */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Account Info</CardTitle>
+          <CardTitle className="font-display text-base">Account Info</CardTitle>
           <CardDescription>These fields are managed by your administrator.</CardDescription>
         </CardHeader>
         <CardContent>

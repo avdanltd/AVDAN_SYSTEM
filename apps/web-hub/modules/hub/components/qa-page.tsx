@@ -154,7 +154,7 @@ export function QaPage({ orderId }: QaPageProps) {
           </Button>
         </Link>
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-xl font-bold text-foreground">Order #{shortId}</h1>
+          <h1 className="font-display text-xl font-bold text-foreground">Order #{shortId}</h1>
           <OrderStatusBadge status={order.status} />
         </div>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -164,9 +164,9 @@ export function QaPage({ orderId }: QaPageProps) {
       </div>
 
       {/* Items checklist */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Items to Check</CardTitle>
+          <CardTitle className="font-display text-base">Items to Check</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           {order.items && order.items.length > 0 ? (
@@ -199,9 +199,9 @@ export function QaPage({ orderId }: QaPageProps) {
       </Card>
 
       {/* QA notes + evidence */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">QA Inspection</CardTitle>
+          <CardTitle className="font-display text-base">QA Inspection</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           <div className="space-y-2">
@@ -293,7 +293,7 @@ export function QaPage({ orderId }: QaPageProps) {
           size="lg"
           className={cn(
             'h-14 gap-2 text-base font-semibold',
-            'bg-green-600 hover:bg-green-700 text-white',
+            'bg-success text-success-foreground hover:bg-success/90',
           )}
           onClick={() => setPassDialogOpen(true)}
           disabled={isBusy}

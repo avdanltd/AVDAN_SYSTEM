@@ -12,7 +12,7 @@ export function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Hub Dashboard</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Hub Dashboard</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Live queue updates every 15 seconds.
         </p>
@@ -32,7 +32,7 @@ export function DashboardPage() {
           icon={<ClipboardCheck className="h-5 w-5" />}
           loading={isLoading}
           valueClassName={
-            (stats?.qa_pending ?? 0) > 0 ? 'text-amber-600' : undefined
+            (stats?.qa_pending ?? 0) > 0 ? 'text-warning' : undefined
           }
         />
         <StatsCard
@@ -48,7 +48,7 @@ export function DashboardPage() {
           loading={isLoading}
           valueClassName={
             stats && stats.qa_pass_rate >= 90
-              ? 'text-green-600'
+              ? 'text-success'
               : stats && stats.qa_pass_rate < 70
                 ? 'text-destructive'
                 : undefined
@@ -57,7 +57,7 @@ export function DashboardPage() {
       </div>
 
       {/* Inbound Queue */}
-      <div className="rounded-xl border border-border bg-background p-5">
+      <div className="rounded-xl border border-border bg-background p-5 shadow-card">
         <OrderQueue />
       </div>
     </div>

@@ -68,7 +68,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         </Link>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-xl font-bold text-foreground">Order #{shortId}</h1>
+            <h1 className="font-display text-xl font-bold text-foreground">Order #{shortId}</h1>
             <OrderStatusBadge status={order.status} />
           </div>
           <div className="flex items-center gap-2">
@@ -100,9 +100,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       </div>
 
       {/* Order details */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Order Details</CardTitle>
+          <CardTitle className="font-display text-base">Order Details</CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
           <dl className="divide-y divide-border">
@@ -134,9 +134,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
 
       {/* Items */}
       {order.items && order.items.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Items ({order.items.length})</CardTitle>
+            <CardTitle className="font-display text-base">Items ({order.items.length})</CardTitle>
           </CardHeader>
           <CardContent className="pt-0">
             <div className="divide-y divide-border">

@@ -10,7 +10,7 @@ export function AnalyticsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+        <h1 className="font-display text-2xl font-bold text-foreground">Analytics</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Hub performance metrics — refreshes every 30 seconds.
         </p>
@@ -57,9 +57,9 @@ export function AnalyticsPage() {
       </div>
 
       {/* QA Pass Rate visual */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">QA Pass Rate</CardTitle>
+          <CardTitle className="font-display text-base">QA Pass Rate</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -104,9 +104,9 @@ export function AnalyticsPage() {
       </Card>
 
       {/* Summary breakdown */}
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Today at a Glance</CardTitle>
+          <CardTitle className="font-display text-base">Today at a Glance</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (

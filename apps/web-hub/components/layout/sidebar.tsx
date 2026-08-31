@@ -31,8 +31,11 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 items-center border-b border-border px-6">
-        <Logo size="md" suffix="Hub" />
+      <div className="flex h-20 flex-col justify-center gap-1 border-b border-border px-6">
+        <Logo size="sm" />
+        <span className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+          Agent Hub
+        </span>
       </div>
 
       <nav className="flex-1 px-3 py-4">
