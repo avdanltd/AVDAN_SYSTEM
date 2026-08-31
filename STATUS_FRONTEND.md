@@ -56,6 +56,49 @@ delete, escrow hold starting on delivery, Paystack `PENDING -> PAID` through a s
 **Never verified on a physical device:** neither mobile app has been through a real device test.
 Both bundle cleanly through Metro and pass `tsc --noEmit`.
 
+### Live E2E verification (2026-09-01)
+
+Full order lifecycle walked twice live: once entirely via REST (mirroring exactly what each
+frontend calls, including the mobile Bearer contract for the rider leg — see
+`STATUS_BACKEND.md` 14.7), then again through the **actual web UI** for customer/vendor/admin/hub
+(Chrome, driven per `RUNBOOK_ORDER_E2E.md` §1's per-role-hostname pattern), with the rider leg
+via the same rider endpoints (no physical device yet — see Phase 8.9/8.11 below). Both passes
+completed clean through `DELIVERED -> PAYMENT_RELEASE_PENDING`; the escrow payout blocker was
+hit and confirmed to fail cleanly rather than crash (`BACKLOG_HARMONISATION.md` §7).
+
+**Rider retirement check:** a full `web-rider` vs `app-rider` capability/endpoint diff found **no
+blocking gaps** — every web-rider action and endpoint has a working, generally more robust
+equivalent in `app-rider` (which also fixes three bugs still live in `web-rider`: the active-order
+card disappearing mid-transit, a guaranteed-error QA_PASSED action, and online/offline state never
+persisting across reload). Clear to retire `web-rider` on feature-parity grounds once a physical
+device pass on `app-rider` (Phase 8.9) confirms it live.
+
+**Bugs found and fixed during the UI walk:**
+- **Credentials leaking into the URL/dev-server log.** None of the 5 apps declared
+  `allowedDevOrigins` in `next.config.ts`. `RUNBOOK_ORDER_E2E.md` §1 requires opening each role on
+  a different hostname (`localhost` / `127.0.0.1` / the LAN IP) on the same machine, since auth
+  cookies ignore port numbers — but Next.js 16's dev-only cross-origin guard silently blocks
+  hydration on any origin other than the one the dev server first saw. With React never attaching,
+  the login `<form>` fell back to a native GET submit, putting the typed password straight into the
+  URL — visible in browser history and in `next dev`'s own terminal log (confirmed present there).
+  Reproduced on `web-vendor` via `127.0.0.1:3001`, exactly the prescribed access pattern. Fixed:
+  `allowedDevOrigins: ['127.0.0.1', '172.20.10.3']` added to all 5 apps' `next.config.ts`. Dev-only,
+  zero effect on a production build.
+- **`web-customer` "My Orders" silently dropped orders in 4 of the 17 states.**
+  `ACTIVE_STATUSES`/`COMPLETED_STATUSES`/`CANCELLED_STATUSES` in `orders-page.tsx` are three
+  explicit lists that between them omitted `PAYMENT_RELEASE_PENDING`, `VENDOR_REMEDIATION`,
+  `DISPUTED` and `DISPUTE_RESOLVED` — an order in any of those states appeared in **no tab at all**.
+  In practice: every order vanished from the customer's own history the moment it was delivered,
+  for the entire 48h escrow hold. Fixed by assigning all four to the correct bucket.
+  `app-customer`'s equivalent (`orders-list.tsx`) partitions on `!OPEN_STATUSES.has(status)` — a
+  complementary split immune to this class of bug — so it needed no fix.
+- **`vendor_name` always `null` on every customer-facing order response** (create/list/detail/
+  cancel), so `web-customer` and `app-customer` (both read `order.vendor_name`) showed a raw
+  vendor-id UUID slice or "Vendor order" instead of the real vendor name. `Order` intentionally has
+  no `vendor` relationship (would lazy-load under the async engine); `services/qa/router.py`
+  already had the correct batch-fetch-by-id pattern, `services/orders/router.py` didn't. Fixed with
+  a shared `_vendor_names()` helper applied to all four customer endpoints.
+
 ### Agreed order of work (set 2026-08-22)
 1. ✓ Reconcile STATUS docs to the real state of the codebase
 2. ✓ Boot the stack and run `generate-types.sh` — `generated.ts` went from an 8-line placeholder
