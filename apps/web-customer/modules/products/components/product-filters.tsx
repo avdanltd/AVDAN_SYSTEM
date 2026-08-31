@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SlidersHorizontal, X } from 'lucide-react'
 import {
   Badge,
@@ -171,9 +171,16 @@ export function ProductFilters({
   totalResults, onFilterChange, onReset,
 }: ProductFiltersProps) {
   const [sheetOpen, setSheetOpen] = useState(false)
+  // Categories arrive via a client-only TanStack Query fetch. On a fast (e.g. local)
+  // connection it can resolve before hydration finishes, so the category <Select>
+  // would render on the client's first pass but not the server's — a hydration
+  // mismatch. Gating on `mounted` keeps the first client render identical to SSR.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const availableCategories = mounted ? categories : undefined
   const count = activeFilterCount(filters, showCategoryFilter)
   const selectedCategory = showCategoryFilter
-    ? categories?.find((c) => c.id === filters.categoryId)
+    ? availableCategories?.find((c) => c.id === filters.categoryId)
     : undefined
 
   function applyAndClose(patch: Partial<FilterState>) {
@@ -209,7 +216,7 @@ export function ProductFilters({
             </SheetHeader>
             <FilterPanel
               filters={filters}
-              categories={categories}
+              categories={availableCategories}
               showCategoryFilter={showCategoryFilter}
               onFilterChange={(patch) => applyAndClose(patch)}
             />
@@ -234,7 +241,7 @@ export function ProductFilters({
             </SelectContent>
           </Select>
 
-          {showCategoryFilter && categories && categories.length > 0 && (
+          {showCategoryFilter && availableCategories && availableCategories.length > 0 && (
             <Select
               value={filters.categoryId ?? 'all'}
               onValueChange={(v) => onFilterChange({ categoryId: v === 'all' ? undefined : v })}
@@ -244,7 +251,7 @@ export function ProductFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
-                {categories.map((cat) => (
+                {availableCategories.map((cat) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-2">
                       <CategoryIcon name={cat.icon} className="h-3.5 w-3.5" />

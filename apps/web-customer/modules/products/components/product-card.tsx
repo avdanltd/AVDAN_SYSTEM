@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ShoppingCart } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ShoppingCart, Star } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Badge, Button, Card, CardContent, ConfirmDialog } from '@avdan/ui'
@@ -22,12 +23,15 @@ function formatPrice(kobo: number): string {
 
 interface ProductCardProps {
   product: ProductListing
+  badgeLabel?: string
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, badgeLabel }: ProductCardProps) {
+  const router = useRouter()
   const { addItem, clearCart, vendorId } = useCartStore()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const imageUrl = product.image_urls?.[0] ?? null
+  const productHref = ROUTES.product(product.id)
 
   function doAddToCart() {
     addItem({
@@ -44,6 +48,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault()
+    e.stopPropagation()
     if (!product.available || product.stock_qty === 0) return
     if (vendorId && vendorId !== product.vendor_id) {
       setConfirmOpen(true)
@@ -54,8 +59,19 @@ export function ProductCard({ product }: ProductCardProps) {
 
   return (
     <>
-      <Link href={ROUTES.product(product.id)} className="group block">
-        <Card className="h-full overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+      <div
+        role="link"
+        tabIndex={0}
+        onClick={() => router.push(productHref)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            router.push(productHref)
+          }
+        }}
+        className="group block cursor-pointer"
+      >
+        <Card className="h-full overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card">
           {/* Image */}
           <div className="relative aspect-[4/3] overflow-hidden bg-secondary">
             {imageUrl ? (
@@ -71,14 +87,24 @@ export function ProductCard({ product }: ProductCardProps) {
                 <ShoppingCart className="h-12 w-12" />
               </div>
             )}
-            {/* Category badge */}
-            {product.category_name && (
+            {/* Ribbon badge — "Popular" on the Popular Right Now rail, otherwise category */}
+            {badgeLabel ? (
               <Badge
-                variant="secondary"
-                className="absolute left-2 top-2 text-[10px] shadow-sm"
+                variant="accent"
+                className="absolute left-2 top-2 gap-1 text-[10px] shadow-sm"
               >
-                {product.category_name}
+                <Star className="h-3 w-3 fill-current" />
+                {badgeLabel}
               </Badge>
+            ) : (
+              product.category_name && (
+                <Badge
+                  variant="secondary"
+                  className="absolute left-2 top-2 text-[10px] shadow-sm"
+                >
+                  {product.category_name}
+                </Badge>
+              )
             )}
             {/* Out of stock overlay */}
             {(!product.available || product.stock_qty === 0) && (
@@ -93,7 +119,7 @@ export function ProductCard({ product }: ProductCardProps) {
             <Link
               href={ROUTES.vendor(product.vendor_slug)}
               onClick={(e) => e.stopPropagation()}
-              className="text-xs text-muted-foreground hover:text-primary hover:underline"
+              className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
             >
               {product.vendor_name}
             </Link>
@@ -105,7 +131,7 @@ export function ProductCard({ product }: ProductCardProps) {
 
             {/* Price + Add to Cart */}
             <div className="mt-auto flex items-center justify-between gap-2">
-              <span className="text-base font-bold text-foreground">
+              <span className="text-lg font-bold text-primary">
                 {formatPrice(product.price_kobo)}
               </span>
               <Button
@@ -117,12 +143,12 @@ export function ProductCard({ product }: ProductCardProps) {
                 aria-label={`Add ${product.name} to cart`}
               >
                 <ShoppingCart className="h-3.5 w-3.5" />
-                Add
+                Quick Add
               </Button>
             </div>
           </CardContent>
         </Card>
-      </Link>
+      </div>
 
       <ConfirmDialog
         open={confirmOpen}

@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { CategoryIcon } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -22,7 +22,14 @@ const LIMIT = 12
 export function CategoryProductsPage({ slug }: CategoryProductsPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { data: categories } = useCategories()
+  const { data: categoriesData } = useCategories()
+  // Categories resolve via a client-only fetch that can complete before hydration
+  // finishes on a fast connection, which would make the server (always "not found
+  // yet") and client first-render diverge structurally. Gate on `mounted` so the
+  // first client render matches the server's fallback state.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const categories = mounted ? categoriesData : undefined
   const category = categories?.find((c) => c.slug === slug)
 
   const sort = (searchParams.get('sort') ?? 'popular') as ProductsParams['sort']

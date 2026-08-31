@@ -35,7 +35,10 @@ export function RegisterForm() {
   const [userId, setUserId] = useState<string | null>(null)
   const [email, setEmail] = useState<string>('')
 
-  const registerForm = useForm<RegisterInput>({ resolver: zodResolver(registerSchema) })
+  const registerForm = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { name: '', email: '', phone: '', password: '', confirmPassword: '' },
+  })
 
   const registerMutation = useMutation({
     mutationFn: authService.registerCustomer,

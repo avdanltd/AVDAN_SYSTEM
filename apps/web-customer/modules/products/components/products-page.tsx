@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { ROUTES } from '@/config/routes'
 import { useProducts } from '../hooks/use-products'
@@ -38,7 +38,13 @@ export function ProductsPage() {
   const searchParams = useSearchParams()
 
   const params = buildParams(searchParams)
-  const { data: categories } = useCategories()
+  const { data: categoriesData } = useCategories()
+  // Categories resolve via a client-only fetch that can complete before hydration
+  // finishes on a fast connection, which would make the server/client first-render
+  // heading text diverge. Gate on `mounted` so it matches the server's "All Products".
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const categories = mounted ? categoriesData : undefined
   const { data, isLoading, error } = useProducts(params)
 
   const totalPages = data ? Math.ceil(data.total / LIMIT) : 1

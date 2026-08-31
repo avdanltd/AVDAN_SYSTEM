@@ -11,6 +11,7 @@ interface ProductGridProps {
   emptyTitle?: string
   emptyDescription?: string
   skeletonCount?: number
+  cardBadgeLabel?: string
 }
 
 export function ProductGrid({
@@ -20,6 +21,7 @@ export function ProductGrid({
   emptyTitle = 'No products found',
   emptyDescription = 'Try adjusting your filters or search terms.',
   skeletonCount = 8,
+  cardBadgeLabel,
 }: ProductGridProps) {
   if (error) {
     return (
@@ -54,7 +56,7 @@ export function ProductGrid({
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 sm:gap-4">
       {products.map((product) => (
-        <ProductCard key={product.id} product={product} />
+        <ProductCard key={product.id} product={product} badgeLabel={cardBadgeLabel} />
       ))}
     </div>
   )

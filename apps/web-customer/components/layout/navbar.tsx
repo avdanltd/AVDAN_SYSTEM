@@ -368,7 +368,14 @@ export function Navbar() {
   const [cartOpen, setCartOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false)
-  const itemCount = useCartStore((s) => s.itemCount())
+  const persistedItemCount = useCartStore((s) => s.itemCount())
+  // The cart store persists to localStorage, which isn't available during SSR — the
+  // server always renders itemCount=0, then the client rehydrates a different value
+  // on mount. Gate on `mounted` so the first client render still matches the server,
+  // avoiding a hydration mismatch on this aria-label/badge.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const itemCount = mounted ? persistedItemCount : 0
 
   const closeSearch = useCallback(() => setSearchOpen(false), [])
 
