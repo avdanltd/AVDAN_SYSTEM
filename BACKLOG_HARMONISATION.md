@@ -304,4 +304,6 @@ Concrete gaps that came out of writing that up:
       after a backfill keep a stale embedding.
 - [ ] Rotate the Resend API key in `apps/api/.env` if it has ever been shared (file is gitignored
       and untracked — not in git history).
-- [ ] Celery worker + Beat are not running locally; escrow release cannot advance without them.
+- [x] **Celery worker + Beat now run locally and clean — 2026-08-31.** First real run surfaced and
+      fixed a mapper-registration crash that had silently killed most order-status notifications;
+      see `STATUS_BACKEND.md` 14.11.

@@ -477,7 +477,16 @@ run through `/search` to confirm embeddings are generated and results are releva
       8-line placeholder to **5,259 lines** of real types off the live OpenAPI spec. **Not yet
       committed, and `pnpm turbo run type-check` has not been re-run across the web apps — expect
       drift to surface there.**
-- [ ] 14.7 Full order lifecycle end-to-end — rider leg verified (see below); vendor/hub/escrow legs not yet walked
+- [x] 14.7 Full order lifecycle end-to-end — **verified live 2026-08-31**, all 9 hand-offs, via the
+      exact REST endpoints each frontend calls (cookie auth for customer/vendor/admin/hub, mobile
+      Bearer auth for the rider leg, matching what `app-rider` sends): create order → real Paystack
+      checkout URL → signed webhook → `PENDING → PAID` → vendor accept/ready → admin assign (rider_id
+      set, status correctly stays `READY_FOR_PICKUP`, confirming the 2026-08-22 fix) → rider
+      pickup/transit → hub receive/QA pass → rider deliver → `DELIVERED → PAYMENT_RELEASE_PENDING`
+      automatic chain. `order_events` audit trail complete and correctly ordered (13 rows). Manually
+      invoked `release_escrow` on the order (bypassing the 48h wait): failed cleanly with
+      `AppError('Vendor has not set up payout account')`, no state corruption, order still
+      `PAYMENT_RELEASE_PENDING` — exactly the documented §7 blocker, not a crash.
 - [x] 14.8 Mobile auth contract confirmed live: `POST /auth/login` with `X-Client-Platform: mobile`
       returns `access_token` + `refresh_token` in the body; `Authorization: Bearer` is accepted by
       `/auth/me` and all `/dispatch/me/*` routes
@@ -588,7 +597,31 @@ These were all invisible to type-checking and to code review — only running th
       COMPLETED with the vendor unpaid. See `BACKLOG_HARMONISATION.md` §7.
 - [ ] **Transfer OTP must be disabled** on the Paystack account or automated payouts cannot run.
 
-### 14.10 Known issues found but NOT fixed
+### 14.11 First real Celery worker run (2026-08-31) — every post-transition notification was silently dead
+
+Celery worker + Beat had **never been run locally** (see 14.12). The first real run surfaced a bug
+invisible to every other form of testing:
+
+- [x] **Any Celery task touching `Order`/`Vendor` crashed with
+      `InvalidRequestError: ... expression 'Category' failed to locate a name`** in whichever
+      prefork worker process handled it first — nondeterministically, since each of the 12 worker
+      processes has its own independent SQLAlchemy mapper registry (separate OS process via
+      `fork()`). `workers/tasks/embeddings.py` already carried a per-function guard import
+      (`import services.categories.models`) for this exact issue, added when Phase 12 shipped, but
+      `workers/tasks/notifications.py` (**every order-status notification**) and
+      `workers/tasks/escrow.py` (**escrow release**) never got the same guard. On a fresh worker
+      backlog of 8 queued `send_order_notification` tasks, 5 crashed outright. In practice: **no
+      order-status notification (in-app, email, or push) has ever actually been delivered**,
+      because Celery had never run — this would have shipped straight to production silently
+      dropping notifications on roughly half of all task executions.
+      **Fixed at the root** in `workers/celery_app.py`: every `services/*/models.py` module is now
+      imported once in the master process before the prefork pool forks, so the mapper registry is
+      fully built exactly once and inherited by every child — no per-task guard needed anywhere.
+      Verified: restarted worker + beat, backlog drained with zero `InvalidRequestError`s, then a
+      full order lifecycle produced 8 correct notification rows (in-app + email, vendor_accepted /
+      out_for_delivery / delivered) for the right recipients.
+
+### 14.12 Known issues found but NOT fixed
 
 - [ ] **`rider_profiles` is dead schema.** Both `riders` (4 rows, the real table, FK target of
       `orders.rider_id`) and `rider_profiles` (0 rows) exist. `get_or_create_rider` reads
