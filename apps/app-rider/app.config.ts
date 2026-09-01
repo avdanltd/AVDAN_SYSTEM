@@ -6,6 +6,7 @@ const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws'
 const config: ExpoConfig = {
   name: 'AVDAN Rider',
   slug: 'app-rider',
+  owner: 'ejaycee',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -15,6 +16,9 @@ const config: ExpoConfig = {
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
+    eas: {
+      projectId: '4001e53f-af61-43fd-9475-2a64a162345e',
+    },
   },
   ios: {
     icon: './assets/images/icon.png',
