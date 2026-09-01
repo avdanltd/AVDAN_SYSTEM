@@ -294,6 +294,62 @@ Concrete gaps that came out of writing that up:
 
 ---
 
+## 9. Production incident — api.avdanstore.com 502, then found the DB was down too (2026-09-01)
+
+**Symptom 1 — api.avdanstore.com 502 while every other subdomain worked.** Root cause: nginx's
+static `upstream { server api:8000; }` blocks in `infra/nginx/nginx.prod.conf` resolve the
+container hostname once at nginx startup/reload and cache it — a deploy had recreated the `api`
+container onto a new Docker bridge IP, and the IP it vacated was later reassigned to `web-hub`.
+nginx kept proxying every request to `web-hub`'s IP on port 8000 (nothing listening there) ->
+connection refused -> 502. The other 5 subdomains hadn't hit this yet only because their
+container IPs happened not to have moved since nginx's last reload — it was latent for all of
+them, not a bug specific to `api`.
+
+Fixed live via `nginx -s reload` (immediate relief), then root-caused in
+`infra/nginx/nginx.prod.conf`: `resolver 127.0.0.11 valid=10s;` (Docker's embedded DNS) + a
+`set $upstream ...; proxy_pass http://$upstream:PORT;` variable per location, which makes nginx
+re-resolve periodically instead of caching indefinitely. Deployed and verified across all 6
+subdomains.
+
+**Symptom 2 — the real one underneath: postgres and redis containers didn't exist at all.**
+`avdan-api-1`'s healthcheck only hits a static `/health` (never touches the DB), so it reported
+"healthy" throughout. A real endpoint (`GET /vendors`) returned `INTERNAL_ERROR`, and Celery was
+retrying `Cannot connect to redis://:**@redis:6379/1: ... Temporary failure in name resolution`
+in a loop (its own built-in reconnect backoff — the container itself was never crash-looping).
+Confirmed via `getent hosts redis`/`postgres` from inside `avdan-api-1`: neither resolved,
+because no such containers existed on the host at all — not even stopped/exited, fully removed.
+`postgres`'s own control-file log ("database system was shut down at 2026-07-30") and Redis's
+RDB age (~33 days) put the actual outage start around **2026-07-30**, i.e. **this had been down
+for about a month** before this session found it.
+
+Likely cause: `docker system df` showed the disk at 87% full with 12.96GB reclaimable across 30
+stale unused images — the working theory is a manual disk-space cleanup around that date removed
+these "unused" containers (both have `restart: unless-stopped`, so a crash or reboot alone
+wouldn't explain a full removal) without anyone reprovisioning them, and nothing was monitoring
+for it. **Not confirmed** — no log evidence of who/what ran the removal was found; worth asking
+around if anyone remembers a manual intervention that week.
+
+Data was intact: both named volumes (`avdan_postgres_data`, `avdan_redis_data`) were untouched.
+Recovered by starting the containers back onto their existing volumes (no data loss) — 32 users,
+23 orders, latest activity July 5-11 (consistent with real but stale early-access data, not
+corruption). The API and Celery both reconnected on their own the moment the containers came up,
+no restart needed. Also ran `docker image prune -a` while there: reclaimed 17.36GB, disk now at
+29% instead of 87%.
+
+**Also fixed on the server** (deliberately not committed here — docker-compose files are scp'd
+to the server directly rather than git-tracked, per existing practice): the production
+`docker-compose.infra.yml` (postgres + redis) had a hardcoded placeholder password
+(`REPLACE_WITH_STRONG_PASSWORD`) that Postgres happened to ignore (existing volume) but would
+have handed Redis a wrong password on every fresh start. Now parameterized on the server via
+`${POSTGRES_PASSWORD}` / `${REDIS_PASSWORD}`, with real values in `/opt/avdan/.env.infra`
+(server-only, same handling as every other `.env` secret). Starting/updating it is still a
+manual `docker compose --env-file .env.infra -f docker-compose.infra.yml up -d` on the server,
+same as before this incident.
+
+**Recommended follow-up:** whatever deploy/monitoring process would normally catch a container
+going missing evidently didn't for a month — worth a health check/alert on `postgres`/`redis`
+container presence specifically, so a repeat is caught in minutes, not a month.
+
 ## 8. Smaller items
 
 - [ ] `rider_profiles` is dead schema (0 rows) next to the real `riders` table, and
