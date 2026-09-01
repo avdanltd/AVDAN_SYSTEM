@@ -322,12 +322,27 @@ because no such containers existed on the host at all — not even stopped/exite
 RDB age (~33 days) put the actual outage start around **2026-07-30**, i.e. **this had been down
 for about a month** before this session found it.
 
-Likely cause: `docker system df` showed the disk at 87% full with 12.96GB reclaimable across 30
-stale unused images — the working theory is a manual disk-space cleanup around that date removed
-these "unused" containers (both have `restart: unless-stopped`, so a crash or reboot alone
-wouldn't explain a full removal) without anyone reprovisioning them, and nothing was monitoring
-for it. **Not confirmed** — no log evidence of who/what ran the removal was found; worth asking
-around if anyone remembers a manual intervention that week.
+**Root cause, confirmed (not the disk-pressure theory below — that was a red herring):**
+`.github/workflows/deploy-prod.yml` runs `docker compose -f docker-compose.prod.yml up -d
+--remove-orphans` on every deploy. `docker-compose.infra.yml` (postgres + redis) lived in the
+same `/opt/avdan/` directory with no explicit project name, so Compose inferred the **same**
+project name ("avdan") for both files — making `postgres`/`redis` look like orphaned containers
+to every single prod deploy, which then removed them. This is why they had `restart:
+unless-stopped` yet were still fully gone: `--remove-orphans` removes the container outright, a
+restart policy never gets a chance to apply. **Reproduced live**: recovered the containers, then
+~2 hours later found them gone again — a deploy had run again in between and removed them the
+same way. Fixed by giving `docker-compose.infra.yml` its own explicit project name
+(`name: avdan-infra` at the top of the file) and pinning its volumes/network as `external: true`
+by their real names (`avdan_postgres_data`, `avdan_redis_data`, `avdan_avdan`) so it keeps
+reusing the same data and the same shared network under the new project identity. **Verified**:
+ran the exact `docker compose -f docker-compose.prod.yml up -d --remove-orphans` command directly
+afterward — postgres/redis survived it this time, `getent hosts postgres`/`redis` from
+`avdan-api-1` still resolve correctly (Compose sets DNS aliases from service names regardless of
+project name, as long as containers share the network), and data is intact (still 32 users).
+
+Disk pressure (87% full, 12.96GB reclaimable) is real and was cleared regardless — see below —
+but was not the actual trigger; leaving that in place would have looked like the outage was fixed
+while the exact same `--remove-orphans` mechanism silently repeated on the next deploy.
 
 Data was intact: both named volumes (`avdan_postgres_data`, `avdan_redis_data`) were untouched.
 Recovered by starting the containers back onto their existing volumes (no data loss) — 32 users,
@@ -346,9 +361,11 @@ have handed Redis a wrong password on every fresh start. Now parameterized on th
 manual `docker compose --env-file .env.infra -f docker-compose.infra.yml up -d` on the server,
 same as before this incident.
 
-**Recommended follow-up:** whatever deploy/monitoring process would normally catch a container
-going missing evidently didn't for a month — worth a health check/alert on `postgres`/`redis`
-container presence specifically, so a repeat is caught in minutes, not a month.
+**Recommended follow-up:** the project-name fix should stop this specific mechanism for good, but
+nothing would have caught either occurrence quickly on its own — `avdan-api-1`'s healthcheck
+never touches the DB. Worth adding a real healthcheck (one that actually queries Postgres) and/or
+an alert on `postgres`/`redis` container presence, as defense in depth against whatever the next
+surprise turns out to be.
 
 ## 8. Smaller items
 
