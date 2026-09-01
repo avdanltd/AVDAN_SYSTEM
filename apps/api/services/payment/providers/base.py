@@ -22,7 +22,7 @@ class PaymentStatus:
 @dataclass
 class TransferResult:
     transfer_ref: str
-    success: bool
+    status: str  # Paystack's raw transfer status: "success", "pending", "otp", "failed", ...
 
 
 @dataclass

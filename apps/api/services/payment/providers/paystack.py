@@ -93,7 +93,7 @@ class PaystackProvider(PaymentProvider):
         data = response.json()["data"]
         return TransferResult(
             transfer_ref=data.get("transfer_code", reference),
-            success=data.get("status") in ("success", "pending"),
+            status=data.get("status", ""),
         )
 
     async def refund(self, payment_ref: str, amount_kobo: int) -> RefundResult:

@@ -152,13 +152,24 @@ class PaymentService:
         return escrow
 
     async def release_escrow(self, order_id: str) -> None:
-        """Transfer vendor payout, deduct commission. Idempotent."""
+        """
+        Queue the vendor payout and deduct commission. Idempotent — safe to call or retry at any
+        point, including while a transfer is already in flight.
+
+        Paystack transfers are asynchronous: a "pending" result here only means the transfer was
+        queued, not that the vendor was paid. The order only advances to
+        PAYMENT_RELEASED -> COMPLETED once the `transfer.success` webhook confirms it (see
+        `handle_transfer_webhook` below) — a `transfer.failed`/`transfer.reversed` webhook instead
+        marks the escrow FAILED so it shows up for retry instead of silently paying nobody while
+        the order still says COMPLETED. A "success" result (Paystack can return this
+        synchronously for some transfer types) advances the order immediately, same as before.
+        """
         escrow = await self._get_escrow_for_order(order_id)
         if not escrow:
             raise NotFoundException("No escrow found for order")
 
-        if escrow.status == EscrowStatus.RELEASED:
-            return  # already released — idempotent
+        if escrow.status in (EscrowStatus.RELEASED, EscrowStatus.PAYOUT_PENDING):
+            return  # already released, or a transfer is already queued — idempotent
 
         if escrow.status != EscrowStatus.HELD:
             raise AppError(400, "INVALID_STATE", "Escrow must be HELD to release")
@@ -186,7 +197,20 @@ class PaymentService:
             vendor.paystack_recipient_code, vendor_amount, transfer_ref
         )
 
-        escrow.status = EscrowStatus.RELEASED
+        if result.status == "otp":
+            raise AppError(
+                502,
+                "TRANSFER_REQUIRES_OTP",
+                "Paystack requested OTP confirmation for this transfer — disable Transfer OTP "
+                "in Paystack Settings > Preferences before automated payouts can run.",
+            )
+        if result.status not in ("success", "pending"):
+            raise AppError(
+                502,
+                "TRANSFER_FAILED",
+                f"Transfer returned unexpected status '{result.status}'",
+            )
+
         escrow.provider_metadata = {
             **(escrow.provider_metadata or {}),
             "transfer_ref": result.transfer_ref,
@@ -194,6 +218,11 @@ class PaymentService:
             "commission_kobo": commission,
         }
 
+        if result.status == "pending":
+            escrow.status = EscrowStatus.PAYOUT_PENDING
+            return  # handle_transfer_webhook finishes this once Paystack confirms
+
+        escrow.status = EscrowStatus.RELEASED
         order_svc = OrderService(self.db)
         await order_svc.transition(
             order_id=order_id,
@@ -207,6 +236,39 @@ class PaymentService:
             actor_id=None,
             actor_role="system",
         )
+
+    async def handle_transfer_webhook(self, event_type: str, reference: str) -> None:
+        """
+        The other half of `release_escrow`: applies Paystack's eventual confirmation of a queued
+        transfer. `reference` is the `payout-{order_id}` string AVDAN sent when creating the
+        transfer, which Paystack echoes back unchanged on every transfer webhook — that's enough
+        to find the order without a separate lookup table.
+        """
+        if not reference.startswith("payout-"):
+            return  # not a transfer AVDAN created
+
+        order_id = reference.removeprefix("payout-")
+        escrow = await self._get_escrow_for_order(order_id)
+        if not escrow or escrow.status != EscrowStatus.PAYOUT_PENDING:
+            return  # unknown order, or already resolved — idempotent no-op
+
+        if event_type == "transfer.success":
+            escrow.status = EscrowStatus.RELEASED
+            order_svc = OrderService(self.db)
+            await order_svc.transition(
+                order_id=order_id,
+                to_state=OrderStatus.PAYMENT_RELEASED,
+                actor_id=None,
+                actor_role="system",
+            )
+            await order_svc.transition(
+                order_id=order_id,
+                to_state=OrderStatus.COMPLETED,
+                actor_id=None,
+                actor_role="system",
+            )
+        else:  # transfer.failed, transfer.reversed
+            escrow.status = EscrowStatus.FAILED
 
     async def process_refund(
         self, order_id: str, amount_kobo: int, admin_id: str, reason: str

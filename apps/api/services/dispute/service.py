@@ -136,26 +136,36 @@ class DisputeService:
                 select(Vendor).where(Vendor.id == order.vendor_id)
             )
             vendor = vendor_result.scalar_one_or_none()
+            payout_settled = True
             if vendor and vendor.paystack_recipient_code and escrow:
                 from services.payment.providers.registry import get_provider
                 provider = get_provider(escrow.provider)
-                transfer_ref = f"split-vendor-{order.id}"
-                await provider.transfer_to_vendor(
+                # Same "payout-{order_id}" reference release_escrow uses, so the
+                # transfer.success/failed webhook (PaymentService.handle_transfer_webhook)
+                # resolves this transfer too — no separate matching logic needed.
+                transfer_ref = f"payout-{order.id}"
+                result = await provider.transfer_to_vendor(
                     vendor.paystack_recipient_code,
                     data.vendor_amount_kobo,  # type: ignore[arg-type]
                     transfer_ref,
                 )
                 # Refund customer portion
                 await provider.refund(escrow.provider_ref, data.refund_amount_kobo)  # type: ignore[arg-type]
-                if escrow:
+                if result.status == "pending":
+                    # Transfers are asynchronous — don't mark COMPLETED until the webhook confirms.
+                    escrow.status = EscrowStatus.PAYOUT_PENDING
+                    payout_settled = False
+                else:
                     escrow.status = EscrowStatus.RELEASED
-            # Advance order to PAYMENT_RELEASED
-            await order_svc.transition(
-                str(order.id), OrderStatus.PAYMENT_RELEASED, None, "system"
-            )
-            await order_svc.transition(
-                str(order.id), OrderStatus.COMPLETED, None, "system"
-            )
+            # Advance order to PAYMENT_RELEASED — unless the vendor portion is still in flight, in
+            # which case handle_transfer_webhook advances it once Paystack confirms.
+            if payout_settled:
+                await order_svc.transition(
+                    str(order.id), OrderStatus.PAYMENT_RELEASED, None, "system"
+                )
+                await order_svc.transition(
+                    str(order.id), OrderStatus.COMPLETED, None, "system"
+                )
 
         # 3. Update dispute record
         dispute.status = "resolved"
