@@ -18,6 +18,7 @@ const config: ExpoConfig = {
   },
   ios: {
     icon: './assets/images/icon.png',
+    bundleIdentifier: 'com.avdanstore.vendor',
     supportsTablet: true,
     infoPlist: {
       // Vendors attach product photos when creating or editing a listing.
@@ -27,6 +28,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: 'com.avdanstore.vendor',
     adaptiveIcon: {
       backgroundColor: '#E07A06',
       foregroundImage: './assets/images/android-icon-foreground.png',

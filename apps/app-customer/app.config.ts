@@ -20,6 +20,7 @@ const config: ExpoConfig = {
   },
   ios: {
     icon: './assets/images/icon.png',
+    bundleIdentifier: 'com.avdanstore.customer',
     supportsTablet: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -27,6 +28,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: 'com.avdanstore.customer',
     adaptiveIcon: {
       backgroundColor: '#06144E',
       foregroundImage: './assets/images/android-icon-foreground.png',

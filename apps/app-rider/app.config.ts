@@ -18,6 +18,7 @@ const config: ExpoConfig = {
   },
   ios: {
     icon: './assets/images/icon.png',
+    bundleIdentifier: 'com.avdanstore.rider',
     supportsTablet: false,
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -29,6 +30,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: 'com.avdanstore.rider',
     adaptiveIcon: {
       backgroundColor: '#0A2480',
       foregroundImage: './assets/images/android-icon-foreground.png',
