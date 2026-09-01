@@ -294,6 +294,23 @@ Concrete gaps that came out of writing that up:
 
 ---
 
+## 9. Production incident — api.avdanstore.com 502 (2026-09-01)
+
+`api.avdanstore.com` was returning 502 while every other subdomain worked. Root cause: nginx's
+static `upstream { server api:8000; }` blocks in `infra/nginx/nginx.prod.conf` resolve the
+container hostname once at nginx startup/reload and cache it — a deploy had recreated the `api`
+container onto a new Docker bridge IP, and the IP it vacated was later reassigned to `web-hub`.
+nginx kept proxying every request to `web-hub`'s IP on port 8000 (nothing listening there) ->
+connection refused -> 502. The other 5 subdomains hadn't hit this yet only because their
+container IPs happened not to have moved since nginx's last reload — it was latent for all of
+them, not a bug specific to `api`.
+
+Fixed live via `nginx -s reload` (immediate relief), then root-caused in
+`infra/nginx/nginx.prod.conf`: `resolver 127.0.0.11 valid=10s;` (Docker's embedded DNS) + a
+`set $upstream ...; proxy_pass http://$upstream:PORT;` variable per location, which makes nginx
+re-resolve periodically instead of caching indefinitely. Deployed and verified across all 6
+subdomains. Next deploy should confirm this self-heals without a manual reload.
+
 ## 8. Smaller items
 
 - [ ] `rider_profiles` is dead schema (0 rows) next to the real `riders` table, and
