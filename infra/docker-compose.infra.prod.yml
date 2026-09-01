@@ -1,0 +1,47 @@
+# Production infra (postgres + redis) for the single Azure VM. Runs as its own separate
+# docker-compose project from docker-compose.prod.yml (the app stack), on the SAME external
+# network (avdan_avdan) so the api/celery containers can reach these by hostname.
+#
+# Found living only on the server (/opt/avdan/docker-compose.infra.yml), untracked, with a
+# hardcoded placeholder password — added here 2026-09-01 after a production incident where
+# these two containers had been missing entirely (disk pressure led to a manual cleanup that
+# removed them, per docker system df showing 87% disk usage / mostly-stale image layers, with
+# their data volumes left behind and intact). No CI/CD step manages this file today; deploying
+# it (or a change to it) is a manual `docker compose --env-file .env.infra -f
+# docker-compose.infra.prod.yml up -d` on the server. Consider giving this the same automated
+# deploy treatment as docker-compose.prod.yml, and/or a health-check alert if either container
+# ever disappears, so a repeat of this incident is caught in minutes instead of ~a month.
+#
+# Requires POSTGRES_PASSWORD and REDIS_PASSWORD supplied via --env-file (never commit real
+# values — see /opt/avdan/.env.infra on the server, gitignored-equivalent by not living in
+# this repo at all).
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: avdan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: avdan
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - avdan
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    networks:
+      - avdan
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  avdan:
+    driver: bridge
+    name: avdan_avdan

@@ -294,9 +294,9 @@ Concrete gaps that came out of writing that up:
 
 ---
 
-## 9. Production incident — api.avdanstore.com 502 (2026-09-01)
+## 9. Production incident — api.avdanstore.com 502, then found the DB was down too (2026-09-01)
 
-`api.avdanstore.com` was returning 502 while every other subdomain worked. Root cause: nginx's
+**Symptom 1 — api.avdanstore.com 502 while every other subdomain worked.** Root cause: nginx's
 static `upstream { server api:8000; }` blocks in `infra/nginx/nginx.prod.conf` resolve the
 container hostname once at nginx startup/reload and cache it — a deploy had recreated the `api`
 container onto a new Docker bridge IP, and the IP it vacated was later reassigned to `web-hub`.
@@ -309,7 +309,43 @@ Fixed live via `nginx -s reload` (immediate relief), then root-caused in
 `infra/nginx/nginx.prod.conf`: `resolver 127.0.0.11 valid=10s;` (Docker's embedded DNS) + a
 `set $upstream ...; proxy_pass http://$upstream:PORT;` variable per location, which makes nginx
 re-resolve periodically instead of caching indefinitely. Deployed and verified across all 6
-subdomains. Next deploy should confirm this self-heals without a manual reload.
+subdomains.
+
+**Symptom 2 — the real one underneath: postgres and redis containers didn't exist at all.**
+`avdan-api-1`'s healthcheck only hits a static `/health` (never touches the DB), so it reported
+"healthy" throughout. A real endpoint (`GET /vendors`) returned `INTERNAL_ERROR`, and Celery was
+retrying `Cannot connect to redis://:**@redis:6379/1: ... Temporary failure in name resolution`
+in a loop (its own built-in reconnect backoff — the container itself was never crash-looping).
+Confirmed via `getent hosts redis`/`postgres` from inside `avdan-api-1`: neither resolved,
+because no such containers existed on the host at all — not even stopped/exited, fully removed.
+`postgres`'s own control-file log ("database system was shut down at 2026-07-30") and Redis's
+RDB age (~33 days) put the actual outage start around **2026-07-30**, i.e. **this had been down
+for about a month** before this session found it.
+
+Likely cause: `docker system df` showed the disk at 87% full with 12.96GB reclaimable across 30
+stale unused images — the working theory is a manual disk-space cleanup around that date removed
+these "unused" containers (both have `restart: unless-stopped`, so a crash or reboot alone
+wouldn't explain a full removal) without anyone reprovisioning them, and nothing was monitoring
+for it. **Not confirmed** — no log evidence of who/what ran the removal was found; worth asking
+around if anyone remembers a manual intervention that week.
+
+Data was intact: both named volumes (`avdan_postgres_data`, `avdan_redis_data`) were untouched.
+Recovered by starting the containers back onto their existing volumes (no data loss) — 32 users,
+23 orders, latest activity July 5-11 (consistent with real but stale early-access data, not
+corruption). The API and Celery both reconnected on their own the moment the containers came up,
+no restart needed. Also ran `docker image prune -a` while there: reclaimed 17.36GB, disk now at
+29% instead of 87%.
+
+**A structural gap this exposed:** the production `docker-compose.infra.yml` (postgres + redis)
+was **not tracked in this repo at all** — it existed only on the server, hand-edited, with a
+hardcoded placeholder password (`REPLACE_WITH_STRONG_PASSWORD`) that Postgres happened to ignore
+(existing volume) but would have handed Redis a wrong password on every fresh start. Added to the
+repo now as `infra/docker-compose.infra.prod.yml`, parameterized via `${POSTGRES_PASSWORD}` /
+`${REDIS_PASSWORD}` (real values live only in `/opt/avdan/.env.infra` on the server, never
+committed). No CI/CD step manages this file — starting/updating it today is still a manual SSH
+step. **Recommended follow-up:** either fold this into the automated deploy pipeline, or at
+minimum add a health check/alert on `postgres`/`redis` container presence so a repeat of this
+outage is caught in minutes, not a month.
 
 ## 8. Smaller items
 
