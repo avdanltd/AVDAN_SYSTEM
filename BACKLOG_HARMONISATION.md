@@ -336,16 +336,19 @@ corruption). The API and Celery both reconnected on their own the moment the con
 no restart needed. Also ran `docker image prune -a` while there: reclaimed 17.36GB, disk now at
 29% instead of 87%.
 
-**A structural gap this exposed:** the production `docker-compose.infra.yml` (postgres + redis)
-was **not tracked in this repo at all** — it existed only on the server, hand-edited, with a
-hardcoded placeholder password (`REPLACE_WITH_STRONG_PASSWORD`) that Postgres happened to ignore
-(existing volume) but would have handed Redis a wrong password on every fresh start. Added to the
-repo now as `infra/docker-compose.infra.prod.yml`, parameterized via `${POSTGRES_PASSWORD}` /
-`${REDIS_PASSWORD}` (real values live only in `/opt/avdan/.env.infra` on the server, never
-committed). No CI/CD step manages this file — starting/updating it today is still a manual SSH
-step. **Recommended follow-up:** either fold this into the automated deploy pipeline, or at
-minimum add a health check/alert on `postgres`/`redis` container presence so a repeat of this
-outage is caught in minutes, not a month.
+**Also fixed on the server** (deliberately not committed here — docker-compose files are scp'd
+to the server directly rather than git-tracked, per existing practice): the production
+`docker-compose.infra.yml` (postgres + redis) had a hardcoded placeholder password
+(`REPLACE_WITH_STRONG_PASSWORD`) that Postgres happened to ignore (existing volume) but would
+have handed Redis a wrong password on every fresh start. Now parameterized on the server via
+`${POSTGRES_PASSWORD}` / `${REDIS_PASSWORD}`, with real values in `/opt/avdan/.env.infra`
+(server-only, same handling as every other `.env` secret). Starting/updating it is still a
+manual `docker compose --env-file .env.infra -f docker-compose.infra.yml up -d` on the server,
+same as before this incident.
+
+**Recommended follow-up:** whatever deploy/monitoring process would normally catch a container
+going missing evidently didn't for a month — worth a health check/alert on `postgres`/`redis`
+container presence specifically, so a repeat is caught in minutes, not a month.
 
 ## 8. Smaller items
 
