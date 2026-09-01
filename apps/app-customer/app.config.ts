@@ -6,6 +6,7 @@ const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws'
 const config: ExpoConfig = {
   name: 'AVDAN',
   slug: 'app-customer',
+  owner: 'ejaycee',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -17,9 +18,13 @@ const config: ExpoConfig = {
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
+    eas: {
+      projectId: '3bb6b962-86e7-4622-b6be-45febf7e8dfa',
+    },
   },
   ios: {
     icon: './assets/images/icon.png',
+    bundleIdentifier: 'com.avdanstore.customer',
     supportsTablet: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
@@ -27,6 +32,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: 'com.avdanstore.customer',
     adaptiveIcon: {
       backgroundColor: '#06144E',
       foregroundImage: './assets/images/android-icon-foreground.png',

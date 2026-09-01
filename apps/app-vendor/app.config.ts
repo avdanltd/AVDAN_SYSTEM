@@ -6,6 +6,7 @@ const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws'
 const config: ExpoConfig = {
   name: 'AVDAN Vendor',
   slug: 'app-vendor',
+  owner: 'ejaycee',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
@@ -15,9 +16,13 @@ const config: ExpoConfig = {
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
+    eas: {
+      projectId: '4224d0fc-fb18-432f-bfc1-5add0a663507',
+    },
   },
   ios: {
     icon: './assets/images/icon.png',
+    bundleIdentifier: 'com.avdanstore.vendor',
     supportsTablet: true,
     infoPlist: {
       // Vendors attach product photos when creating or editing a listing.
@@ -27,6 +32,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    package: 'com.avdanstore.vendor',
     adaptiveIcon: {
       backgroundColor: '#E07A06',
       foregroundImage: './assets/images/android-icon-foreground.png',

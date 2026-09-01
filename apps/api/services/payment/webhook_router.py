@@ -30,6 +30,8 @@ async def paystack_webhook(
 
     if event.event_type == "charge.success":
         await svc.handle_charge_success(event.reference, event.raw_data)
+    elif event.event_type in ("transfer.success", "transfer.failed", "transfer.reversed"):
+        await svc.handle_transfer_webhook(event.event_type, event.reference)
 
     # Always return 200 quickly — Paystack retries on non-200
     return {"status": "ok"}

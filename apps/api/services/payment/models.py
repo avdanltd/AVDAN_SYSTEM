@@ -10,6 +10,7 @@ from models.base import BaseModel
 class EscrowStatus:
     INITIATED = "INITIATED"
     HELD = "HELD"
+    PAYOUT_PENDING = "PAYOUT_PENDING"  # transfer queued at Paystack, awaiting transfer.success/failed
     RELEASED = "RELEASED"
     REFUNDED = "REFUNDED"
     FAILED = "FAILED"
