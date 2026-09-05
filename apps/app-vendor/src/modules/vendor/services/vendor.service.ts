@@ -25,8 +25,9 @@ export const vendorService = {
   /** Returns the storefront AND its products — there is no GET /vendors/me/products. */
   getProfile: () => apiClient.get<VendorDetail>('/vendors/me'),
 
-  updateProfile: (payload: { name?: string; description?: string | null; logo_url?: string | null }) =>
-    apiClient.patch<VendorDetail>('/vendors/me', payload),
+  updateProfile: (
+    payload: { name?: string; description?: string | null; logo_url?: string | null; address?: string },
+  ) => apiClient.patch<VendorDetail>('/vendors/me', payload),
 
   /* ── Orders ─────────────────────────────────────────────────────────────── */
   // The backend's status filter takes a single value, so the app pulls a page and splits it

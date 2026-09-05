@@ -44,8 +44,9 @@ export {
 export { AvdanLogo, AvdanMark } from './components/brand-logo'
 
 /* ── Lib ──────────────────────────────────────────────────────────────────── */
-export { ApiClientError, apiClient, configureApiClient, getApiUrl } from './lib/api-client'
+export { ApiClientError, apiClient, configureApiClient, getApiUrl, getWsUrl } from './lib/api-client'
 export { secureStorage } from './lib/secure-storage'
+export { WsClient } from './lib/ws-client'
 export { guessImageMime, uploadImage, type UploadPrefix, type UploadResult } from './lib/uploads'
 export { toast } from './lib/toast'
 export { toastConfig } from './lib/toast-config'

@@ -17,20 +17,35 @@ interface ApiClientConfig {
   /** Base URL of the API, e.g. `http://172.20.10.3:8000`. No trailing slash. */
   baseUrl: string
   /**
+   * Base URL for WebSocket connections, e.g. `ws://172.20.10.3:8000/ws`. Not derivable from
+   * `baseUrl` by a simple http->ws swap because the backend mounts the WS router under a `/ws`
+   * prefix — each app already defines this separately per environment (see eas.json / .env),
+   * mirroring the web apps' NEXT_PUBLIC_WS_URL. No trailing slash.
+   */
+  wsUrl?: string
+  /**
    * Invoked when a request is rejected 401 and the refresh token could not rescue it.
    * Tokens have already been cleared by the time this fires — send the user to sign-in.
    */
   onUnauthorized?: () => void
 }
 
-let config: ApiClientConfig = { baseUrl: 'http://localhost:8000' }
+let config: ApiClientConfig = { baseUrl: 'http://localhost:8000', wsUrl: 'ws://localhost:8000/ws' }
 
 export function configureApiClient(next: ApiClientConfig): void {
-  config = { ...next, baseUrl: next.baseUrl.replace(/\/$/, '') }
+  config = {
+    ...next,
+    baseUrl: next.baseUrl.replace(/\/$/, ''),
+    wsUrl: next.wsUrl?.replace(/\/$/, ''),
+  }
 }
 
 export function getApiUrl(): string {
   return config.baseUrl
+}
+
+export function getWsUrl(): string {
+  return config.wsUrl ?? config.baseUrl.replace(/^http/, 'ws')
 }
 
 class ApiClientError extends Error {

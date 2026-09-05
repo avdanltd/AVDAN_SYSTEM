@@ -16,6 +16,9 @@ export interface VendorProfile {
   logo_url: string | null
   status: string
   zone_id: string | null
+  address: string | null
+  lat: number | null
+  lng: number | null
   rating: number
   created_at: string
 }
