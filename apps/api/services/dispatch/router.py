@@ -19,18 +19,37 @@ from services.orders.schemas import OrderItemResponse, OrderResponse
 router = APIRouter()
 
 
-def _rider_resp(rider: object) -> RiderResponse:
+def _rider_resp(
+    rider: object, name: str | None = None, phone: str | None = None
+) -> RiderResponse:
     from services.dispatch.models import Rider
     r: Rider = rider  # type: ignore[assignment]
     return RiderResponse(
         id=str(r.id),
         user_id=str(r.user_id),
+        name=name,
+        phone=phone,
         zone_id=str(r.zone_id) if r.zone_id else None,
         online=r.online,
         vehicle_type=r.vehicle_type,
         lat=float(r.lat) if r.lat is not None else None,
         lng=float(r.lng) if r.lng is not None else None,
     )
+
+
+async def _rider_names(db: AsyncSession, riders: list) -> dict:
+    """Batch-fetch {user_id: (name, phone)} for a list of riders — Rider has no `user`
+    relationship loaded by default, so this mirrors the pattern used for vendor names
+    in services/orders/router.py rather than lazy-loading one per rider."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+
+    user_ids = list({r.user_id for r in riders})
+    if not user_ids:
+        return {}
+    res = await db.execute(select(User).where(User.id.in_(user_ids)))
+    return {u.id: (u.name, u.phone) for u in res.scalars().all()}
 
 
 # ── Rider endpoints ───────────────────────────────────────────────────────────
@@ -108,13 +127,34 @@ def _order_item_resp(i: object) -> OrderItemResponse:
     )
 
 
-def _order_resp(o: object) -> OrderResponse:
+async def _hub_map(db: AsyncSession, orders: list) -> dict:
+    """Batch-fetch {hub_id: AgentHub} for a list of orders — lets the rider see where they're
+    headed (name + coordinates) as soon as dispatch pre-assigns a hub, not just an opaque id."""
+    from sqlalchemy import select
+
+    from services.qa.models import AgentHub
+
+    hub_ids = list({o.hub_id for o in orders if o.hub_id})
+    if not hub_ids:
+        return {}
+    res = await db.execute(select(AgentHub).where(AgentHub.id.in_(hub_ids)))
+    return {h.id: h for h in res.scalars().all()}
+
+
+def _order_resp(o: object, hub: object | None = None) -> OrderResponse:
     from services.orders.models import Order
+    from services.qa.models import AgentHub
     order: Order = o  # type: ignore[assignment]
+    h: AgentHub | None = hub  # type: ignore[assignment]
     return OrderResponse(
         id=str(order.id),
         customer_id=str(order.customer_id),
         vendor_id=str(order.vendor_id),
+        rider_id=str(order.rider_id) if order.rider_id else None,
+        hub_id=str(order.hub_id) if order.hub_id else None,
+        hub_name=h.name if h else None,
+        hub_lat=float(h.lat) if h and h.lat is not None else None,
+        hub_lng=float(h.lng) if h and h.lng is not None else None,
         status=order.status,
         total_kobo=order.total_kobo,
         delivery_address=order.delivery_address,
@@ -133,7 +173,8 @@ async def get_my_orders(
     """Active work queue only — orders the rider still has to act on."""
     svc = DispatchService(db, redis)
     orders = await svc.get_rider_orders(current_user.user_id)
-    return [_order_resp(o) for o in orders]
+    hubs = await _hub_map(db, orders)
+    return [_order_resp(o, hubs.get(o.hub_id)) for o in orders]
 
 
 # NOTE: this route MUST stay declared above /me/orders/{order_id}, otherwise FastAPI
@@ -149,7 +190,8 @@ async def get_my_order_history(
     """Completed/terminal orders this rider handled, newest first."""
     svc = DispatchService(db, redis)
     orders = await svc.get_rider_order_history(current_user.user_id, limit=limit, offset=offset)
-    return [_order_resp(o) for o in orders]
+    hubs = await _hub_map(db, orders)
+    return [_order_resp(o, hubs.get(o.hub_id)) for o in orders]
 
 
 @router.get("/me/orders/{order_id}", response_model=OrderResponse)
@@ -163,7 +205,8 @@ async def get_my_order(
     the order leaving the active queue after delivery."""
     svc = DispatchService(db, redis)
     order = await svc.get_rider_order(current_user.user_id, order_id)
-    return _order_resp(order)
+    hub = (await _hub_map(db, [order])).get(order.hub_id)
+    return _order_resp(order, hub)
 
 
 @router.post("/me/orders/{order_id}/pickup", response_model=dict)
@@ -227,7 +270,8 @@ async def get_available_riders(
 ) -> list[RiderResponse]:
     svc = DispatchService(db, redis)
     riders = await svc.get_available_riders(zone_id)
-    return [_rider_resp(r) for r in riders]
+    names = await _rider_names(db, riders)
+    return [_rider_resp(r, *names.get(r.user_id, (None, None))) for r in riders]
 
 
 @router.get("/riders", response_model=list[RiderResponse])
@@ -240,4 +284,6 @@ async def list_all_riders(
 
     from services.dispatch.models import Rider
     result = await db.execute(select(Rider))
-    return [_rider_resp(r) for r in result.scalars().all()]
+    riders = list(result.scalars().all())
+    names = await _rider_names(db, riders)
+    return [_rider_resp(r, *names.get(r.user_id, (None, None))) for r in riders]

@@ -10,6 +10,7 @@ export interface UpdateUserPayload {
 export interface UpdateVendorPayload {
   name?: string
   description?: string
+  address?: string
 }
 
 export interface VendorMeResponse {
@@ -17,6 +18,9 @@ export interface VendorMeResponse {
   name: string
   description: string | null
   logo_url: string | null
+  address: string | null
+  lat: number | null
+  lng: number | null
   rating: number | null
   products: unknown[]
   has_payout_account: boolean

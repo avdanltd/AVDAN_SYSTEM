@@ -213,6 +213,15 @@ class VendorService:
         if data.logo_url is not None:
             vendor.logo_url = data.logo_url
 
+        if data.address is not None:
+            vendor.address = data.address
+            from core.geocoding import geocode_address
+            coords = await geocode_address(data.address)
+            # Best-effort: a vendor whose address couldn't be geocoded keeps whatever
+            # coordinates it had (or none), and falls back to zone-based matching.
+            if coords:
+                vendor.lat, vendor.lng = coords
+
         return vendor
 
     async def create_product(self, user_id: str, data: CreateProductRequest) -> Product:

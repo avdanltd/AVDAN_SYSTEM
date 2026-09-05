@@ -31,6 +31,10 @@ export interface RiderOrder {
     state?: string
     [key: string]: unknown
   }
+  hub_id: string | null
+  hub_name: string | null
+  hub_lat: number | null
+  hub_lng: number | null
   items: OrderItem[]
   created_at: string
   updated_at: string

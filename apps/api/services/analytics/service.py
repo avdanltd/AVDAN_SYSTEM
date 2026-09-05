@@ -141,12 +141,17 @@ class AnalyticsService:
             )
         )).scalar_one())
 
+        # Escrow goes HELD the instant payment is confirmed — before the vendor has even
+        # accepted. Counting it as "pending" from that moment shows the vendor money that can
+        # still vanish (a still-possible VENDOR_REJECTED auto-refunds the customer), so this
+        # only counts orders the vendor has actually committed to fulfil.
         pending_release = int((await self.db.execute(
             select(func.coalesce(func.sum(EscrowTransaction.amount_kobo), 0))
             .join(Order, Order.id == EscrowTransaction.order_id)
             .where(
                 Order.vendor_id == v_uuid,
                 EscrowTransaction.status == EscrowStatus.HELD,
+                Order.status != OrderStatus.PAID,
             )
         )).scalar_one())
 

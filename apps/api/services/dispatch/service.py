@@ -5,9 +5,10 @@ import json
 import math
 import uuid
 from datetime import UTC, datetime
+from typing import TYPE_CHECKING
 
 import redis.asyncio as aioredis
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.exceptions import AppError, NotFoundException
@@ -15,6 +16,9 @@ from services.dispatch.models import Rider, RiderLocation
 from services.orders.models import Order
 from services.orders.service import OrderService
 from services.orders.state_machine import OrderStatus
+
+if TYPE_CHECKING:
+    from services.qa.models import AgentHub
 
 # Redis TTL for live rider location (seconds)
 _LOCATION_TTL = 60
@@ -103,6 +107,10 @@ class DispatchService:
         if order.status != OrderStatus.READY_FOR_PICKUP:
             raise AppError(400, "INVALID_STATE", "Order must be READY_FOR_PICKUP to assign a rider")
 
+        from services.vendor.models import Vendor
+        vendor_result = await self.db.execute(select(Vendor).where(Vendor.id == order.vendor_id))
+        vendor = vendor_result.scalar_one_or_none()
+
         if rider_id:
             # Admin specified a rider explicitly — no online check required
             result = await self.db.execute(select(Rider).where(Rider.id == uuid.UUID(rider_id)))
@@ -110,12 +118,6 @@ class DispatchService:
             if not nearest:
                 raise NotFoundException("Rider not found")
         else:
-            # Find vendor's zone
-            from services.vendor.models import Vendor
-            vendor_result = await self.db.execute(
-                select(Vendor).where(Vendor.id == order.vendor_id)
-            )
-            vendor = vendor_result.scalar_one_or_none()
             zone_id = vendor.zone_id if vendor else None
 
             # Find online riders in zone
@@ -129,9 +131,7 @@ class DispatchService:
             if not candidates:
                 raise AppError(404, "NO_RIDERS_AVAILABLE", "No online riders available in this zone")
 
-            # Vendor has no lat/lng column (zone_id only) — no coordinates to refine
-            # by distance against, so the nearest available rider in-zone is first-match.
-            nearest = candidates[0]
+            nearest = self._nearest_by_distance(candidates, vendor)
 
         # Assign the rider and STOP. Assignment is not a state transition: the order stays
         # READY_FOR_PICKUP until the rider physically collects it and taps Confirm Pickup
@@ -140,8 +140,105 @@ class DispatchService:
         # fabricated a pickup that had not happened and made the rider's own Confirm Pickup
         # action unreachable. get_db() commits, so the rider_id write persists on its own.
         order.rider_id = nearest.id
+
+        # Pick the hub for this order at the same moment, rather than leaving it for whichever
+        # hub agent happens to claim it first once the rider is already en route. Only set if
+        # not already assigned — an admin re-assigning the rider on an order that already has a
+        # hub (e.g. after a rejected/failed match) shouldn't silently move the hub underneath it.
+        if not order.hub_id:
+            hub = await self._pick_hub(vendor)
+            if hub:
+                order.hub_id = hub.id
+
         await self.db.flush()
+
+        # Push a notification to the rider — see notify_rider_assigned's docstring for why this
+        # can't reuse send_order_notification's state-transition trigger map.
+        try:
+            import asyncio
+
+            from workers.tasks.notifications import notify_rider_assigned
+            loop = asyncio.get_running_loop()
+            loop.run_in_executor(
+                None,
+                lambda: notify_rider_assigned.apply_async(
+                    args=[order_id, str(nearest.user_id)], countdown=2,
+                ),
+            )
+        except Exception:
+            pass  # notification failure must never break the assignment
+
         return nearest
+
+    def _nearest_by_distance(self, candidates: list[Rider], vendor: object | None) -> Rider:
+        """Ranks online riders by great-circle distance to the vendor. Falls back to the first
+        candidate (existing zone-only behaviour) when either side is missing coordinates."""
+        from services.vendor.models import Vendor
+        v: Vendor | None = vendor  # type: ignore[assignment]
+        if not v or v.lat is None or v.lng is None:
+            return candidates[0]
+
+        with_coords = [r for r in candidates if r.lat is not None and r.lng is not None]
+        if not with_coords:
+            return candidates[0]
+
+        return min(
+            with_coords,
+            key=lambda r: _haversine_km(float(v.lat), float(v.lng), float(r.lat), float(r.lng)),  # type: ignore[arg-type]
+        )
+
+    async def _pick_hub(self, vendor: object | None) -> AgentHub | None:
+        """Picks the active hub nearest to the vendor, preferring hubs under capacity. Falls
+        back to the vendor's zone, then to the least-loaded active hub, when coordinates are
+        unavailable. Returns None only when there are no active hubs at all — in that case the
+        order keeps hub_id unset and a hub agent can still self-claim it once it arrives, same
+        as before this existed."""
+        from services.qa.models import AgentHub
+        from services.vendor.models import Vendor
+
+        v: Vendor | None = vendor  # type: ignore[assignment]
+
+        hubs_result = await self.db.execute(select(AgentHub).where(AgentHub.active.is_(True)))
+        hubs = list(hubs_result.scalars().all())
+        if not hubs:
+            return None
+
+        # Current load = orders already routed to this hub that haven't left it yet.
+        load_result = await self.db.execute(
+            select(Order.hub_id, func.count())
+            .where(
+                Order.hub_id.isnot(None),
+                Order.status.in_([
+                    OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.AT_HUB,
+                    OrderStatus.QA_IN_PROGRESS,
+                    OrderStatus.QA_FAILED,
+                    OrderStatus.VENDOR_REMEDIATION,
+                ]),
+            )
+            .group_by(Order.hub_id)
+        )
+        load_by_hub = dict(load_result.all())
+
+        under_capacity = [h for h in hubs if load_by_hub.get(h.id, 0) < h.capacity]
+        pool = under_capacity or hubs  # every hub is at capacity — pick the least-loaded anyway
+
+        if v and v.lat is not None and v.lng is not None:
+            with_coords = [h for h in pool if h.lat is not None and h.lng is not None]
+            if with_coords:
+                return min(
+                    with_coords,
+                    key=lambda h: _haversine_km(
+                        float(v.lat), float(v.lng), float(h.lat), float(h.lng)  # type: ignore[arg-type]
+                    ),
+                )
+
+        if v and v.zone_id:
+            in_zone = [h for h in pool if h.zone_id == v.zone_id]
+            if in_zone:
+                return min(in_zone, key=lambda h: load_by_hub.get(h.id, 0))
+
+        return min(pool, key=lambda h: load_by_hub.get(h.id, 0))
 
     async def get_rider_orders(self, user_id: str) -> list[Order]:
         from sqlalchemy.orm import selectinload
@@ -290,8 +387,10 @@ class DispatchService:
         )
         active_orders = result.scalars().all()
         for order in active_orders:
+            # "location" matches the WS contract in services/tracking/router.py — the tracking
+            # router enriches this with eta_seconds before forwarding to the browser.
             message = json.dumps({
-                "type": "location_update",
+                "type": "location",
                 "rider_id": str(rider.id),
                 "lat": lat,
                 "lng": lng,

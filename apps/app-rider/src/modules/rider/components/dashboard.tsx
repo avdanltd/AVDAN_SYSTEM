@@ -32,6 +32,10 @@ export function openInMaps(address: RiderOrder['delivery_address']) {
   Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`)
 }
 
+export function openCoordsInMaps(lat: number, lng: number) {
+  Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`)
+}
+
 function firstName(name: string | null | undefined): string {
   if (!name) return 'there'
   return name.trim().split(/\s+/)[0] ?? 'there'

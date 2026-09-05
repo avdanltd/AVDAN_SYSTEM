@@ -1467,6 +1467,12 @@ export interface components {
             status: string;
             /** Zone Id */
             zone_id: string | null;
+            /** Address */
+            address?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
             /** Rating */
             rating: number;
             /** Created At */
@@ -1766,6 +1772,16 @@ export interface components {
             vendor_id: string;
             /** Vendor Name */
             vendor_name?: string | null;
+            /** Rider Id */
+            rider_id?: string | null;
+            /** Hub Id */
+            hub_id?: string | null;
+            /** Hub Name */
+            hub_name?: string | null;
+            /** Hub Lat */
+            hub_lat?: number | null;
+            /** Hub Lng */
+            hub_lng?: number | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -1840,6 +1856,16 @@ export interface components {
             vendor_id: string;
             /** Vendor Name */
             vendor_name?: string | null;
+            /** Rider Id */
+            rider_id?: string | null;
+            /** Hub Id */
+            hub_id?: string | null;
+            /** Hub Name */
+            hub_name?: string | null;
+            /** Hub Lat */
+            hub_lat?: number | null;
+            /** Hub Lng */
+            hub_lng?: number | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -2175,6 +2201,10 @@ export interface components {
             id: string;
             /** User Id */
             user_id: string;
+            /** Name */
+            name?: string | null;
+            /** Phone */
+            phone?: string | null;
             /** Zone Id */
             zone_id: string | null;
             /** Online */
@@ -2267,6 +2297,8 @@ export interface components {
             description?: string | null;
             /** Logo Url */
             logo_url?: string | null;
+            /** Address */
+            address?: string | null;
         };
         /** UpdateVendorStatusRequest */
         UpdateVendorStatusRequest: {
@@ -2342,6 +2374,12 @@ export interface components {
             status: string;
             /** Zone Id */
             zone_id: string | null;
+            /** Address */
+            address?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
             /** Rating */
             rating: number;
             /** Created At */
@@ -2377,6 +2415,12 @@ export interface components {
             status: string;
             /** Zone Id */
             zone_id: string | null;
+            /** Address */
+            address?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
             /** Rating */
             rating: number;
             /** Created At */
@@ -5390,6 +5434,8 @@ export interface operations {
     list_inbound_orders_hub_orders_inbound_get: {
         parameters: {
             query?: {
+                /** @description Comma-separated OrderStatus values */
+                status?: string | null;
                 page?: number;
                 page_size?: number;
             };

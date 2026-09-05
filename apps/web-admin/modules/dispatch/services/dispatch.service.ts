@@ -17,6 +17,27 @@ export const dispatchService = {
       page_size: String(pageSize),
     }),
 
+  getAtHubOrders: (page = 1, pageSize = 20) =>
+    apiClient.get<PaginatedResponse<DispatchOrder>>('/admin/orders', {
+      status: 'AT_HUB,QA_IN_PROGRESS,QA_PASSED,QA_FAILED,VENDOR_REMEDIATION',
+      page: String(page),
+      page_size: String(pageSize),
+    }),
+
+  getOutForDeliveryOrders: (page = 1, pageSize = 20) =>
+    apiClient.get<PaginatedResponse<DispatchOrder>>('/admin/orders', {
+      status: 'OUT_FOR_DELIVERY',
+      page: String(page),
+      page_size: String(pageSize),
+    }),
+
+  getDeliveredOrders: (page = 1, pageSize = 20) =>
+    apiClient.get<PaginatedResponse<DispatchOrder>>('/admin/orders', {
+      status: 'DELIVERED,PAYMENT_RELEASE_PENDING',
+      page: String(page),
+      page_size: String(pageSize),
+    }),
+
   getPickedUpOrders: (page = 1, pageSize = 20) =>
     apiClient.get<PaginatedResponse<DispatchOrder>>('/admin/orders', {
       status: 'PICKED_UP',

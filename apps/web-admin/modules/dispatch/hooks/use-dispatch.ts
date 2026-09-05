@@ -26,6 +26,30 @@ export function usePickedUpOrders(page = 1) {
   })
 }
 
+export function useAtHubOrders(page = 1) {
+  return useQuery({
+    queryKey: ['dispatch-at-hub', page],
+    queryFn: () => dispatchService.getAtHubOrders(page),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useOutForDeliveryOrders(page = 1) {
+  return useQuery({
+    queryKey: ['dispatch-out-for-delivery', page],
+    queryFn: () => dispatchService.getOutForDeliveryOrders(page),
+    refetchInterval: 30_000,
+  })
+}
+
+export function useDeliveredOrders(page = 1) {
+  return useQuery({
+    queryKey: ['dispatch-delivered', page],
+    queryFn: () => dispatchService.getDeliveredOrders(page),
+    refetchInterval: 60_000,
+  })
+}
+
 export function useAvailableRiders() {
   return useQuery({
     queryKey: ['dispatch-riders'],
@@ -44,6 +68,7 @@ export function useAssignRider() {
       void queryClient.invalidateQueries({ queryKey: ['dispatch-ready'] })
       void queryClient.invalidateQueries({ queryKey: ['dispatch-picked-up'] })
       void queryClient.invalidateQueries({ queryKey: ['dispatch-riders'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-order'] })
     },
     onError: (error: Error) => {
       toast.error(error.message ?? 'No available rider found in this zone')
@@ -55,5 +80,6 @@ export function useAllRiders() {
   return useQuery({
     queryKey: ['dispatch-all-riders'],
     queryFn: () => dispatchService.getAllRiders(),
+    refetchInterval: 15_000,
   })
 }

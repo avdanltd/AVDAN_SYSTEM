@@ -4,6 +4,7 @@ export interface DispatchOrder {
   id: string
   customer_id: string
   vendor_id: string
+  rider_id: string | null
   status: OrderStatus
   total_kobo: number
   delivery_address: Record<string, string>
@@ -21,6 +22,8 @@ export interface DispatchOrder {
 export interface AvailableRider {
   id: string
   user_id: string
+  name: string | null
+  phone: string | null
   zone_id: string | null
   online: boolean
   vehicle_type: string | null

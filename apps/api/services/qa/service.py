@@ -41,18 +41,23 @@ class QAService:
     # ── Order operations ──────────────────────────────────────────────────────
 
     async def list_inbound_orders(
-        self, agent_user_id: str, page: int, page_size: int
+        self, agent_user_id: str, page: int, page_size: int, status_filter: list[str] | None = None
     ) -> tuple[list[Order], int]:
         from sqlalchemy import or_
         hub = await self.get_hub_for_agent(agent_user_id)
 
-        # IN_TRANSIT_TO_HUB orders: hub_id not yet assigned — any hub can claim them
-        # AT_HUB and later: filter to orders already assigned to this hub
+        # Dispatch now pre-assigns hub_id the moment a rider is assigned (READY_FOR_PICKUP),
+        # so a hub sees an order as "incoming" well before it physically arrives. The
+        # hub_id IS NULL branch is a safety net only — it covers orders that reached
+        # IN_TRANSIT_TO_HUB without ever getting a hub (no active hub existed at assignment
+        # time), which any hub can still self-claim, same as the original behaviour.
         hub_filter = or_(
             (Order.status == OrderStatus.IN_TRANSIT_TO_HUB) & Order.hub_id.is_(None),
             Order.hub_id == hub.id,
         )
-        active_statuses = [
+        active_statuses = status_filter or [
+            OrderStatus.READY_FOR_PICKUP,
+            OrderStatus.PICKED_UP,
             OrderStatus.IN_TRANSIT_TO_HUB,
             OrderStatus.AT_HUB,
             OrderStatus.QA_IN_PROGRESS,
@@ -98,10 +103,17 @@ class QAService:
         hub = await self.get_hub_for_agent(agent_user_id)
         order = await self._get_order(order_id)
 
+        # Dispatch pre-assigns hub_id when the rider is assigned (see DispatchService._pick_hub).
+        # Reject the receive if this order was routed to a different hub — without this check any
+        # agent could silently steal/misroute a pre-assigned order. A null hub_id is still
+        # allowed to be claimed here: the safety-net path for when no active hub existed yet.
+        if order.hub_id and order.hub_id != hub.id:
+            raise ForbiddenException("Order belongs to a different hub")
+
         order_svc = OrderService(self.db)
         await order_svc.transition(order_id, OrderStatus.AT_HUB, agent_user_id, "agent")
 
-        # Stamp hub on order
+        # Stamp hub on order (no-op if already pre-assigned to this hub)
         order.hub_id = hub.id
 
         await order_svc.transition(order_id, OrderStatus.QA_IN_PROGRESS, agent_user_id, "agent")

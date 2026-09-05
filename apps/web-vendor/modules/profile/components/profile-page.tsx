@@ -39,6 +39,7 @@ type AccountFormValues = z.infer<typeof accountSchema>
 const businessSchema = z.object({
   name: z.string().min(2, 'Business name must be at least 2 characters'),
   description: z.string().optional(),
+  address: z.string().optional(),
 })
 type BusinessFormValues = z.infer<typeof businessSchema>
 
@@ -167,7 +168,7 @@ function BusinessForm() {
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(businessSchema),
-    defaultValues: { name: '', description: '' },
+    defaultValues: { name: '', description: '', address: '' },
   })
 
   useEffect(() => {
@@ -175,6 +176,7 @@ function BusinessForm() {
       form.reset({
         name: vendor.name ?? '',
         description: vendor.description ?? '',
+        address: vendor.address ?? '',
       })
     }
   }, [vendor, form])
@@ -183,6 +185,7 @@ function BusinessForm() {
     updateVendor({
       name: values.name,
       description: values.description || undefined,
+      address: values.address || undefined,
     })
   }
 
@@ -228,6 +231,28 @@ function BusinessForm() {
             </FormItem>
           )}
         />
+        <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Pickup Address</FormLabel>
+              <FormControl>
+                <Input placeholder="e.g. 12 Adeola Odeku Street, Victoria Island, Lagos" {...field} />
+              </FormControl>
+              <p className="text-xs text-muted-foreground">
+                Used to find the nearest rider and hub for your orders — the more precise, the
+                better the match.
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        {vendor && !vendor.lat && vendor.address && (
+          <p className="text-xs text-amber-600">
+            Couldn&apos;t pinpoint this address on the map — try a more specific street address.
+          </p>
+        )}
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Saving…' : 'Save Changes'}
@@ -448,7 +473,8 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="font-display text-base">Payout Account</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Link your Nigerian bank account to receive payments after order delivery.
+            Link your Nigerian bank account to receive payments after order delivery. Required
+            before you can accept orders.
           </p>
         </CardHeader>
         <Separator />

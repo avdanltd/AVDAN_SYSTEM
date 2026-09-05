@@ -57,6 +57,11 @@ class OrderResponse(BaseModel):
     customer_id: str
     vendor_id: str
     vendor_name: str | None = None
+    rider_id: str | None = None
+    hub_id: str | None = None
+    hub_name: str | None = None
+    hub_lat: float | None = None
+    hub_lng: float | None = None
     status: str
     total_kobo: int
     delivery_address: dict
