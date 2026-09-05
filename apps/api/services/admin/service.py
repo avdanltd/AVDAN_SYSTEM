@@ -101,8 +101,10 @@ class AdminService:
         count_query = select(func.count()).select_from(Order)
 
         if status:
-            query = query.where(Order.status == status)
-            count_query = count_query.where(Order.status == status)
+            statuses = [s.strip() for s in status.split(",") if s.strip()]
+            status_filter = Order.status.in_(statuses) if len(statuses) > 1 else Order.status == statuses[0]
+            query = query.where(status_filter)
+            count_query = count_query.where(status_filter)
         if vendor_id:
             query = query.where(Order.vendor_id == uuid.UUID(vendor_id))
             count_query = count_query.where(Order.vendor_id == uuid.UUID(vendor_id))

@@ -55,6 +55,47 @@ def send_order_notification(order_id: str, from_state: str | None, to_state: str
     asyncio.run(_dispatch_async(order_id, from_state, to_state, triggers))
 
 
+@celery_app.task(name="workers.tasks.notifications.notify_rider_assigned")
+def notify_rider_assigned(order_id: str, rider_user_id: str) -> None:
+    """Separate from send_order_notification: assigning a rider is not an order state
+    transition (the order stays READY_FOR_PICKUP until the rider confirms pickup — see
+    DispatchService.assign_rider), so it never runs through the (from_state, to_state)
+    trigger map above. The rider is also the recipient here, not customer/vendor."""
+    asyncio.run(_notify_rider_assigned_async(order_id, rider_user_id))
+
+
+async def _notify_rider_assigned_async(order_id: str, rider_user_id: str) -> None:
+    import uuid
+    from datetime import UTC, datetime
+
+    from core.database import AsyncSessionLocal
+    from services.notification.models import Notification
+
+    title = "New Delivery Assigned"
+    body = "You've been assigned a new order — open the app to see pickup details."
+    content = {"title": title, "body": body, "order_id": order_id}
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            now = datetime.now(UTC)
+            db.add(Notification(
+                user_id=uuid.UUID(rider_user_id),
+                type="rider_assigned",
+                channel="in_app",
+                content=content,
+                sent_at=now,
+            ))
+            fcm_token = await _get_fcm_token(db, uuid.UUID(rider_user_id))
+            if fcm_token:
+                db.add(Notification(
+                    user_id=uuid.UUID(rider_user_id),
+                    type="rider_assigned",
+                    channel="push",
+                    content=content,
+                    sent_at=now if await _send_fcm(fcm_token, title, body, content) else None,
+                ))
+
+
 # ── Legacy task signature kept for backwards compatibility ────────────────────
 @celery_app.task(name="workers.tasks.notifications.send_notification")
 def send_notification(user_id: str, notification_type: str, payload: dict) -> None:  # type: ignore[type-arg]
@@ -119,7 +160,10 @@ async def _dispatch_async(
 
                 # Attempt Email Dispatch via Resend
                 if email:
-                    from services.notification.emails import build_order_status_email, send_email_via_resend
+                    from services.notification.emails import (
+                        build_order_status_email,
+                        send_email_via_resend,
+                    )
                     subject = f"AVDAN Order Update: {trigger['title']}"
                     html = build_order_status_email(name, order_id, trigger["title"], trigger["body"])
                     db.add(Notification(
@@ -145,6 +189,7 @@ async def _dispatch_async(
 async def _resolve_recipients(db, order) -> dict[str, dict]:
     """Returns {"customer": {"id": UUID, "name": str, "email": str}, "vendor": ...}."""
     from sqlalchemy import select
+
     from services.auth.models import User
     from services.vendor.models import Vendor
 

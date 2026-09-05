@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { CheckCircle2, MapPin, Navigation, Package, Receipt } from 'lucide-react-native'
+import { Building2, CheckCircle2, MapPin, Navigation, Package, Receipt } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useRiderOrder } from '../hooks/use-rider-orders'
 import { useOrderAction } from '../hooks/use-order-actions'
 import { ORDER_ACTIONS, type RiderOrderAction } from '../types'
-import { formatAddress, openInMaps } from './dashboard'
+import { formatAddress, openCoordsInMaps, openInMaps } from './dashboard'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatDateTime, formatKobo, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
 /** The rider-visible leg of the lifecycle, in order, for the progress trail. */
@@ -111,6 +111,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   }
 
   const actions = ORDER_ACTIONS[order.status] ?? []
+  // Hub is pre-assigned the moment dispatch picks a rider — surface it as soon as it exists
+  // and only through the leg it's relevant for; once the parcel is out for delivery the hub
+  // stop is behind the rider and the delivery address card above is what matters.
+  const HUB_RELEVANT_STATUSES = new Set([
+    'READY_FOR_PICKUP', 'PICKED_UP', 'IN_TRANSIT_TO_HUB', 'AT_HUB',
+    'QA_IN_PROGRESS', 'QA_PASSED', 'QA_FAILED', 'VENDOR_REMEDIATION',
+  ])
+  const showHub = !!order.hub_id && HUB_RELEVANT_STATUSES.has(order.status)
 
   // Destructive / irreversible transitions get a confirm step — a stray tap while riding
   // should not mark a delivery failed.
@@ -171,6 +179,27 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           onPress={() => openInMaps(order.delivery_address)}
         />
       </Card>
+
+      {/* Hub — where this order is routed for QA before the last mile */}
+      {showHub && (
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <Building2 size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Drop-off hub</Text>
+          </View>
+          <Text style={[styles.addressText, { color: colors.foreground }]}>
+            {order.hub_name ?? 'Assigned hub'}
+          </Text>
+          {order.hub_lat != null && order.hub_lng != null && (
+            <Button
+              label="Open in Maps"
+              variant="outline"
+              icon={<Navigation size={16} color={colors.foreground} />}
+              onPress={() => openCoordsInMaps(order.hub_lat!, order.hub_lng!)}
+            />
+          )}
+        </Card>
+      )}
 
       {/* Progress */}
       <Card style={styles.block}>

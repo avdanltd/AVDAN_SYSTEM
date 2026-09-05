@@ -56,9 +56,20 @@ export function DashboardPage() {
         />
       </div>
 
-      {/* Inbound Queue */}
+      {/* Incoming — assigned to this hub but not yet physically here */}
       <div className="rounded-xl border border-border bg-background p-5 shadow-card">
-        <OrderQueue />
+        <OrderQueue
+          heading="Incoming"
+          statusFilter="READY_FOR_PICKUP,PICKED_UP,IN_TRANSIT_TO_HUB"
+        />
+      </div>
+
+      {/* At Hub / QA — physically here, actionable */}
+      <div className="rounded-xl border border-border bg-background p-5 shadow-card">
+        <OrderQueue
+          heading="At Hub / QA"
+          statusFilter="AT_HUB,QA_IN_PROGRESS,QA_PASSED,QA_FAILED,VENDOR_REMEDIATION"
+        />
       </div>
     </div>
   )

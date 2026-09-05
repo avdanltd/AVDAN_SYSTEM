@@ -171,6 +171,7 @@ jobs:
             mv .env.merged .env
             echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml run --rm api uv run alembic upgrade head
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
           "

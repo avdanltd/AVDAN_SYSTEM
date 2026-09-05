@@ -43,6 +43,11 @@ class Vendor(BaseModel):
         ForeignKey("delivery_zones.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # Free-text address plus geocoded coordinates — nullable because geocoding at registration
+    # is best-effort. A vendor without coordinates falls back to zone-based rider/hub matching.
+    address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    lat: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
+    lng: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
     rating: Mapped[Decimal] = mapped_column(
         Numeric(3, 2), default=Decimal("0.00"), nullable=False
     )

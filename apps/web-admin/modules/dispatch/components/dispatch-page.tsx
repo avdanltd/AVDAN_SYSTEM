@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   Badge,
   Button,
@@ -8,12 +9,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
   OrderStatusBadge,
   Skeleton,
   Tabs,
@@ -21,15 +16,18 @@ import {
   TabsList,
   TabsTrigger,
 } from '@avdan/ui'
-import { Bike, MapPin, RefreshCw, Truck, Users, Wifi, WifiOff } from 'lucide-react'
+import { Bike, CheckCircle2, MapPin, RefreshCw, Truck, Users, Wifi, WifiOff } from 'lucide-react'
 import {
   useAllRiders,
-  useAssignRider,
+  useAtHubOrders,
   useAvailableRiders,
+  useDeliveredOrders,
   useInTransitOrders,
+  useOutForDeliveryOrders,
   usePickedUpOrders,
   useReadyOrders,
 } from '../hooks/use-dispatch'
+import { AssignRiderDialog } from './assign-rider-dialog'
 import { formatKobo, formatRelativeTime } from '@/lib/format'
 import { Pagination } from '@/modules/shared/components/pagination'
 import type { AvailableRider, DispatchOrder } from '../types'
@@ -51,102 +49,6 @@ function RidersBadge() {
         </span>
       )}
     </div>
-  )
-}
-
-function AssignRiderDialog({
-  order,
-  onOpenChange,
-}: {
-  order: DispatchOrder
-  onOpenChange: (open: boolean) => void
-}) {
-  const { data: riders = [], isLoading } = useAllRiders()
-  const { mutate: assign, isPending } = useAssignRider()
-  const [selected, setSelected] = useState<string | null>(null)
-
-  function handleAssign() {
-    if (!selected) return
-    assign(
-      { orderId: order.id, riderId: selected },
-      { onSuccess: () => onOpenChange(false) },
-    )
-  }
-
-  return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Assign Rider</DialogTitle>
-          <DialogDescription>
-            Select a rider for order{' '}
-            <span className="font-mono">#{order.id.slice(0, 8)}</span>
-            {' '}({formatKobo(order.total_kobo)})
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoading ? (
-          <div className="space-y-2 py-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full rounded-lg" />
-            ))}
-          </div>
-        ) : riders.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            No riders in the system. Create a rider account from the Users page.
-          </p>
-        ) : (
-          <ul className="space-y-2 py-1 max-h-72 overflow-y-auto">
-            {riders.map((rider) => {
-              const isSelected = selected === rider.id
-              return (
-                <li key={rider.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelected(rider.id)}
-                    className={`w-full flex items-center justify-between rounded-lg border px-3 py-2.5 text-left transition-colors ${
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/40 hover:bg-muted/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      {rider.online ? (
-                        <Wifi className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                      ) : (
-                        <WifiOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      )}
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {rider.id.slice(0, 8)}
-                      </span>
-                      {rider.vehicle_type && (
-                        <Badge variant="secondary" className="text-xs">
-                          {rider.vehicle_type}
-                        </Badge>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {rider.lat != null
-                        ? `${Number(rider.lat).toFixed(4)}, ${Number(rider.lng).toFixed(4)}`
-                        : 'No GPS'}
-                    </span>
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
-            Cancel
-          </Button>
-          <Button onClick={handleAssign} disabled={!selected || isPending}>
-            {isPending ? 'Assigning…' : 'Assign'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
 
@@ -175,19 +77,30 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
           </div>
         </div>
         {showAssign && (
-          <Button
-            size="sm"
-            onClick={() => setDialogOpen(true)}
-            className="ml-4 shrink-0"
-          >
-            <Bike className="mr-1.5 h-3.5 w-3.5" />
-            Assign Rider
-          </Button>
+          order.rider_id ? (
+            <span className="ml-4 flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              Rider assigned
+            </span>
+          ) : (
+            <Button
+              size="sm"
+              onClick={() => setDialogOpen(true)}
+              className="ml-4 shrink-0"
+            >
+              <Bike className="mr-1.5 h-3.5 w-3.5" />
+              Assign Rider
+            </Button>
+          )
         )}
       </div>
 
       {dialogOpen && (
-        <AssignRiderDialog order={order} onOpenChange={(o) => !o && setDialogOpen(false)} />
+        <AssignRiderDialog
+          orderId={order.id}
+          totalKobo={order.total_kobo}
+          onOpenChange={(o) => !o && setDialogOpen(false)}
+        />
       )}
     </>
   )
@@ -277,8 +190,8 @@ function AllRidersList() {
                   ) : (
                     <WifiOff className="h-3 w-3 text-muted-foreground" />
                   )}
-                  <span className="font-mono text-xs text-muted-foreground">
-                    {rider.id.slice(0, 8)}
+                  <span className="text-sm font-medium text-foreground">
+                    {rider.name ?? `Rider ${rider.id.slice(0, 8)}`}
                   </span>
                   {rider.vehicle_type && (
                     <Badge variant="secondary" className="text-xs">
@@ -301,13 +214,31 @@ function AllRidersList() {
 }
 
 export function DispatchPage() {
+  const queryClient = useQueryClient()
   const [readyPage, setReadyPage] = useState(1)
   const [pickedPage, setPickedPage] = useState(1)
   const [transitPage, setTransitPage] = useState(1)
+  const [atHubPage, setAtHubPage] = useState(1)
+  const [outPage, setOutPage] = useState(1)
+  const [deliveredPage, setDeliveredPage] = useState(1)
 
-  const { data: readyData, isLoading: loadingReady, refetch: refetchReady } = useReadyOrders(readyPage)
+  const { data: readyData, isLoading: loadingReady } = useReadyOrders(readyPage)
   const { data: pickedData, isLoading: loadingPicked } = usePickedUpOrders(pickedPage)
   const { data: transitData, isLoading: loadingTransit } = useInTransitOrders(transitPage)
+  const { data: atHubData, isLoading: loadingAtHub } = useAtHubOrders(atHubPage)
+  const { data: outData, isLoading: loadingOut } = useOutForDeliveryOrders(outPage)
+  const { data: deliveredData, isLoading: loadingDelivered } = useDeliveredOrders(deliveredPage)
+
+  function handleRefresh() {
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-ready'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-picked-up'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-in-transit'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-at-hub'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-out-for-delivery'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-delivered'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-riders'] })
+    void queryClient.invalidateQueries({ queryKey: ['dispatch-all-riders'] })
+  }
 
   return (
     <div className="space-y-6">
@@ -320,7 +251,7 @@ export function DispatchPage() {
         </div>
         <div className="flex items-center gap-3">
           <RidersBadge />
-          <Button variant="outline" size="sm" onClick={() => void refetchReady()}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
           </Button>
@@ -354,6 +285,25 @@ export function DispatchPage() {
                     {transitData!.total}
                   </Badge>
                 )}
+              </TabsTrigger>
+              <TabsTrigger value="at-hub">
+                At Hub / QA
+                {(atHubData?.total ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {atHubData!.total}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="out-for-delivery">
+                Out for Delivery
+                {(outData?.total ?? 0) > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    {outData!.total}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="delivered">
+                Delivered
               </TabsTrigger>
             </TabsList>
 
@@ -390,6 +340,42 @@ export function DispatchPage() {
                 total={transitData?.total ?? 0}
                 pageSize={transitData?.page_size ?? 20}
                 onPage={setTransitPage}
+              />
+            </TabsContent>
+
+            <TabsContent value="at-hub">
+              <OrderList
+                orders={atHubData?.items ?? []}
+                isLoading={loadingAtHub}
+                showAssign={false}
+                page={atHubPage}
+                total={atHubData?.total ?? 0}
+                pageSize={atHubData?.page_size ?? 20}
+                onPage={setAtHubPage}
+              />
+            </TabsContent>
+
+            <TabsContent value="out-for-delivery">
+              <OrderList
+                orders={outData?.items ?? []}
+                isLoading={loadingOut}
+                showAssign={false}
+                page={outPage}
+                total={outData?.total ?? 0}
+                pageSize={outData?.page_size ?? 20}
+                onPage={setOutPage}
+              />
+            </TabsContent>
+
+            <TabsContent value="delivered">
+              <OrderList
+                orders={deliveredData?.items ?? []}
+                isLoading={loadingDelivered}
+                showAssign={false}
+                page={deliveredPage}
+                total={deliveredData?.total ?? 0}
+                pageSize={deliveredData?.page_size ?? 20}
+                onPage={setDeliveredPage}
               />
             </TabsContent>
           </Tabs>

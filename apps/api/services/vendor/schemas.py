@@ -84,6 +84,9 @@ class VendorResponse(BaseModel):
     logo_url: str | None
     status: str
     zone_id: str | None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
     rating: float
     created_at: str
 
@@ -101,6 +104,11 @@ class VendorResponse(BaseModel):
     def decimal_to_float(cls, v: object) -> float:
         return float(v)  # type: ignore[arg-type]
 
+    @field_validator("lat", "lng", mode="before")
+    @classmethod
+    def coords_to_float(cls, v: object) -> float | None:
+        return None if v is None else float(v)  # type: ignore[arg-type]
+
 
 class VendorDetailResponse(VendorResponse):
     products: list[ProductResponse] = []
@@ -113,6 +121,8 @@ class UpdateVendorProfileRequest(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     logo_url: str | None = None
+    # Re-geocoded server-side on every change (see VendorService.update_vendor_profile).
+    address: str | None = Field(default=None, max_length=500)
 
 
 class PaginatedVendorsResponse(BaseModel):

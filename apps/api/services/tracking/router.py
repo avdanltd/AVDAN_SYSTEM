@@ -1,4 +1,11 @@
-"""WebSocket tracking — real-time order + rider location via Redis Pub/Sub."""
+"""WebSocket tracking — real-time order + rider location via Redis Pub/Sub.
+
+Message contract (both the initial-state burst on connect and every live pub/sub push use the
+same shapes, so the frontend has one handler per type):
+  {"type": "status", "status": "<OrderStatus>"}
+  {"type": "location", "lat": <float>, "lng": <float>, "eta_seconds": <int|null>}
+  {"type": "rider_info", "name": <str|null>, "phone": <str|null>}
+"""
 from __future__ import annotations
 
 import asyncio
@@ -14,49 +21,62 @@ from services.dispatch.service import calculate_eta_seconds
 ws_router = APIRouter()
 
 
-async def _get_initial_state(order_id: str, redis) -> dict:  # type: ignore[type-arg]
-    """Fetch current order status and last known rider location from Redis."""
+async def _load_order_and_rider(order_id: str) -> tuple[object | None, object | None]:
     from sqlalchemy import select
 
     from core.database import AsyncSessionLocal
+    from services.auth.models import User
+    from services.dispatch.models import Rider
     from services.orders.models import Order
 
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Order).where(Order.id == uuid.UUID(order_id))
-        )
+        result = await db.execute(select(Order).where(Order.id == uuid.UUID(order_id)))
         order = result.scalar_one_or_none()
-        if not order:
-            return {"type": "error", "message": "Order not found"}
+        if not order or not order.rider_id:
+            return order, None
 
-        state: dict = {
-            "type": "initial_state",
-            "order_id": order_id,
-            "status": order.status,
-            "rider_location": None,
-            "eta_seconds": None,
-        }
+        rider_result = await db.execute(
+            select(Rider, User).join(User, User.id == Rider.user_id).where(Rider.id == order.rider_id)
+        )
+        row = rider_result.first()
+        return order, row
 
-        if order.rider_id:
-            raw = await redis.get(f"rider:location:{order.rider_id}")
-            if raw:
-                loc = json.loads(raw)
-                state["rider_location"] = loc
-                # Compute ETA if delivery address has coordinates
-                addr = order.delivery_address or {}
-                dest_lat = addr.get("lat")
-                dest_lng = addr.get("lng")
-                if dest_lat and dest_lng:
-                    state["eta_seconds"] = calculate_eta_seconds(
-                        loc["lat"], loc["lng"], dest_lat, dest_lng
-                    )
 
-    return state
+async def _send_initial_state(websocket: WebSocket, order_id: str, redis) -> object | None:  # type: ignore[type-arg]
+    """Sends the current status, last known rider location, and rider info (each as its own
+    message, same shape as the live pub/sub pushes). Returns the order, or None if not found."""
+    order, rider_row = await _load_order_and_rider(order_id)
+    if not order:
+        await websocket.send_text(json.dumps({"type": "error", "message": "Order not found"}))
+        return None
+
+    await websocket.send_text(json.dumps({"type": "status", "status": order.status}))
+
+    if order.rider_id:
+        raw = await redis.get(f"rider:location:{order.rider_id}")
+        if raw:
+            loc = json.loads(raw)
+            eta_seconds = None
+            addr = order.delivery_address or {}
+            dest_lat, dest_lng = addr.get("lat"), addr.get("lng")
+            if dest_lat and dest_lng:
+                eta_seconds = calculate_eta_seconds(loc["lat"], loc["lng"], dest_lat, dest_lng)
+            await websocket.send_text(json.dumps({
+                "type": "location", "lat": loc["lat"], "lng": loc["lng"], "eta_seconds": eta_seconds,
+            }))
+
+        if rider_row:
+            _rider, user = rider_row
+            await websocket.send_text(json.dumps({
+                "type": "rider_info", "name": user.name, "phone": user.phone,
+            }))
+
+    return order
 
 
 @ws_router.websocket("/order/{order_id}")
 async def order_tracking(websocket: WebSocket, order_id: str) -> None:
-    # ── Auth: validate JWT cookie before accepting ────────────────────────────
+    # ── Auth: valid token, and the caller must own this order (or be staff) ──────
     token = websocket.cookies.get("avdan_token")
     if not token:
         await websocket.close(code=1008, reason="Authentication required")
@@ -67,14 +87,23 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
         await websocket.close(code=1008, reason="Invalid or expired token")
         return
 
+    user_id, role = payload.get("sub"), payload.get("role")
+    order, _rider_row = await _load_order_and_rider(order_id)
+    if not order:
+        await websocket.close(code=1008, reason="Order not found")
+        return
+    is_owner = role == "customer" and str(order.customer_id) == str(user_id)
+    is_staff = role in ("admin", "support")
+    if not (is_owner or is_staff):
+        await websocket.close(code=1008, reason="Not authorized for this order")
+        return
+
     await websocket.accept()
 
     import redis.asyncio as aioredis
     redis = aioredis.Redis(connection_pool=redis_pool)
 
-    # Send initial state on connect
-    initial = await _get_initial_state(order_id, redis)
-    await websocket.send_text(json.dumps(initial))
+    await _send_initial_state(websocket, order_id, redis)
 
     pubsub = redis.pubsub()
     await pubsub.subscribe(f"order:{order_id}")
@@ -88,11 +117,10 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-            # Enrich location_update messages with ETA
-            if data.get("type") == "location_update":
+            # Enrich location pushes with ETA
+            if data.get("type") == "location":
                 addr = await _get_delivery_address(order_id)
-                dest_lat = addr.get("lat")
-                dest_lng = addr.get("lng")
+                dest_lat, dest_lng = addr.get("lat"), addr.get("lng")
                 if dest_lat and dest_lng:
                     data["eta_seconds"] = calculate_eta_seconds(
                         data["lat"], data["lng"], dest_lat, dest_lng

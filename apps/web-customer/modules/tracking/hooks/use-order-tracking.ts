@@ -9,22 +9,19 @@ export interface TrackingLocation {
   lng: number
 }
 
-export interface TrackingMessage {
-  type: 'location' | 'status' | 'eta' | 'rider_info'
-  location?: TrackingLocation
-  status?: OrderStatus
-  eta?: string
-  rider?: {
-    name: string
-    phone: string
-  }
-}
+// Matches the WS contract in apps/api/services/tracking/router.py exactly — the initial-state
+// burst on connect and every live pub/sub push use these same three shapes.
+export type TrackingMessage =
+  | { type: 'status'; status: OrderStatus }
+  | { type: 'location'; lat: number; lng: number; eta_seconds: number | null }
+  | { type: 'rider_info'; name: string | null; phone: string | null }
+  | { type: 'error'; message: string }
 
 export interface TrackingState {
   location: TrackingLocation | null
   status: OrderStatus | null
-  eta: string | null
-  rider: { name: string; phone: string } | null
+  etaSeconds: number | null
+  rider: { name: string | null; phone: string | null } | null
   connected: boolean
 }
 
@@ -32,7 +29,7 @@ export function useOrderTracking(orderId: string) {
   const [state, setState] = useState<TrackingState>({
     location: null,
     status: null,
-    eta: null,
+    etaSeconds: null,
     rider: null,
     connected: false,
   })
@@ -49,16 +46,16 @@ export function useOrderTracking(orderId: string) {
         const next = { ...prev, connected: true }
         switch (message.type) {
           case 'location':
-            if (message.location) next.location = message.location
+            next.location = { lat: message.lat, lng: message.lng }
+            next.etaSeconds = message.eta_seconds
             break
           case 'status':
-            if (message.status) next.status = message.status
-            break
-          case 'eta':
-            if (message.eta) next.eta = message.eta
+            next.status = message.status
             break
           case 'rider_info':
-            if (message.rider) next.rider = message.rider
+            next.rider = { name: message.name, phone: message.phone }
+            break
+          case 'error':
             break
         }
         return next

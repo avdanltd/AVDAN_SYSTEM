@@ -15,6 +15,8 @@ class AvailabilityUpdate(BaseModel):
 class RiderResponse(BaseModel):
     id: str
     user_id: str
+    name: str | None = None
+    phone: str | None = None
     zone_id: str | None
     online: bool
     vehicle_type: str | None

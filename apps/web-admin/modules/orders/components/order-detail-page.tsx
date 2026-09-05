@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Bike, ChevronRight } from 'lucide-react'
 
 import {
   OrderStatusBadge,
@@ -32,6 +32,7 @@ import {
 } from '@avdan/ui'
 import { useAdminOrder } from '../hooks/use-admin-order'
 import { useOverrideStatus } from '../hooks/use-override-status'
+import { AssignRiderDialog } from '@/modules/dispatch/components/assign-rider-dialog'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import type { AdminOrderItem } from '../types'
 import { formatKobo, formatDate } from '@/lib/format'
@@ -60,6 +61,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const [reason, setReason] = useState('')
   const [confirmText, setConfirmText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [assignOpen, setAssignOpen] = useState(false)
 
   const itemColumns: Column<AdminOrderItem>[] = [
     { key: 'name', header: 'Product', cell: (r) => <span className="font-medium">{r.name}</span> },
@@ -143,9 +145,16 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Rider</p>
-            <p className="mt-1 font-mono text-sm font-medium">
-              {order.rider_id ? `${order.rider_id.slice(0, 12)}…` : 'Unassigned'}
-            </p>
+            {order.rider_id ? (
+              <p className="mt-1 font-mono text-sm font-medium">{order.rider_id.slice(0, 12)}…</p>
+            ) : order.status === 'READY_FOR_PICKUP' ? (
+              <Button size="sm" variant="outline" className="mt-1.5 h-7" onClick={() => setAssignOpen(true)}>
+                <Bike className="mr-1.5 h-3.5 w-3.5" />
+                Assign Rider
+              </Button>
+            ) : (
+              <p className="mt-1 text-sm font-medium text-muted-foreground">Unassigned</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -303,6 +312,14 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {assignOpen && (
+        <AssignRiderDialog
+          orderId={order.id}
+          totalKobo={order.total_kobo}
+          onOpenChange={setAssignOpen}
+        />
+      )}
     </div>
   )
 }

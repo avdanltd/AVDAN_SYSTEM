@@ -85,11 +85,13 @@ export function TrackingPage({ id }: { id: string }) {
             )}
           </div>
         </div>
-        {tracking.eta && (
+        {tracking.etaSeconds != null && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <span className="text-muted-foreground">ETA:</span>
-            <span className="font-semibold text-foreground">{tracking.eta}</span>
+            <span className="font-semibold text-foreground">
+              {Math.max(1, Math.round(tracking.etaSeconds / 60))} min
+            </span>
           </div>
         )}
       </div>
@@ -99,7 +101,7 @@ export function TrackingPage({ id }: { id: string }) {
         <TrackingMap
           lat={tracking.location!.lat}
           lng={tracking.location!.lng}
-          riderName={tracking.rider?.name}
+          riderName={tracking.rider?.name ?? undefined}
         />
       ) : (
         <div className="flex h-[400px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 text-center">
@@ -124,15 +126,19 @@ export function TrackingPage({ id }: { id: string }) {
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <div>
-              <p className="font-semibold text-foreground">{tracking.rider.name}</p>
-              <p className="text-sm text-muted-foreground">{tracking.rider.phone}</p>
+              <p className="font-semibold text-foreground">{tracking.rider.name ?? 'Assigned rider'}</p>
+              {tracking.rider.phone && (
+                <p className="text-sm text-muted-foreground">{tracking.rider.phone}</p>
+              )}
             </div>
-            <a
-              href={`tel:${tracking.rider.phone}`}
-              className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-secondary"
-            >
-              Call Rider
-            </a>
+            {tracking.rider.phone && (
+              <a
+                href={`tel:${tracking.rider.phone}`}
+                className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-4 text-sm font-medium shadow-sm transition-colors hover:bg-secondary"
+              >
+                Call Rider
+              </a>
+            )}
           </CardContent>
         </Card>
       )}

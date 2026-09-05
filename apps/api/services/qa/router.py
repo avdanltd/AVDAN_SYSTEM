@@ -46,6 +46,7 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
 
 @router.get("/orders/inbound", response_model=PaginatedOrdersResponse)
 async def list_inbound_orders(
+    status: str | None = Query(default=None, description="Comma-separated OrderStatus values"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     current_user: CurrentUser = Depends(require_role("agent")),
@@ -55,7 +56,10 @@ async def list_inbound_orders(
 
     from services.vendor.models import Vendor
     svc = QAService(db)
-    orders, total = await svc.list_inbound_orders(current_user.user_id, page, page_size)
+    status_filter = [s.strip() for s in status.split(",") if s.strip()] if status else None
+    orders, total = await svc.list_inbound_orders(
+        current_user.user_id, page, page_size, status_filter=status_filter
+    )
     vendor_ids = list({o.vendor_id for o in orders})
     vendors: dict = {}
     if vendor_ids:

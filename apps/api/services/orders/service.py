@@ -190,6 +190,23 @@ class OrderService:
         order = await self._get_order(order_id)
         await self._assert_vendor_owns_order(vendor_user_id, order)
 
+        # Escrow release fails silently deep in a Celery retry loop if the vendor never set up
+        # a payout account (see PaymentService.release_escrow's VENDOR_PAYOUT_NOT_CONFIGURED).
+        # Catching it here, before the vendor can even commit to fulfilling, means that failure
+        # mode can't happen — better than the money getting stuck after the customer already
+        # paid and the order is already in flight.
+        from services.vendor.models import Vendor
+        vendor_result = await self.db.execute(
+            select(Vendor).where(Vendor.id == order.vendor_id)
+        )
+        vendor = vendor_result.scalar_one_or_none()
+        if not vendor or not vendor.paystack_recipient_code:
+            raise AppError(
+                422,
+                "PAYOUT_ACCOUNT_REQUIRED",
+                "Add a payout bank account in Settings before accepting orders.",
+            )
+
         validate_transition(order.status, OrderStatus.VENDOR_ACCEPTED, "vendor")
         await self._record_event(order, OrderStatus.VENDOR_ACCEPTED, vendor_user_id, "vendor")
         order.status = OrderStatus.VENDOR_ACCEPTED
@@ -338,6 +355,23 @@ class OrderService:
             )
         except Exception:
             pass  # notification failure must never break the order flow
+
+        # Push the new status to anyone with the live tracking WS open for this order
+        # (services/tracking/router.py). Best-effort — a customer who missed the push still
+        # gets the current status on their next reconnect/page load.
+        try:
+            import json
+
+            import redis.asyncio as aioredis
+
+            from core.redis import redis_pool
+            redis = aioredis.Redis(connection_pool=redis_pool)
+            await redis.publish(
+                f"order:{order.id}",
+                json.dumps({"type": "status", "status": to_state}),
+            )
+        except Exception:
+            pass
 
     async def _get_vendor_for_user(self, user_id: str) -> object:
         from services.vendor.models import Vendor
