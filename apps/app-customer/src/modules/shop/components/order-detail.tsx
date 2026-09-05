@@ -1,6 +1,6 @@
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { CheckCircle2, CreditCard, MapPin, Package, Receipt } from 'lucide-react-native'
+import { Bike, CheckCircle2, CreditCard, MapPin, Navigation, Package, Phone, Receipt } from 'lucide-react-native'
 import {
   Badge,
   Button,
@@ -19,6 +19,17 @@ import {
 import { statusLabel } from '@/constants/status'
 import { useOrder } from '../hooks/use-shop'
 import { useCheckout } from '../hooks/use-checkout'
+import { useOrderTracking } from '../hooks/use-order-tracking'
+
+/** Statuses where a rider is actually en route and worth opening a live WS connection for. */
+const TRACKABLE_STATUSES = new Set([
+  'READY_FOR_PICKUP', 'PICKED_UP', 'IN_TRANSIT_TO_HUB', 'AT_HUB',
+  'QA_IN_PROGRESS', 'QA_PASSED', 'QA_FAILED', 'VENDOR_REMEDIATION', 'OUT_FOR_DELIVERY',
+])
+
+function formatEta(seconds: number): string {
+  return `${Math.max(1, Math.round(seconds / 60))} min`
+}
 
 /** The buyer-visible lifecycle, collapsed to what a customer actually cares about. */
 const JOURNEY = [
@@ -119,6 +130,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const { colors } = useTheme()
   const { data: order, isLoading, isError } = useOrder(orderId)
   const { payExistingOrder, isBusy } = useCheckout()
+  const tracking = useOrderTracking(orderId, !!order && TRACKABLE_STATUSES.has(order.status))
 
   if (isLoading) {
     return (
@@ -191,6 +203,55 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </View>
         <Journey status={order.status} />
       </Card>
+
+      {tracking.rider && (
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <Bike size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Your rider</Text>
+            {tracking.connected && (
+              <View style={[styles.liveDot, { backgroundColor: colors.successMuted }]}>
+                <View style={[styles.liveDotInner, { backgroundColor: colors.success }]} />
+                <Text style={[styles.liveText, { color: colors.success }]}>Live</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.riderRow}>
+            <View style={styles.riderInfo}>
+              <Text style={[styles.riderName, { color: colors.foreground }]}>
+                {tracking.rider.name ?? 'Assigned rider'}
+              </Text>
+              {tracking.etaSeconds != null && (
+                <Text style={[styles.riderEta, { color: colors.mutedForeground }]}>
+                  Arriving in ~{formatEta(tracking.etaSeconds)}
+                </Text>
+              )}
+            </View>
+            {tracking.rider.phone && (
+              <Button
+                label="Call"
+                variant="outline"
+                size="sm"
+                fullWidth={false}
+                icon={<Phone size={14} color={colors.foreground} />}
+                onPress={() => Linking.openURL(`tel:${tracking.rider!.phone}`)}
+              />
+            )}
+          </View>
+          {tracking.location && (
+            <Button
+              label="View rider location"
+              variant="outline"
+              icon={<Navigation size={16} color={colors.foreground} />}
+              onPress={() =>
+                Linking.openURL(
+                  `https://www.google.com/maps/search/?api=1&query=${tracking.location!.lat},${tracking.location!.lng}`,
+                )
+              }
+            />
+          )}
+        </Card>
+      )}
 
       {address ? (
         <Card style={styles.block}>
@@ -271,6 +332,13 @@ const styles = StyleSheet.create({
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   blockTitle: { fontFamily: fonts.sansSemiBold, fontSize: 14.5 },
   addressText: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22 },
+  liveDot: { flexDirection: 'row', alignItems: 'center', gap: 5, marginLeft: 'auto', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999 },
+  liveDotInner: { width: 6, height: 6, borderRadius: 3 },
+  liveText: { fontFamily: fonts.sansSemiBold, fontSize: 11 },
+  riderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
+  riderInfo: { gap: 2 },
+  riderName: { fontFamily: fonts.sansSemiBold, fontSize: 15 },
+  riderEta: { fontFamily: fonts.sans, fontSize: 13 },
   pendingNote: { fontFamily: fonts.sans, fontSize: 13.5, lineHeight: 19 },
   journeyRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
   journeyRail: { alignItems: 'center', width: 18 },

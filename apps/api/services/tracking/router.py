@@ -77,7 +77,10 @@ async def _send_initial_state(websocket: WebSocket, order_id: str, redis) -> obj
 @ws_router.websocket("/order/{order_id}")
 async def order_tracking(websocket: WebSocket, order_id: str) -> None:
     # ── Auth: valid token, and the caller must own this order (or be staff) ──────
-    token = websocket.cookies.get("avdan_token")
+    # Web sends the httpOnly cookie automatically on the WS handshake. Mobile has no cookies
+    # (Bearer-token auth) and React Native's WebSocket can't attach custom headers portably
+    # across platforms, so it passes the access token as a query param instead.
+    token = websocket.cookies.get("avdan_token") or websocket.query_params.get("token")
     if not token:
         await websocket.close(code=1008, reason="Authentication required")
         return

@@ -6,10 +6,11 @@ import { z } from 'zod'
 import { useUpdateStorefront, useVendorProfile } from '../hooks/use-vendor'
 import { Button, Card, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
-// Mirrors UpdateVendorProfileRequest: name 1-255, description free text.
+// Mirrors UpdateVendorProfileRequest: name 1-255, description free text, address free text.
 const storefrontSchema = z.object({
   name: z.string().trim().min(1, 'Your store needs a name').max(255, 'Name is too long'),
   description: z.string().trim().max(2000, 'Description is too long'),
+  address: z.string().trim().max(500, 'Address is too long'),
 })
 
 export function StorefrontEdit() {
@@ -20,6 +21,7 @@ export function StorefrontEdit() {
 
   const [name, setName] = useState(vendor?.name ?? '')
   const [description, setDescription] = useState(vendor?.description ?? '')
+  const [address, setAddress] = useState(vendor?.address ?? '')
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
@@ -35,10 +37,13 @@ export function StorefrontEdit() {
     )
   }
 
-  const dirty = name !== (vendor?.name ?? '') || description !== (vendor?.description ?? '')
+  const dirty =
+    name !== (vendor?.name ?? '') ||
+    description !== (vendor?.description ?? '') ||
+    address !== (vendor?.address ?? '')
 
   const handleSave = () => {
-    const result = storefrontSchema.safeParse({ name, description })
+    const result = storefrontSchema.safeParse({ name, description, address })
     if (!result.success) {
       const next: Record<string, string> = {}
       for (const issue of result.error.issues) {
@@ -49,7 +54,11 @@ export function StorefrontEdit() {
       return
     }
     setErrors({})
-    save({ name: result.data.name, description: result.data.description || null })
+    save({
+      name: result.data.name,
+      description: result.data.description || null,
+      address: result.data.address || undefined,
+    })
   }
 
   const fieldStyle = (key: string) => [
@@ -104,6 +113,34 @@ export function StorefrontEdit() {
             </View>
             {errors.description ? (
               <Text style={[styles.error, { color: colors.destructive }]}>{errors.description}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.field}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Pickup address</Text>
+            <View style={fieldStyle('address')}>
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={address}
+                onChangeText={setAddress}
+                onFocus={() => setFocused('address')}
+                onBlur={() => setFocused(null)}
+                placeholder="e.g. 12 Adeola Odeku Street, Victoria Island, Lagos"
+                placeholderTextColor={colors.subtleForeground}
+              />
+            </View>
+            <Text style={[styles.hint, { color: colors.subtleForeground }]}>
+              Used to find the nearest rider and hub for your orders — the more precise, the
+              better the match.
+            </Text>
+            {errors.address ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.address}</Text>
+            ) : null}
+            {vendor && !vendor.lat && vendor.address ? (
+              <Text style={[styles.error, { color: colors.warning }]}>
+                Couldn&apos;t pinpoint this address on the map — try a more specific street
+                address.
+              </Text>
             ) : null}
           </View>
 

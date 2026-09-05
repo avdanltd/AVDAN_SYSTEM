@@ -38,6 +38,7 @@ SplashScreen.preventAutoHideAsync()
 // not have to import expo-router or expo-constants itself. Must run before any query fires.
 configureApiClient({
   baseUrl: (Constants.expoConfig?.extra?.apiUrl as string | undefined) ?? 'http://localhost:8000',
+  wsUrl: Constants.expoConfig?.extra?.wsUrl as string | undefined,
   onUnauthorized: () => router.replace('/login'),
 })
 
