@@ -11,7 +11,7 @@ SENSITIVE_KEYS = frozenset({
     "secret",
     "paystack_secret_key",
     "paystack_public_key",
-    "fcm_server_key",
+    "expo_access_token",
     "authorization",
     "avdan_token",
     "avdan_refresh_token",

@@ -303,11 +303,19 @@ milestone above is "code exists", not "feature works". Phase 14 exists specifica
 - [x] `POST /notifications/{id}/read` — marks as read
 - [x] `POST /notifications/read-all` — marks all as read
 
-### 7.3 Push Notification Setup ✓
-- [x] FCM (Firebase Cloud Messaging) integration for push notifications
-- [x] Device token stored per user on login (frontend sends token after auth)
-- [x] `PATCH /auth/me/push-token` — stores FCM device token
-- [x] Push notification sent for: order placed, order accepted, rider assigned, out for delivery, delivered
+### 7.3 Push Notification Setup
+- [x] ~~FCM legacy integration~~ — **was dead code**: it posted to FCM's legacy HTTP API (shut down by
+      Google in 2024) and no client ever registered a token. Replaced 2026-09-18 by sending through
+      **Expo's push service** (`workers/tasks/notifications.py::_send_expo_push`), which relays to
+      FCM/APNs using credentials uploaded to EAS — the backend holds no Firebase key
+      (`EXPO_ACCESS_TOKEN` optional, only for Expo "enhanced push security"). A
+      `DeviceNotRegistered` reply clears the stale token. Verified against the live Expo API.
+- [x] `PATCH /auth/me/push-token` — stores the Expo push token (column still named `users.fcm_token`);
+      detaches the same device from any other user first. `DELETE /auth/me/push-token` on sign-out.
+- [x] Push sent for: new **paid** order (vendor — the old `None→PENDING` trigger never fired, order
+      creation doesn't go through `transition()`), accepted/rejected, picked up, QA passed ("collect
+      from hub", rider), out for delivery, delivered, payment released, disputes, rider assigned.
+- [ ] Not yet received on a real device — needs `google-services.json` in the EAS build (see STATUS_FRONTEND 8.7).
 
 **Phase 7 complete when:** Every order state change triggers the correct notifications. Push notifications reach device. In-app notification list populates.
 

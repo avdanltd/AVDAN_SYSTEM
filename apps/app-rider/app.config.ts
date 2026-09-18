@@ -2,6 +2,11 @@ import type { ExpoConfig } from 'expo/config'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000'
 const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws'
+// Path to the Firebase `google-services.json` for Android push — an EAS "file" env var in cloud
+// builds. Optional: without it the build still succeeds and push registration is skipped at
+// runtime (see PUSH_AVAILABLE in @avdan/mobile), because Android can't get a push token without
+// Firebase compiled in.
+const GOOGLE_SERVICES_JSON = process.env.GOOGLE_SERVICES_JSON
 
 const config: ExpoConfig = {
   name: 'AVDAN Rider',
@@ -16,6 +21,10 @@ const config: ExpoConfig = {
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
+    hasPushConfig: Boolean(GOOGLE_SERVICES_JSON),
+    // Lets the JS side skip mounting the native Google map when this Android build has no key
+    // (see delivery-map.tsx) — the SDK throws on a missing key rather than rendering blank.
+    hasAndroidMapsKey: Boolean(process.env.GOOGLE_MAPS_API_KEY_ANDROID),
     eas: {
       projectId: '4001e53f-af61-43fd-9475-2a64a162345e',
     },
@@ -34,6 +43,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    ...(GOOGLE_SERVICES_JSON ? { googleServicesFile: GOOGLE_SERVICES_JSON } : {}),
     package: 'com.avdanstore.rider',
     adaptiveIcon: {
       backgroundColor: '#0A2480',
@@ -69,6 +79,7 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-font',
     'expo-secure-store',
+    ['expo-notifications', { color: '#0A2480' }],
     [
       'expo-splash-screen',
       {

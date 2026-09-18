@@ -11,7 +11,11 @@ export function useLogout() {
   const router = useRouter()
 
   return useMutation({
-    mutationFn: () => authService.logout(),
+    mutationFn: async () => {
+      // Best-effort, and before logout — the token is still valid for this one call.
+      await authService.clearPushToken().catch(() => {})
+      return authService.logout()
+    },
     onSettled: async () => {
       await secureStorage.clear()
       clearUser()

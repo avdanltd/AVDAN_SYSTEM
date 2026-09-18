@@ -721,7 +721,11 @@ mobile client. Fixed additively (see `STATUS_BACKEND.md` 2.7) — web behavior i
 - [x] 8.4 Assigned order list + order detail screens — pending live device test
 - [x] 8.5 Pickup → Hub Transit flow with state transitions — pending live device test
 - [x] 8.6 Last-mile delivery flow (OUT_FOR_DELIVERY → DELIVERED / FAILED_DELIVERY) — pending live device test
-- [ ] 8.7 Push notifications working (FCM Android + APNs iOS) — device token registration wired to reuse existing `PATCH /auth/me/push-token`; not yet exercised on a real device
+- [ ] 8.7 Push notifications working (FCM Android + APNs iOS) — **wired 2026-09-18** in all three apps via
+      `usePushNotifications` (`@avdan/mobile` `lib/push.ts`): registers the Expo push token after sign-in,
+      tapping a push opens `/orders/[id]`, sign-out clears the token. **Guarded:** skipped in Expo Go and in
+      any Android build made without the `GOOGLE_SERVICES_JSON` EAS file env var (`extra.hasPushConfig`).
+      Not yet exercised on a real device — needs a Firebase project + FCM V1 key uploaded to EAS.
       **iOS blocked:** APNs needs a paid Apple Developer account. Android-only until that exists.
 - [ ] 8.8 EAS Build produces working `.apk` (Android) — Android build is free and is the target.
       `.ipa` / TestFlight deferred until an Apple Developer account exists.
@@ -832,8 +836,8 @@ apps installed. All icons generated from the traced vector geometry, no placehol
 - [x] 9.8 Profile, storefront editing, appearance; light + dark verified via tokens
 - [x] 9.9 iOS bundle builds clean through Metro (11.3 MB, no resolution errors)
 - [ ] 9.10 Live device test — not yet run
-- [ ] 9.11 Push notifications for new orders — the single highest-value mobile feature for a
-      vendor, and not yet wired. `PATCH /auth/me/push-token` already exists.
+- [ ] 9.11 Push notifications for new orders — wired (fires on PENDING→PAID) via the shared
+      `usePushNotifications`; same device-test gap as 8.7.
 - [ ] 9.12 Android EAS build
 
 ### Deliberately not built
@@ -942,7 +946,8 @@ app/checkout/callback.tsx        deep-link landing safety net (outside the tab g
 - [x] 10.8 `tsc --noEmit` clean; iOS bundle builds through Metro (11.9 MB, zero resolution errors,
       zero cross-app string contamination verified against both sibling bundles)
 - [ ] 10.9 Live device test — not yet run on any of the three apps
-- [ ] 10.10 Push notifications for order status changes
+- [ ] 10.10 Push notifications for order status changes — wired via the shared `usePushNotifications`;
+      same device-test gap as 8.7.
 - [ ] 10.11 Android EAS build
 - [x] 10.12 Live order-tracking map added (rider's live location, consumed on the order-detail
       screen) — see the "Deliberately not built" note below, now stale and struck.

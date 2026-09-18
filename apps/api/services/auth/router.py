@@ -200,9 +200,17 @@ async def update_push_token(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
-    from sqlalchemy import select
+    from sqlalchemy import select, update
 
     from services.auth.models import User
+
+    # A push token identifies a device, not a person: if someone else last signed in on this
+    # device, detach it from them first so their notifications stop landing on this phone.
+    await db.execute(
+        update(User)
+        .where(User.fcm_token == data.token, User.id != current_user.user_id)  # type: ignore[arg-type]
+        .values(fcm_token=None)
+    )
     result = await db.execute(
         select(User).where(User.id == current_user.user_id)  # type: ignore[arg-type]
     )
@@ -210,3 +218,18 @@ async def update_push_token(
     if user:
         user.fcm_token = data.token
     return {"message": "Push token updated"}
+
+
+@router.delete("/me/push-token", response_model=dict)
+async def clear_push_token(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Called by the mobile apps on sign-out so the device stops receiving this user's pushes."""
+    from sqlalchemy import update
+
+    from services.auth.models import User
+    await db.execute(
+        update(User).where(User.id == current_user.user_id).values(fcm_token=None)  # type: ignore[arg-type]
+    )
+    return {"message": "Push token cleared"}
