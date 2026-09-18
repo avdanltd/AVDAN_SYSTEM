@@ -47,7 +47,13 @@
   --brand-accent: 38 92% 50%;
   --brand-accent-foreground: 225 60% 10%;
 
-  --radius: 0.5rem;
+  /* Bumped from 0.5rem (8px) — the flat 8px Shadcn default was the root cause of the
+     default-Shadcn-flatness complaint (STATUS_DESIGN.md Phase A). 0.75rem (12px) cascades
+     through the existing --radius-sm/-md/-lg/-xl scale below (8/12/16/20px) to give every
+     primitive built from it (button, input = rounded-md; card, dialog = rounded-lg) a
+     visibly softer, more generous corner platform-wide, in one place, instead of hand-picking
+     a bigger radius class per component (which would drift out of sync over time). */
+  --radius: 0.75rem;
 }
 
 /* ─── @theme — Tailwind v4 utility class generation ─────────────────────────  */
@@ -109,4 +115,169 @@
   /* Warm-toned elevation (DESIGN.md) — navy-tinted shadows instead of generic grey */
   --shadow-card: 0 4px 12px -2px rgba(10, 18, 41, 0.08);
   --shadow-modal: 0 20px 40px -4px rgba(10, 18, 41, 0.12);
+}
+
+/* ─── Dark mode — exact HSL conversion of packages/mobile/src/theme/tokens.ts's darkColors, ── */
+/* so web and the native apps are pixel-value-identical in dark mode, not just "similarly dark".*/
+/* Applies on system preference (no manual toggle wired yet — see DESIGN.md §Dark mode) and via */
+/* an explicit [data-theme="dark"] attribute once next-themes is wired in per app.               */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --background: 225 56% 7%;
+    --foreground: 222 62% 96%;
+
+    --card: 223 53% 14%;
+    --card-foreground: 222 62% 96%;
+
+    --popover: 223 53% 14%;
+    --popover-foreground: 222 62% 96%;
+
+    --primary: 221 100% 65%;
+    --primary-foreground: 220 84% 10%;
+
+    --secondary: 222 48% 17%;
+    --secondary-foreground: 222 62% 96%;
+
+    --muted: 222 48% 17%;
+    --muted-foreground: 221 29% 67%;
+
+    --accent: 222 48% 17%;
+    --accent-foreground: 222 62% 96%;
+
+    --destructive: 351 95% 71%;
+    --destructive-foreground: 345 71% 10%;
+
+    --border: 223 45% 22%;
+    --input: 223 45% 22%;
+    --ring: 221 100% 65%;
+
+    --success: 142 69% 58%;
+    --success-foreground: 146 45% 13%;
+    --success-muted: 146 45% 13%;
+
+    --warning: 43 96% 56%;
+    --warning-foreground: 36 91% 9%;
+    --warning-muted: 40 62% 12%;
+
+    --info: 221 100% 65%;
+    --info-foreground: 220 84% 10%;
+    --info-muted: 218 58% 18%;
+
+    --brand-accent: 43 96% 56%;
+    --brand-accent-foreground: 36 91% 9%;
+
+    --shadow-card: 0 4px 14px -2px rgba(0, 0, 0, 0.4);
+    --shadow-modal: 0 20px 40px -4px rgba(0, 0, 0, 0.55);
+  }
+}
+
+:root[data-theme='dark'] {
+  --background: 225 56% 7%;
+  --foreground: 222 62% 96%;
+
+  --card: 223 53% 14%;
+  --card-foreground: 222 62% 96%;
+
+  --popover: 223 53% 14%;
+  --popover-foreground: 222 62% 96%;
+
+  --primary: 221 100% 65%;
+  --primary-foreground: 220 84% 10%;
+
+  --secondary: 222 48% 17%;
+  --secondary-foreground: 222 62% 96%;
+
+  --muted: 222 48% 17%;
+  --muted-foreground: 221 29% 67%;
+
+  --accent: 222 48% 17%;
+  --accent-foreground: 222 62% 96%;
+
+  --destructive: 351 95% 71%;
+  --destructive-foreground: 345 71% 10%;
+
+  --border: 223 45% 22%;
+  --input: 223 45% 22%;
+  --ring: 221 100% 65%;
+
+  --success: 142 69% 58%;
+  --success-foreground: 146 45% 13%;
+  --success-muted: 146 45% 13%;
+
+  --warning: 43 96% 56%;
+  --warning-foreground: 36 91% 9%;
+  --warning-muted: 40 62% 12%;
+
+  --info: 221 100% 65%;
+  --info-foreground: 220 84% 10%;
+  --info-muted: 218 58% 18%;
+
+  --brand-accent: 43 96% 56%;
+  --brand-accent-foreground: 36 91% 9%;
+
+  --shadow-card: 0 4px 14px -2px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 40px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* ─── Motion primitives (STATUS_DESIGN.md §4.3) — CSS-only, no animation library. ──────────── */
+/* Respects prefers-reduced-motion by collapsing every one of these to a no-op below.           */
+@keyframes avdan-fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes avdan-float-slow {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50% { transform: translateY(-10px) translateX(4px); }
+}
+
+@keyframes avdan-glow-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.6; }
+}
+
+/* `celebratory` motion profile (§4.3) — a one-shot spring scale-in, never repeats on re-render.
+   The ring expands and fades once behind the icon to read as a brief pulse/burst without pulling
+   in a confetti library. */
+@keyframes avdan-celebrate-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  60% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes avdan-celebrate-ring {
+  0% { opacity: 0.5; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
+
+.avdan-animate-fade-up {
+  animation: avdan-fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.avdan-animate-float-slow {
+  animation: avdan-float-slow 6s ease-in-out infinite;
+}
+
+.avdan-animate-glow-pulse {
+  animation: avdan-glow-pulse 5s ease-in-out infinite;
+}
+
+.avdan-animate-celebrate {
+  animation: avdan-celebrate-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.avdan-animate-celebrate-ring {
+  animation: avdan-celebrate-ring 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avdan-animate-fade-up,
+  .avdan-animate-float-slow,
+  .avdan-animate-glow-pulse,
+  .avdan-animate-celebrate,
+  .avdan-animate-celebrate-ring {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
