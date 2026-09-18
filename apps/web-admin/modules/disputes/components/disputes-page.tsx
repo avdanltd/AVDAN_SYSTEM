@@ -40,7 +40,7 @@ function DisputeTable({
     status: tab === 'open' ? 'open' : 'resolved',
   }
 
-  const { data, isLoading } = useAdminDisputes(params)
+  const { data, isLoading, isError, refetch } = useAdminDisputes(params)
   const disputes = data?.items ?? []
   const total = data?.total ?? 0
   const pages = data ? Math.ceil(data.total / (data.page_size || 20)) : 1
@@ -103,6 +103,9 @@ function DisputeTable({
         data={disputes}
         keyExtractor={(row) => row.id}
         loading={isLoading}
+        error={isError}
+        errorMessage="Couldn't load disputes."
+        onRetry={() => refetch()}
         emptyMessage="No disputes found."
         onRowClick={onRowClick}
       />

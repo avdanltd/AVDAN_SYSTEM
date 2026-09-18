@@ -49,18 +49,29 @@ export function DisputeDetailPage({ disputeId }: DisputeDetailPageProps) {
   const { data: dispute, isLoading } = useAdminDispute(disputeId)
   const { mutate: resolve, isPending: resolving } = useResolveDispute(disputeId)
 
-  const [decision, setDecision] = useState<ResolveDisputePayload['decision'] | ''>('')
+  const [decision, setDecision] = useState<ResolveDisputePayload['resolution'] | ''>('')
   const [reason, setReason] = useState('')
-  const [splitPct, setSplitPct] = useState('50')
+  const [vendorAmountNaira, setVendorAmountNaira] = useState('')
+  const [refundAmountNaira, setRefundAmountNaira] = useState('')
   const [confirmText, setConfirmText] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+
+  const nairaToKobo = (naira: string) => Math.round(Number(naira || 0) * 100)
+  const isSplitValid =
+    decision !== 'split' ||
+    (nairaToKobo(vendorAmountNaira) > 0 && nairaToKobo(refundAmountNaira) > 0)
 
   function handleResolve() {
     if (!decision) return
     const payload: ResolveDisputePayload = {
-      decision,
-      reason,
-      ...(decision === 'split' ? { split_percentage: Number(splitPct) } : {}),
+      resolution: decision,
+      notes: reason,
+      ...(decision === 'split'
+        ? {
+            vendor_amount_kobo: nairaToKobo(vendorAmountNaira),
+            refund_amount_kobo: nairaToKobo(refundAmountNaira),
+          }
+        : {}),
     }
     resolve(payload, {
       onSuccess: () => {
@@ -196,7 +207,7 @@ export function DisputeDetailPage({ disputeId }: DisputeDetailPageProps) {
             <div className="flex gap-3 flex-wrap">
               <Select
                 value={decision}
-                onValueChange={(v) => setDecision(v as ResolveDisputePayload['decision'])}
+                onValueChange={(v) => setDecision(v as ResolveDisputePayload['resolution'])}
               >
                 <SelectTrigger className="w-56">
                   <SelectValue placeholder="Select decision…" />
@@ -207,20 +218,33 @@ export function DisputeDetailPage({ disputeId }: DisputeDetailPageProps) {
                   <SelectItem value="split">Split Payment</SelectItem>
                 </SelectContent>
               </Select>
-              {decision === 'split' && (
+            </div>
+            {decision === 'split' && (
+              <div className="flex flex-wrap gap-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Vendor %</span>
+                  <span className="text-sm text-muted-foreground">Vendor amount (₦)</span>
                   <Input
                     type="number"
-                    min="1"
-                    max="99"
-                    value={splitPct}
-                    onChange={(e) => setSplitPct(e.target.value)}
-                    className="w-20"
+                    min="0"
+                    step="0.01"
+                    value={vendorAmountNaira}
+                    onChange={(e) => setVendorAmountNaira(e.target.value)}
+                    className="w-32"
                   />
                 </div>
-              )}
-            </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Refund amount (₦)</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={refundAmountNaira}
+                    onChange={(e) => setRefundAmountNaira(e.target.value)}
+                    className="w-32"
+                  />
+                </div>
+              </div>
+            )}
             <Textarea
               placeholder="Reason for decision (required)…"
               value={reason}
@@ -229,7 +253,7 @@ export function DisputeDetailPage({ disputeId }: DisputeDetailPageProps) {
             />
             <div>
               <Button
-                disabled={!decision || !reason.trim()}
+                disabled={!decision || !reason.trim() || !isSplitValid}
                 onClick={() => {
                   setConfirmText('')
                   setConfirmOpen(true)
@@ -249,11 +273,11 @@ export function DisputeDetailPage({ disputeId }: DisputeDetailPageProps) {
             <CardTitle>Resolution</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-foreground">{dispute.resolution}</p>
-            {dispute.resolved_by && (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Resolved by {dispute.resolved_by}
-              </p>
+            <p className="text-sm font-medium capitalize text-foreground">
+              {dispute.resolution.replace(/_/g, ' ')}
+            </p>
+            {dispute.resolution_notes && (
+              <p className="mt-2 text-sm text-muted-foreground">{dispute.resolution_notes}</p>
             )}
           </CardContent>
         </Card>

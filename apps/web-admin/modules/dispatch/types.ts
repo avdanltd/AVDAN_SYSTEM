@@ -7,6 +7,7 @@ export interface DispatchOrder {
   rider_id: string | null
   status: OrderStatus
   total_kobo: number
+  delivery_fee_kobo: number
   delivery_address: Record<string, string>
   items: Array<{
     id: string

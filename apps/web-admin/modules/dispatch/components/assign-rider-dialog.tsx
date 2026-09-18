@@ -74,7 +74,7 @@ export function AssignRiderDialog({ orderId, totalKobo, onOpenChange }: AssignRi
                   >
                     <div className="flex items-center gap-2">
                       {rider.online ? (
-                        <Wifi className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                        <Wifi className="h-3.5 w-3.5 text-success shrink-0" />
                       ) : (
                         <WifiOff className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       )}

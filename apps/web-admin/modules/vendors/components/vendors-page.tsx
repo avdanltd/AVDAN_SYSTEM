@@ -75,7 +75,7 @@ export function VendorsPage() {
   const params: Record<string, string> = { page: String(page), limit: "20" };
   if (status) params.status = status;
 
-  const { data, isLoading } = useAdminVendors(params);
+  const { data, isLoading, isError, refetch } = useAdminVendors(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateVendorStatus();
 
   const vendors = data?.items ?? [];
@@ -140,7 +140,7 @@ export function VendorsPage() {
       header: "Rating",
       cell: (row) => (
         <div className="flex items-center gap-1">
-          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+          <Star className="h-3 w-3 fill-warning text-warning" />
           <span className="text-sm">{row.rating?.toFixed(1) ?? "N/A"}</span>
         </div>
       ),
@@ -168,7 +168,7 @@ export function VendorsPage() {
           <DropdownMenuContent align="end">
             {row.status !== "active" && (
               <DropdownMenuItem onClick={() => handleApprove(row)}>
-                <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                <CheckCircle className="mr-2 h-4 w-4 text-success" />
                 Approve
               </DropdownMenuItem>
             )}
@@ -176,7 +176,7 @@ export function VendorsPage() {
               <DropdownMenuItem
                 onClick={() => handleSuspendReject(row, "suspend")}
               >
-                <PauseCircle className="mr-2 h-4 w-4 text-amber-600" />
+                <PauseCircle className="mr-2 h-4 w-4 text-warning" />
                 Suspend
               </DropdownMenuItem>
             )}
@@ -231,6 +231,9 @@ export function VendorsPage() {
           data={vendors}
           keyExtractor={(row) => row.id}
           loading={isLoading}
+          error={isError}
+          errorMessage="Couldn't load vendors."
+          onRetry={() => refetch()}
           emptyMessage="No vendors found."
         />
         <Pagination

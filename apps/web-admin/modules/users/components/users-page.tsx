@@ -74,7 +74,7 @@ export function UsersPage() {
   if (role) params.role = role;
   if (search) params.search = search;
 
-  const { data, isLoading } = useUsers(params);
+  const { data, isLoading, isError, refetch } = useUsers(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateUserStatus();
 
   const users = data?.items ?? [];
@@ -160,13 +160,13 @@ export function UsersPage() {
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
             {row.status !== "active" && (
               <DropdownMenuItem onClick={() => handleAction(row, "activate")}>
-                <UserCheck className="mr-2 h-4 w-4 text-green-600" />
+                <UserCheck className="mr-2 h-4 w-4 text-success" />
                 Activate
               </DropdownMenuItem>
             )}
             {row.status === "active" && (
               <DropdownMenuItem onClick={() => handleAction(row, "suspend")}>
-                <ShieldCheck className="mr-2 h-4 w-4 text-amber-600" />
+                <ShieldCheck className="mr-2 h-4 w-4 text-warning" />
                 Suspend
               </DropdownMenuItem>
             )}
@@ -174,7 +174,7 @@ export function UsersPage() {
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => setAssignHubUser(row)}>
-                  <Building2 className="mr-2 h-4 w-4 text-blue-600" />
+                  <Building2 className="mr-2 h-4 w-4 text-info" />
                   Assign Hub
                 </DropdownMenuItem>
               </>
@@ -248,6 +248,9 @@ export function UsersPage() {
           data={users}
           keyExtractor={(row) => row.id}
           loading={isLoading}
+          error={isError}
+          errorMessage="Couldn't load users."
+          onRetry={() => refetch()}
           emptyMessage="No users found."
         />
         <Pagination

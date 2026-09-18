@@ -28,7 +28,7 @@ function AgeCell({ createdAt }: { createdAt: string }) {
   const hours = getAgeHours(createdAt)
   const label = hours < 1 ? '<1h' : hours < 24 ? `${Math.floor(hours)}h` : `${Math.floor(hours / 24)}d`
   const colorClass =
-    hours < 24 ? 'text-green-600' : hours < 48 ? 'text-amber-600' : 'text-destructive'
+    hours < 24 ? 'text-success' : hours < 48 ? 'text-warning' : 'text-destructive'
   return <span className={`text-sm font-medium tabular-nums ${colorClass}`}>{label}</span>
 }
 
@@ -62,7 +62,9 @@ function EscrowTable({
       key: 'amount',
       header: 'Amount',
       cell: (row) => (
-        <span className="font-medium tabular-nums">{formatKobo(row.total_kobo)}</span>
+        <span className="font-medium tabular-nums">
+          {formatKobo(row.total_kobo + row.delivery_fee_kobo)}
+        </span>
       ),
     },
     {
@@ -95,6 +97,9 @@ function EscrowTable({
         data={items}
         keyExtractor={(row) => row.id}
         loading={query.isLoading}
+        error={query.isError}
+        errorMessage="Couldn't load orders."
+        onRetry={() => query.refetch()}
         emptyMessage="No orders found."
         onRowClick={onRowClick}
       />
@@ -108,7 +113,7 @@ export function EscrowPage() {
   const { data: pendingData } = usePendingReleaseOrders({ page: '1', limit: '100' })
 
   const pendingItems = (pendingData?.items ?? []) as EscrowOrder[]
-  const totalHeldKobo = pendingItems.reduce((sum, o) => sum + o.total_kobo, 0)
+  const totalHeldKobo = pendingItems.reduce((sum, o) => sum + o.total_kobo + o.delivery_fee_kobo, 0)
   const pendingCount = pendingData?.total ?? 0
 
   function handleRowClick(row: EscrowOrder) {

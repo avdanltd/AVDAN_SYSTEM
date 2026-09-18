@@ -64,7 +64,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const [assignOpen, setAssignOpen] = useState(false)
 
   const itemColumns: Column<AdminOrderItem>[] = [
-    { key: 'name', header: 'Product', cell: (r) => <span className="font-medium">{r.name}</span> },
+    { key: 'name', header: 'Product', cell: (r) => <span className="font-medium">{r.product_name}</span> },
     { key: 'qty', header: 'Qty', cell: (r) => <span>{r.quantity}</span> },
     {
       key: 'price',
@@ -160,7 +160,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Order Total</p>
-            <p className="mt-1 text-lg font-bold tabular-nums">{formatKobo(order.total_kobo)}</p>
+            <p className="mt-1 text-lg font-bold tabular-nums">
+              {formatKobo(order.total_kobo + order.delivery_fee_kobo)}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -180,6 +182,20 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
               keyExtractor={(r) => r.id}
             />
           )}
+          <div className="flex flex-col gap-1 border-t border-border px-4 py-3 text-sm">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span className="tabular-nums">{formatKobo(order.total_kobo)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Delivery fee</span>
+              <span className="tabular-nums">{formatKobo(order.delivery_fee_kobo)}</span>
+            </div>
+            <div className="flex justify-between font-medium text-foreground">
+              <span>Total charged</span>
+              <span className="tabular-nums">{formatKobo(order.total_kobo + order.delivery_fee_kobo)}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -316,7 +332,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       {assignOpen && (
         <AssignRiderDialog
           orderId={order.id}
-          totalKobo={order.total_kobo}
+          totalKobo={order.total_kobo + order.delivery_fee_kobo}
           onOpenChange={setAssignOpen}
         />
       )}
