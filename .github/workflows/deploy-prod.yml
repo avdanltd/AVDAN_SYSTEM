@@ -161,8 +161,16 @@ jobs:
           scp -i ~/.ssh/deploy_key \
             infra/nginx/nginx.prod.conf \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/infra/nginx/
-          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
-            "mkdir -p /opt/avdan/infra/docker/backup"
+          # docker-compose.prod.yml bind-mounts these two FILES into db-backup. If either is missing
+          # when compose starts, Docker creates an empty DIRECTORY at that path, and every later
+          # deploy then fails ("not a directory: Are you trying to mount a directory onto a file")
+          # because scp drops the file inside that directory. Remove any such directory first.
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            mkdir -p /opt/avdan/infra/docker/backup
+            for f in backup-db.sh crontab; do
+              if [ -d /opt/avdan/infra/docker/backup/\$f ]; then rm -rf /opt/avdan/infra/docker/backup/\$f; fi
+            done
+          "
           scp -i ~/.ssh/deploy_key \
             infra/docker/backup/backup-db.sh \
             infra/docker/backup/crontab \
