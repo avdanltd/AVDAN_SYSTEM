@@ -8,7 +8,7 @@ import { earningsService } from '../services/earnings.service'
 import { formatPrice } from '@/lib/format'
 
 export function EarningsPage() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['vendor-earnings'],
     queryFn: earningsService.getSummary,
   })
@@ -16,8 +16,10 @@ export function EarningsPage() {
   if (error) {
     return (
       <EmptyState
+        icon={<TrendingUp className="h-6 w-6" />}
         title="Failed to load earnings"
-        description="There was a problem loading your earnings data. Please refresh the page."
+        description="There was a problem loading your earnings data. Please try again."
+        action={{ label: 'Retry', onClick: () => refetch() }}
       />
     )
   }

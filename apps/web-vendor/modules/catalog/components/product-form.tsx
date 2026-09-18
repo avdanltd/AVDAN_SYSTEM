@@ -26,6 +26,7 @@ import type { Product } from '../types'
 import { useCreateProduct } from '../hooks/use-create-product'
 import { useUpdateProduct } from '../hooks/use-update-product'
 import { useCategories } from '../hooks/use-categories'
+import { ImageUploadField } from './image-upload-field'
 
 const productSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -39,6 +40,7 @@ const productSchema = z.object({
     .min(0, 'Cannot be negative'),
   available: z.boolean().default(true),
   category_id: z.string().min(1, 'Please select a category'),
+  image_urls: z.array(z.string()).max(3, 'Up to 3 images').default([]),
 })
 
 type ProductFormValues = z.infer<typeof productSchema>
@@ -64,6 +66,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       stock_qty: product?.stock_qty ?? 0,
       available: product?.available ?? true,
       category_id: product?.category_id ?? '',
+      image_urls: product?.image_urls ?? [],
     },
   })
 
@@ -76,6 +79,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         stock_qty: product.stock_qty,
         available: product.available,
         category_id: product.category_id ?? '',
+        image_urls: product.image_urls ?? [],
       })
     }
   }, [product, form])
@@ -88,6 +92,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       stock_qty: values.stock_qty,
       available: values.available,
       category_id: values.category_id,
+      image_urls: values.image_urls,
     }
 
     if (isEditing && product) {
@@ -152,6 +157,20 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
               <FormLabel>Description <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
               <FormControl>
                 <Textarea placeholder="Describe the product…" rows={3} {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="image_urls"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Product Images</FormLabel>
+              <FormControl>
+                <ImageUploadField value={field.value} onChange={field.onChange} />
               </FormControl>
               <FormMessage />
             </FormItem>

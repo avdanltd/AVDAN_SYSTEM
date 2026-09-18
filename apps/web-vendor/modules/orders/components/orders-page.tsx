@@ -1,6 +1,7 @@
 'use client'
 
 import { Badge, EmptyState, PageLoader, Skeleton, Tabs, TabsContent, TabsList, TabsTrigger } from '@avdan/ui'
+import { PackageSearch } from 'lucide-react'
 import { useOrders } from '../hooks/use-orders'
 import { OrderCard } from './order-card'
 import type { VendorOrder } from '../types'
@@ -9,6 +10,19 @@ import type { OrderStatus } from '@avdan/types'
 const NEW_STATUSES: OrderStatus[] = ['PAID']
 const PREPARING_STATUSES: OrderStatus[] = ['VENDOR_ACCEPTED', 'PREPARING']
 const READY_STATUSES: OrderStatus[] = ['READY_FOR_PICKUP']
+// Everything from pickup through the final delivery leg — previously missing entirely, which
+// meant an order matched no tab at all from the moment a rider picked it up until DELIVERED.
+const IN_TRANSIT_STATUSES: OrderStatus[] = [
+  'PICKED_UP',
+  'IN_TRANSIT_TO_HUB',
+  'ARRIVED_AT_HUB',
+  'AT_HUB',
+  'QA_IN_PROGRESS',
+  'QA_PASSED',
+  'QA_FAILED',
+  'VENDOR_REMEDIATION',
+  'OUT_FOR_DELIVERY',
+]
 const HISTORY_STATUSES: OrderStatus[] = [
   'COMPLETED',
   'CANCELLED',
@@ -41,6 +55,7 @@ function OrderGrid({ orders, loading, emptyTitle, emptyDescription }: {
   if (orders.length === 0) {
     return (
       <EmptyState
+        icon={<PackageSearch className="h-6 w-6" />}
         title={emptyTitle}
         description={emptyDescription}
         className="py-16"
@@ -58,12 +73,13 @@ function OrderGrid({ orders, loading, emptyTitle, emptyDescription }: {
 }
 
 export function OrdersPage() {
-  const { data, isLoading, error } = useOrders()
+  const { data, isLoading, error, refetch } = useOrders()
   const orders = data?.items ?? []
 
   const newOrders = filterByStatus(orders, NEW_STATUSES)
   const preparingOrders = filterByStatus(orders, PREPARING_STATUSES)
   const readyOrders = filterByStatus(orders, READY_STATUSES)
+  const inTransitOrders = filterByStatus(orders, IN_TRANSIT_STATUSES)
   const historyOrders = filterByStatus(orders, HISTORY_STATUSES)
 
   if (isLoading && orders.length === 0) {
@@ -73,8 +89,10 @@ export function OrdersPage() {
   if (error) {
     return (
       <EmptyState
+        icon={<PackageSearch className="h-6 w-6" />}
         title="Failed to load orders"
-        description="There was a problem loading your orders. Please try refreshing the page."
+        description="There was a problem loading your orders. Please try again."
+        action={{ label: 'Retry', onClick: () => refetch() }}
       />
     )
   }
@@ -114,6 +132,14 @@ export function OrdersPage() {
               </Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="in-transit" className="flex items-center gap-2">
+            In Transit
+            {inTransitOrders.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 min-w-[20px] rounded-full px-1.5 text-xs">
+                {inTransitOrders.length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 
@@ -142,6 +168,15 @@ export function OrdersPage() {
               loading={isLoading}
               emptyTitle="Nothing ready"
               emptyDescription="Orders marked ready for pickup will appear here."
+            />
+          </TabsContent>
+
+          <TabsContent value="in-transit">
+            <OrderGrid
+              orders={inTransitOrders}
+              loading={isLoading}
+              emptyTitle="Nothing in transit"
+              emptyDescription="Orders picked up by a rider, in hub QA, or out for delivery will appear here."
             />
           </TabsContent>
 

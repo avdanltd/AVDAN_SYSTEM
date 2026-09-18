@@ -52,12 +52,22 @@ const recentOrdersColumns: Column<VendorOrder>[] = [
 ]
 
 export function DashboardPage() {
-  const { data: stats, isLoading: statsLoading } = useQuery({
+  const {
+    data: stats,
+    isLoading: statsLoading,
+    isError: statsError,
+    refetch: refetchStats,
+  } = useQuery({
     queryKey: ['vendor-stats'],
     queryFn: dashboardService.getStats,
   })
 
-  const { data: recentData, isLoading: ordersLoading } = useQuery({
+  const {
+    data: recentData,
+    isLoading: ordersLoading,
+    isError: ordersError,
+    refetch: refetchOrders,
+  } = useQuery({
     queryKey: ['vendor-orders', { limit: '5', sort: 'created_at:desc' }],
     queryFn: () => ordersService.getOrders({ limit: '5', sort: 'created_at:desc' }),
   })
@@ -74,33 +84,42 @@ export function DashboardPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatsCard
-          title="Total Orders"
-          value={stats?.total_orders ?? 0}
-          loading={statsLoading}
-          icon={<ShoppingBag className="h-5 w-5" />}
+      {statsError ? (
+        <EmptyState
+          icon={<TrendingUp className="h-6 w-6" />}
+          title="Couldn't load your stats"
+          description="Something went wrong fetching your dashboard numbers."
+          action={{ label: 'Retry', onClick: () => refetchStats() }}
         />
-        <StatsCard
-          title="Total Revenue"
-          value={stats ? formatPrice(stats.total_revenue_kobo) : '—'}
-          loading={statsLoading}
-          icon={<TrendingUp className="h-5 w-5" />}
-        />
-        <StatsCard
-          title="Active Orders"
-          value={stats?.active_orders ?? 0}
-          loading={statsLoading}
-          icon={<Clock className="h-5 w-5" />}
-          valueClassName={stats?.active_orders ? 'text-amber-600' : undefined}
-        />
-        <StatsCard
-          title="Completed Orders"
-          value={stats?.completed_orders ?? 0}
-          loading={statsLoading}
-          icon={<Star className="h-5 w-5" />}
-        />
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatsCard
+            title="Total Orders"
+            value={stats?.total_orders ?? 0}
+            loading={statsLoading}
+            icon={<ShoppingBag className="h-5 w-5" />}
+          />
+          <StatsCard
+            title="Total Revenue"
+            value={stats ? formatPrice(stats.total_revenue_kobo) : '—'}
+            loading={statsLoading}
+            icon={<TrendingUp className="h-5 w-5" />}
+          />
+          <StatsCard
+            title="Active Orders"
+            value={stats?.active_orders ?? 0}
+            loading={statsLoading}
+            icon={<Clock className="h-5 w-5" />}
+            valueClassName={stats?.active_orders ? 'text-warning' : undefined}
+          />
+          <StatsCard
+            title="Completed Orders"
+            value={stats?.completed_orders ?? 0}
+            loading={statsLoading}
+            icon={<Star className="h-5 w-5" />}
+          />
+        </div>
+      )}
 
       {/* Recent orders */}
       <Card className="shadow-card">
@@ -113,8 +132,17 @@ export function DashboardPage() {
           </Link>
         </CardHeader>
         <CardContent className="p-0">
-          {!ordersLoading && recentOrders.length === 0 ? (
+          {ordersError ? (
             <EmptyState
+              icon={<ShoppingBag className="h-6 w-6" />}
+              title="Couldn't load recent orders"
+              description="Something went wrong. Please try again."
+              action={{ label: 'Retry', onClick: () => refetchOrders() }}
+              className="py-10"
+            />
+          ) : !ordersLoading && recentOrders.length === 0 ? (
+            <EmptyState
+              icon={<ShoppingBag className="h-6 w-6" />}
               title="No orders yet"
               description="New orders will appear here when customers place them."
               className="py-10"

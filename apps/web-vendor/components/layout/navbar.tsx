@@ -16,6 +16,7 @@ import {
   SheetContent,
   SheetTrigger,
   Logo,
+  ThemeToggle,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
@@ -71,6 +72,8 @@ export function Navbar() {
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <ThemeToggle />
+
         <Link href={ROUTES.notifications}>
           <Button variant="ghost" size="icon" aria-label="Notifications">
             <BellIcon />

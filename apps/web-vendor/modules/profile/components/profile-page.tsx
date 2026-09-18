@@ -12,6 +12,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  ConfirmDialog,
   Form,
   FormControl,
   FormField,
@@ -277,6 +278,7 @@ function PayoutAccountForm() {
   const [banks, setBanks] = useState<Bank[]>([])
   const [verifiedName, setVerifiedName] = useState<string | null>(null)
   const [isVerifying, setIsVerifying] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
 
   const { data: existing, isLoading: loadingExisting } = useQuery({
     queryKey: ['payout-account'],
@@ -284,7 +286,13 @@ function PayoutAccountForm() {
   })
 
   useEffect(() => {
-    profileService.getBanks().then(setBanks).catch(() => {})
+    // Paystack's bank list occasionally repeats the same `code` under a couple of entries —
+    // deduping here (not just at render) matters because a <select> with two <option>s sharing
+    // one value is ambiguous to select from, not just a React key warning.
+    profileService.getBanks().then((list) => {
+      const seen = new Set<string>()
+      setBanks(list.filter((b) => (seen.has(b.code) ? false : (seen.add(b.code), true))))
+    }).catch(() => {})
   }, [])
 
   const form = useForm<PayoutFormValues>({
@@ -338,6 +346,25 @@ function PayoutAccountForm() {
     })
   }
 
+  // The vendor may have picked a bank and typed part of an account number without saving — that
+  // is "progress" worth protecting with a confirmation, per STATUS_DESIGN.md §5.
+  const isDirty = form.formState.isDirty
+
+  function handleCancelClick() {
+    if (isDirty) {
+      setDiscardOpen(true)
+      return
+    }
+    form.reset()
+    setVerifiedName(null)
+  }
+
+  function confirmDiscard() {
+    form.reset()
+    setVerifiedName(null)
+    setDiscardOpen(false)
+  }
+
   if (loadingExisting) {
     return (
       <div className="space-y-4">
@@ -350,12 +377,12 @@ function PayoutAccountForm() {
   return (
     <div className="space-y-4">
       {existing?.has_payout_account && (
-        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm">
-          <p className="font-medium text-green-800">Payout account linked</p>
-          <p className="mt-1 text-green-700">
+        <div className="rounded-md border border-success/20 bg-success-muted p-4 text-sm">
+          <p className="font-medium text-success">Payout account linked</p>
+          <p className="mt-1 text-foreground">
             {existing.account_name} &mdash; {existing.bank_name}
           </p>
-          <p className="text-green-600">
+          <p className="text-muted-foreground">
             Account: ****{existing.account_number?.slice(-4)}
           </p>
         </div>
@@ -414,9 +441,9 @@ function PayoutAccountForm() {
           />
 
           {verifiedName && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm">
+            <div className="rounded-md border border-info/20 bg-info-muted px-4 py-3 text-sm">
               <span className="text-muted-foreground">Account name: </span>
-              <span className="font-semibold text-blue-900">{verifiedName}</span>
+              <span className="font-semibold text-info">{verifiedName}</span>
             </div>
           )}
 
@@ -432,9 +459,25 @@ function PayoutAccountForm() {
             <Button type="submit" disabled={!verifiedName || isSaving}>
               {isSaving ? 'Saving…' : existing?.has_payout_account ? 'Update Account' : 'Save Account'}
             </Button>
+            {isDirty && (
+              <Button type="button" variant="ghost" onClick={handleCancelClick} disabled={isSaving}>
+                Cancel
+              </Button>
+            )}
           </div>
         </form>
       </Form>
+
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        title="Discard payout account changes?"
+        description="You've started entering a payout account but haven't saved it. Discarding will clear what you've entered."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        destructive
+        onConfirm={confirmDiscard}
+      />
     </div>
   )
 }
