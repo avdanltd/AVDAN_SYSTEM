@@ -53,7 +53,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   }
 
   const shortId = order.id.slice(0, 8).toUpperCase()
-  const canReceive = order.status === 'IN_TRANSIT_TO_HUB'
+  const canReceive = order.status === 'ARRIVED_AT_HUB'
   const canQa = order.status === 'QA_IN_PROGRESS'
 
   return (
@@ -85,7 +85,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             )}
             {canQa && (
               <Link href={ROUTES.orderQa(order.id)}>
-                <Button size="sm" className="gap-2 bg-amber-600 hover:bg-amber-700 text-white">
+                <Button size="sm" className="gap-2 bg-warning text-warning-foreground hover:bg-warning/90">
                   <ClipboardCheck className="h-4 w-4" />
                   Start QA
                 </Button>

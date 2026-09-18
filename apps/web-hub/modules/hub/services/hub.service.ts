@@ -10,14 +10,19 @@ export const hubService = {
 
   getOrder: (id: string) => apiClient.get<HubOrder>(`/hub/orders/${id}`),
 
-  receiveOrder: (orderId: string) =>
-    apiClient.post<{ message: string }>(`/hub/orders/${orderId}/receive`),
+  // These three all return the updated OrderResponse (see `apps/api/services/qa/router.py`), not
+  // a `{ message }` envelope — typed as HubOrder so callers can actually use the fresh order.
+  receiveOrder: (orderId: string) => apiClient.post<HubOrder>(`/hub/orders/${orderId}/receive`),
 
-  qaPass: (orderId: string, notes: string) =>
-    apiClient.post<{ message: string }>(`/hub/orders/${orderId}/qa/pass`, { notes }),
+  // NOTE: the backend's `qa_pass` endpoint takes no request body at all (see qa/router.py) — the
+  // `notes` a hub agent types before pressing PASS are only persisted on a FAIL. Kept as a no-op
+  // param here rather than silently dropping the caller's argument, but this is a real backend
+  // gap: PASS notes are never saved.
+  qaPass: (orderId: string, _notes: string) =>
+    apiClient.post<HubOrder>(`/hub/orders/${orderId}/qa/pass`),
 
   qaFail: (orderId: string, notes: string, evidence_urls: string[]) =>
-    apiClient.post<{ message: string }>(`/hub/orders/${orderId}/qa/fail`, { notes, evidence_urls }),
+    apiClient.post<HubOrder>(`/hub/orders/${orderId}/qa/fail`, { notes, evidence_urls }),
 
   uploadEvidence: (orderId: string, file: File) => {
     const formData = new FormData()

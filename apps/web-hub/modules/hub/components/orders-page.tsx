@@ -23,8 +23,15 @@ import type { HubOrder } from '../types'
 
 type TabValue = 'inbound' | 'qa' | 'dispatched' | 'all'
 
+// "inbound" here means "awaiting receive" — ARRIVED_AT_HUB is the state a rider sets on arrival
+// and the one `receive_order` (apps/api/services/qa/service.py) actually accepts a transition
+// from; AT_HUB is a transient state the backend passes through and immediately advances out of
+// within the same request (AT_HUB -> QA_IN_PROGRESS), so no order is ever visibly sitting at
+// AT_HUB for an agent to act on. This previously filtered on 'AT_HUB', which meant the Inbound
+// tab here was permanently empty even with orders waiting at the hub — same bug already fixed in
+// dashboard-page.tsx's queue filters, just missed in this older/second status-filter list.
 const TAB_STATUS_MAP: Record<TabValue, string | undefined> = {
-  inbound: 'AT_HUB',
+  inbound: 'ARRIVED_AT_HUB',
   qa: 'QA_IN_PROGRESS',
   dispatched: 'OUT_FOR_DELIVERY,DELIVERED,COMPLETED',
   all: undefined,
@@ -95,7 +102,7 @@ function OrdersTable({ tab }: { tab: TabValue }) {
       header: '',
       cell: (row) => (
         <div className="flex items-center gap-2">
-          {row.status === 'AT_HUB' && (
+          {row.status === 'ARRIVED_AT_HUB' && (
             <Button
               size="sm"
               className="h-8"
@@ -111,7 +118,7 @@ function OrdersTable({ tab }: { tab: TabValue }) {
           {row.status === 'QA_IN_PROGRESS' && (
             <Button
               size="sm"
-              className="h-8 bg-amber-600 hover:bg-amber-700 text-white"
+              className="h-8 bg-warning text-warning-foreground hover:bg-warning/90"
               onClick={(e) => {
                 e.stopPropagation()
                 router.push(ROUTES.orderQa(row.id))
