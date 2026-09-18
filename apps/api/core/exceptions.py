@@ -10,6 +10,19 @@ class AppError(Exception):
         self.message = message
         super().__init__(message)
 
+    def __reduce__(self) -> tuple[object, tuple[type["AppError"], int, str, str]]:
+        # Celery pickles task exceptions to ship them to the result backend; the default
+        # Exception pickling replays only `args` (the message) into __init__, which doesn't fit
+        # this signature (nor the subclasses'), so every failure surfaced as an opaque
+        # UnpickleableExceptionWrapper instead of the real error.
+        return (_restore_app_error, (type(self), self.status_code, self.code, self.message))
+
+
+def _restore_app_error(cls: type[AppError], status_code: int, code: str, message: str) -> AppError:
+    exc = cls.__new__(cls)
+    AppError.__init__(exc, status_code, code, message)
+    return exc
+
 
 class NotFoundException(AppError):  # noqa: N818
     def __init__(self, message: str = "Resource not found") -> None:

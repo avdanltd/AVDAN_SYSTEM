@@ -2,10 +2,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from datetime import UTC, datetime, timedelta
 
 from workers import run_and_dispose
 from workers.celery_app import celery_app
+
+logger = logging.getLogger(__name__)
 
 
 @celery_app.task(name="workers.tasks.escrow.check_pending_releases")
@@ -91,11 +94,23 @@ async def _refund_rejected_async(order_id: str) -> None:
                 pass
 
 
+# Payout failures only the vendor can fix (by saving a valid payout bank account). The order stays
+# PAYMENT_RELEASE_PENDING with escrow HELD, so check_pending_releases picks it up again on its next
+# tick and the release goes through on its own once the vendor has fixed their account.
+_VENDOR_ACTION_REQUIRED = {"VENDOR_PAYOUT_NOT_CONFIGURED", "VENDOR_PAYOUT_RECIPIENT_INVALID"}
+
+
 async def _release_async(order_id: str) -> None:
     from core.database import AsyncSessionLocal
+    from core.exceptions import AppError
     from services.payment.service import PaymentService
 
-    async with AsyncSessionLocal() as db:
-        async with db.begin():
-            svc = PaymentService(db)
-            await svc.release_escrow(order_id)
+    try:
+        async with AsyncSessionLocal() as db:
+            async with db.begin():
+                svc = PaymentService(db)
+                await svc.release_escrow(order_id)
+    except AppError as exc:
+        if exc.code not in _VENDOR_ACTION_REQUIRED:
+            raise
+        logger.warning("Escrow release for order %s waiting on vendor: %s", order_id, exc.message)

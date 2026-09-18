@@ -40,6 +40,14 @@ def _paystack_detail(response: httpx.Response) -> str:
     return f"{message} ({code})" if code else message or response.text[:200]
 
 
+def _paystack_code(response: httpx.Response) -> str:
+    """Paystack's machine-readable error code from a failed response, or "" if absent."""
+    try:
+        return str(response.json().get("code", ""))
+    except ValueError:
+        return ""
+
+
 class PaystackProvider(PaymentProvider):
     def __init__(self, secret_key: str) -> None:
         self._secret_key = secret_key
@@ -106,6 +114,16 @@ class PaystackProvider(PaymentProvider):
                 },
             )
         if response.status_code not in (200, 201):
+            # A recipient code that Paystack doesn't recognise (placeholder data, or one created
+            # under a different secret key — every test-mode code is invalid once the live key is
+            # in use) is the vendor's payout setup, not a transient failure; retrying can't fix it.
+            if _paystack_code(response) == "invalid_transfer_recipient":
+                raise AppError(
+                    422,
+                    "VENDOR_PAYOUT_RECIPIENT_INVALID",
+                    "Vendor's saved payout account is not valid on this Paystack account — "
+                    "the vendor must re-save their payout bank account",
+                )
             raise AppError(502, "TRANSFER_FAILED", f"Failed to transfer to vendor: {_paystack_detail(response)}")
         data = response.json()["data"]
         return TransferResult(
