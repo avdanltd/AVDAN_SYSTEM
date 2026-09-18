@@ -1,13 +1,15 @@
 import { useMemo } from 'react'
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { ChevronRight, MapPin, Navigation, Package, TrendingUp } from 'lucide-react-native'
+import { AlertCircle, ChevronRight, MapPin, Navigation, Package, TrendingUp } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useAvailability, useRiderProfile } from '../hooks/use-availability'
 import { useRiderOrders, useRiderOrderHistory } from '../hooks/use-rider-orders'
 import { useLocationBroadcast } from '../hooks/use-location-broadcast'
+import { useLiveLocation } from '../hooks/use-live-location'
 import { StatusToggle } from './status-toggle'
+import { DeliveryMap } from './delivery-map'
 import { ORDER_ACTIONS, type RiderOrder } from '../types'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, isToday, orderRef, radius, spacing, useSession, useTheme } from '@avdan/mobile'
 
@@ -55,11 +57,15 @@ export function Dashboard() {
 
   const { data: profile } = useRiderProfile()
   const { mutate: toggleAvailability, isPending: isToggling } = useAvailability()
-  const { data: orders, isLoading, refetch, isRefetching } = useRiderOrders()
+  const { data: orders, isLoading, isError, refetch, isRefetching } = useRiderOrders()
   const { data: history } = useRiderOrderHistory()
 
   const isOnline = profile?.online ?? false
   useLocationBroadcast(isOnline)
+  // Separate watch from the broadcast hook above: that one only POSTs the coordinate to
+  // dispatch and never exposes it back to the component. Both are gated on the same
+  // `isOnline` flag, so there's never a location watch running while the rider is offline.
+  const riderLocation = useLiveLocation(isOnline)
 
   const activeOrders = useMemo(
     () => orders?.filter((o) => ACTIVE_STATUSES.has(o.status)) ?? [],
@@ -150,6 +156,15 @@ export function Dashboard() {
           <Skeleton height={14} width="60%" />
           <Skeleton height={44} style={styles.skeletonAction} />
         </Card>
+      ) : isError ? (
+        <Card>
+          <EmptyState
+            icon={<AlertCircle size={30} color={colors.subtleForeground} />}
+            title="Couldn't load your deliveries"
+            description="Something went wrong fetching your orders. Check your connection and try again."
+            action={<Button label="Retry" variant="outline" onPress={() => refetch()} fullWidth={false} />}
+          />
+        </Card>
       ) : activeOrder ? (
         <Card style={styles.activeCard}>
           <View style={styles.activeTop}>
@@ -158,43 +173,81 @@ export function Dashboard() {
               bg={colors.accent}
               fg={colors.accentForeground}
             />
-            <Text style={[styles.total, { color: colors.foreground }]}>
-              {formatKobo(activeOrder.total_kobo)}
-            </Text>
-          </View>
-
-          <View style={styles.addressRow}>
-            <View style={[styles.iconChip, { backgroundColor: colors.primaryMuted }]}>
-              <MapPin size={18} color={colors.primary} />
-            </View>
-            <View style={styles.addressBody}>
-              <Text style={[styles.address, { color: colors.foreground }]} numberOfLines={2}>
-                {formatAddress(activeOrder.delivery_address)}
-              </Text>
-              <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                {orderRef(activeOrder.id)} · {activeOrder.items.length}{' '}
-                {activeOrder.items.length === 1 ? 'item' : 'items'}
+            <View style={styles.totalBlock}>
+              <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>You earn</Text>
+              <Text style={[styles.total, { color: colors.foreground }]}>
+                {formatKobo(activeOrder.delivery_fee_kobo)}
               </Text>
             </View>
           </View>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+          {(() => {
+            // The API withholds the real delivery_address until the rider has picked the order
+            // back up from the hub — before that, this card's whole point (where do I go right
+            // now?) is answered by the hub, not a customer address it doesn't even have yet.
+            const hasDeliveryAddress = Object.keys(activeOrder.delivery_address ?? {}).length > 0
+            const destinationLabel = hasDeliveryAddress
+              ? formatAddress(activeOrder.delivery_address)
+              : (activeOrder.hub_name ?? 'Drop-off hub')
+            const navigate = hasDeliveryAddress
+              ? () => openInMaps(activeOrder.delivery_address)
+              : activeOrder.hub_lat != null && activeOrder.hub_lng != null
+                ? () => openCoordsInMaps(activeOrder.hub_lat!, activeOrder.hub_lng!)
+                : undefined
 
-          <View style={styles.actions}>
-            <Button
-              label="Navigate"
-              variant="outline"
-              icon={<Navigation size={16} color={colors.foreground} />}
-              onPress={() => openInMaps(activeOrder.delivery_address)}
-              style={styles.flex1}
-            />
-            <Button
-              label={ORDER_ACTIONS[activeOrder.status] ? 'Take action' : 'View'}
-              variant={ORDER_ACTIONS[activeOrder.status] ? 'default' : 'outline'}
-              onPress={() => router.push(`/orders/${activeOrder.id}`)}
-              style={styles.flex1}
-            />
-          </View>
+            // A live map needs actual coordinates for the destination. The hub always has
+            // them (hub_lat/hub_lng), but `delivery_address` is street/city/state text only —
+            // the backend never stores lat/lng for it — so there is nothing to plot once the
+            // customer address is revealed. The "Navigate" button above still works for that
+            // leg (the phone's Maps app geocodes the text address itself); the live map is
+            // shown only for the to-hub leg, where we genuinely have a coordinate.
+            const mapDestination =
+              !hasDeliveryAddress && activeOrder.hub_lat != null && activeOrder.hub_lng != null
+                ? { lat: activeOrder.hub_lat, lng: activeOrder.hub_lng, label: activeOrder.hub_name ?? 'Drop-off hub' }
+                : null
+
+            return (
+              <>
+                <View style={styles.addressRow}>
+                  <View style={[styles.iconChip, { backgroundColor: colors.primaryMuted }]}>
+                    <MapPin size={18} color={colors.primary} />
+                  </View>
+                  <View style={styles.addressBody}>
+                    <Text style={[styles.address, { color: colors.foreground }]} numberOfLines={2}>
+                      {destinationLabel}
+                    </Text>
+                    <Text style={[styles.meta, { color: colors.mutedForeground }]}>
+                      {orderRef(activeOrder.id)} · {activeOrder.items.length}{' '}
+                      {activeOrder.items.length === 1 ? 'item' : 'items'}
+                    </Text>
+                  </View>
+                </View>
+
+                {isOnline && mapDestination ? (
+                  <DeliveryMap rider={riderLocation} destination={mapDestination} />
+                ) : null}
+
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+                <View style={styles.actions}>
+                  <Button
+                    label={hasDeliveryAddress ? 'Navigate' : 'Navigate to hub'}
+                    variant="outline"
+                    icon={<Navigation size={16} color={colors.foreground} />}
+                    onPress={navigate ?? (() => {})}
+                    disabled={!navigate}
+                    style={styles.flex1}
+                  />
+                  <Button
+                    label={ORDER_ACTIONS[activeOrder.status] ? 'Take action' : 'View'}
+                    variant={ORDER_ACTIONS[activeOrder.status] ? 'default' : 'outline'}
+                    onPress={() => router.push(`/orders/${activeOrder.id}`)}
+                    style={styles.flex1}
+                  />
+                </View>
+              </>
+            )
+          })()}
         </Card>
       ) : (
         <Card>
@@ -267,6 +320,8 @@ const styles = StyleSheet.create({
   skeletonAction: { marginTop: spacing.sm },
   activeCard: { gap: spacing.lg },
   activeTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  totalBlock: { alignItems: 'flex-end' },
+  totalLabel: { fontFamily: fonts.sans, fontSize: 11 },
   total: { fontFamily: fonts.display, fontSize: 19 },
   addressRow: { flexDirection: 'row', gap: spacing.md },
   iconChip: {
