@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -22,7 +21,7 @@ import {
   useUpdateProduct,
   useVendorProfile,
 } from '../hooks/use-vendor'
-import { Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Button, Card, ConfirmDialog, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 /**
  * Mirrors CreateProductRequest in services/vendor/schemas.py: name 1-255, price_kobo > 0,
@@ -100,6 +99,7 @@ export function ProductForm({ productId }: Props) {
   const [imageUrls, setImageUrls] = useState<string[]>(existing?.image_urls ?? [])
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [focused, setFocused] = useState<string | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const create = useCreateProduct(() => router.back())
   const update = useUpdateProduct(productId ?? '', () => router.back())
@@ -165,12 +165,7 @@ export function ProductForm({ productId }: Props) {
     else create.mutate(payload)
   }
 
-  const confirmDelete = () => {
-    Alert.alert('Remove this product?', 'Customers will no longer see it. This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => remove.mutate(productId!) },
-    ])
-  }
+  const confirmDelete = () => setDeleteOpen(true)
 
   const fieldStyle = (key: string) => [
     styles.inputWrap,
@@ -315,6 +310,20 @@ export function ProductForm({ productId }: Props) {
 
         <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
       </ScrollView>
+
+      <ConfirmDialog
+        visible={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        title="Remove this product?"
+        description="Customers will no longer see it. This cannot be undone."
+        confirmLabel="Remove"
+        destructive
+        loading={remove.isPending}
+        onConfirm={() => {
+          setDeleteOpen(false)
+          remove.mutate(productId!)
+        }}
+      />
     </KeyboardAvoidingView>
   )
 }

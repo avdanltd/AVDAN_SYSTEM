@@ -120,7 +120,18 @@ export const ACTIVE_STATUSES = new Set([
   'VENDOR_ACCEPTED',
   'PREPARING',
   'READY_FOR_PICKUP',
+  // Everything from here on is out of the vendor's hands but still mid-delivery, not
+  // "Completed" — omitting these mislabeled every order past pickup as done the moment a rider
+  // took it, hours or days before it actually reached the customer.
+  'PICKED_UP',
+  'IN_TRANSIT_TO_HUB',
+  'ARRIVED_AT_HUB',
+  'AT_HUB',
+  'QA_IN_PROGRESS',
+  'QA_PASSED',
+  'QA_FAILED',
   'VENDOR_REMEDIATION',
+  'OUT_FOR_DELIVERY',
 ])
 
 /* ── Payout ───────────────────────────────────────────────────────────────── */

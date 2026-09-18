@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import * as ImagePicker from 'expo-image-picker'
 import { ImagePlus, Star, X } from 'lucide-react-native'
 import { Button, fonts, radius, spacing, toast, uploadImage, useTheme } from '@avdan/mobile'
@@ -31,10 +31,7 @@ export function ImagePickerField({ value, onChange }: Props) {
 
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
     if (!permission.granted) {
-      Alert.alert(
-        'Photo access needed',
-        'Allow photo access in Settings so you can attach product images.',
-      )
+      toast.error('Photo access needed', 'Allow photo access in Settings so you can attach product images.')
       return
     }
 

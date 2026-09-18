@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { ChevronRight, Inbox, Package, TrendingUp, Wallet } from 'lucide-react-native'
+import { AlertTriangle, ChevronRight, Inbox, Package, TrendingUp, Wallet } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useVendorAnalytics, useVendorOrders, useVendorProfile } from '../hooks/use-vendor'
@@ -20,7 +20,7 @@ export function Dashboard() {
   const { colors, statusColors } = useTheme()
   const { data: profile } = useVendorProfile()
   const { data: analytics } = useVendorAnalytics()
-  const { data: orders, isLoading, refetch, isRefetching } = useVendorOrders()
+  const { data: orders, isLoading, isError, refetch, isRefetching } = useVendorOrders()
 
   const all = useMemo(() => orders?.items ?? [], [orders])
   const newOrders = useMemo(() => all.filter((o) => o.status === 'PAID'), [all])
@@ -141,6 +141,15 @@ export function Dashboard() {
           <Skeleton height={20} width="40%" />
           <Skeleton height={14} width="75%" />
           <Skeleton height={14} width="55%" />
+        </Card>
+      ) : isError ? (
+        <Card>
+          <EmptyState
+            icon={<AlertTriangle size={30} color={colors.subtleForeground} />}
+            title="Couldn't load your orders"
+            description="Something went wrong. Please try again."
+            action={<Button label="Retry" variant="outline" onPress={() => refetch()} fullWidth={false} />}
+          />
         </Card>
       ) : active.length === 0 ? (
         <Card>
