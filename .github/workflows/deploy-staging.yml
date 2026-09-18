@@ -162,11 +162,15 @@ jobs:
           # when compose starts, Docker creates an empty DIRECTORY at that path, and every later
           # deploy then fails ("not a directory: Are you trying to mount a directory onto a file")
           # because scp drops the file inside that directory. Remove any such directory first.
+          # Docker creates them as root, which the deploy user can't delete. So the cleanup runs
+          # in a throwaway container (as root, no sudo needed — the deploy user already drives
+          # docker). It also hands the backup dir back to the deploy user so the scp below can
+          # write into it. The image is the one db-backup already uses, so nothing extra is pulled.
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} "
+            set -e
             mkdir -p /opt/avdan/infra/docker/backup
-            for f in backup-db.sh crontab; do
-              if [ -d /opt/avdan/infra/docker/backup/\$f ]; then rm -rf /opt/avdan/infra/docker/backup/\$f; fi
-            done
+            docker run --rm --entrypoint sh -v /opt/avdan/infra/docker/backup:/b postgres:16-alpine -c \
+              'for f in backup-db.sh crontab; do if [ -d /b/\$f ]; then rm -rf /b/\$f; fi; done; chown '\$(id -u):\$(id -g)' /b'
           "
           scp -i ~/.ssh/deploy_key \
             infra/docker/backup/backup-db.sh \
