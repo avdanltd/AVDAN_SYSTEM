@@ -9,3 +9,12 @@ export function useRiderOrders() {
     refetchInterval: 15_000,
   })
 }
+
+/** Completed / terminal orders. Polled far less aggressively — history doesn't move. */
+export function useRiderOrderHistory() {
+  return useQuery({
+    queryKey: ['rider-order-history'],
+    queryFn: () => riderService.getOrderHistory(),
+    staleTime: 60_000,
+  })
+}
