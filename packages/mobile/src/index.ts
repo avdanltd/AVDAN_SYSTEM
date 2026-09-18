@@ -42,9 +42,12 @@ export {
   Spinner,
 } from './components/ui'
 export { AvdanLogo, AvdanMark } from './components/brand-logo'
+export { AuthSplitShell } from './components/auth-split-shell'
+export { ConfirmDialog } from './components/confirm-dialog'
 
 /* ── Lib ──────────────────────────────────────────────────────────────────── */
 export { ApiClientError, apiClient, configureApiClient, getApiUrl, getWsUrl } from './lib/api-client'
+export { configureQueryNetworking } from './lib/query-networking'
 export { secureStorage } from './lib/secure-storage'
 export { WsClient } from './lib/ws-client'
 export { guessImageMime, uploadImage, type UploadPrefix, type UploadResult } from './lib/uploads'
