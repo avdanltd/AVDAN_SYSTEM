@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 
+from workers import run_and_dispose
 from workers.celery_app import celery_app
 
 # ── Notification triggers: (from_state, to_state) → [{recipient, title, body}] ──
@@ -16,6 +17,9 @@ _TRIGGERS: dict[tuple[str | None, str], list[dict]] = {
     ],
     ("PAID", "VENDOR_REJECTED"): [
         {"recipient": "customer", "title": "Order Rejected", "body": "Unfortunately your order was rejected by the vendor"},
+    ],
+    ("QA_IN_PROGRESS", "QA_FAILED"): [
+        {"recipient": "vendor", "title": "QA Failed", "body": "Your order failed quality inspection at the hub and needs remediation"},
     ],
     ("PENDING", "CANCELLED"): [
         {"recipient": "vendor", "title": "Order Cancelled", "body": "An order has been cancelled by the customer"},
@@ -52,7 +56,7 @@ def send_order_notification(order_id: str, from_state: str | None, to_state: str
     triggers = _TRIGGERS.get((from_state, to_state), [])
     if not triggers:
         return
-    asyncio.run(_dispatch_async(order_id, from_state, to_state, triggers))
+    asyncio.run(run_and_dispose(_dispatch_async(order_id, from_state, to_state, triggers)))
 
 
 @celery_app.task(name="workers.tasks.notifications.notify_rider_assigned")
@@ -61,7 +65,7 @@ def notify_rider_assigned(order_id: str, rider_user_id: str) -> None:
     transition (the order stays READY_FOR_PICKUP until the rider confirms pickup — see
     DispatchService.assign_rider), so it never runs through the (from_state, to_state)
     trigger map above. The rider is also the recipient here, not customer/vendor."""
-    asyncio.run(_notify_rider_assigned_async(order_id, rider_user_id))
+    asyncio.run(run_and_dispose(_notify_rider_assigned_async(order_id, rider_user_id)))
 
 
 async def _notify_rider_assigned_async(order_id: str, rider_user_id: str) -> None:

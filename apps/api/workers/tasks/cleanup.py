@@ -4,13 +4,14 @@ from __future__ import annotations
 import asyncio
 from datetime import date, timedelta
 
+from workers import run_and_dispose
 from workers.celery_app import celery_app
 
 
 @celery_app.task(name="workers.tasks.cleanup.purge_old_rider_partitions")
 def purge_old_rider_partitions() -> None:
     """Create upcoming day partitions and drop partitions older than 90 days."""
-    asyncio.run(_purge_async())
+    asyncio.run(run_and_dispose(_purge_async()))
 
 
 async def _purge_async() -> None:

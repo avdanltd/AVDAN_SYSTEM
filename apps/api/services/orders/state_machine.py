@@ -10,6 +10,7 @@ class OrderStatus:
     READY_FOR_PICKUP = "READY_FOR_PICKUP"
     PICKED_UP = "PICKED_UP"
     IN_TRANSIT_TO_HUB = "IN_TRANSIT_TO_HUB"
+    ARRIVED_AT_HUB = "ARRIVED_AT_HUB"
     AT_HUB = "AT_HUB"
     QA_IN_PROGRESS = "QA_IN_PROGRESS"
     QA_PASSED = "QA_PASSED"
@@ -58,6 +59,9 @@ TRANSITIONS: dict[str, dict[str, list[str]]] = {
         OrderStatus.IN_TRANSIT_TO_HUB: ["rider"],
     },
     OrderStatus.IN_TRANSIT_TO_HUB: {
+        OrderStatus.ARRIVED_AT_HUB: ["rider"],
+    },
+    OrderStatus.ARRIVED_AT_HUB: {
         OrderStatus.AT_HUB: ["agent"],
     },
     OrderStatus.AT_HUB: {

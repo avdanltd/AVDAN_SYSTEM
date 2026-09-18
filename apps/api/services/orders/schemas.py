@@ -64,6 +64,7 @@ class OrderResponse(BaseModel):
     hub_lng: float | None = None
     status: str
     total_kobo: int
+    delivery_fee_kobo: int
     delivery_address: dict
     items: list[OrderItemResponse] = []
     created_at: str

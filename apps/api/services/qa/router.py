@@ -26,6 +26,7 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
         vendor_name=vendor_name,
         status=o.status,
         total_kobo=o.total_kobo,
+        delivery_fee_kobo=o.delivery_fee_kobo,
         delivery_address=o.delivery_address,
         items=[
             OrderItemResponse(

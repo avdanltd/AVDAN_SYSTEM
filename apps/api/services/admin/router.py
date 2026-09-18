@@ -9,6 +9,7 @@ from services.admin.service import AdminService
 from services.analytics.schemas import (
     OrderVolumeResponse,
     OverviewResponse,
+    PaginatedAuditLogResponse,
     PlatformConfigResponse,
     UpdateConfigRequest,
     VendorAnalyticsResponse,
@@ -34,7 +35,7 @@ from services.orders.schemas import (
     PaginatedOrdersResponse,
 )
 from services.payment.schemas import EscrowStatusResponse, RefundRequest
-from services.qa.schemas import AssignHubRequest, CreateHubRequest, HubResponse
+from services.qa.schemas import AssignHubRequest, CreateHubRequest, HubResponse, UpdateHubRequest
 from services.vendor.schemas import (
     AdminVendorResponse,
     PaginatedVendorsResponse,
@@ -190,6 +191,7 @@ def _order_resp(order: object) -> OrderResponse:
         hub_id=str(o.hub_id) if o.hub_id else None,
         status=o.status,
         total_kobo=o.total_kobo,
+        delivery_fee_kobo=o.delivery_fee_kobo,
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
@@ -208,6 +210,7 @@ def _order_detail_resp(order: object) -> OrderDetailResponse:
         hub_id=str(o.hub_id) if o.hub_id else None,
         status=o.status,
         total_kobo=o.total_kobo,
+        delivery_fee_kobo=o.delivery_fee_kobo,
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
@@ -419,6 +422,35 @@ async def update_platform_config(
     return PlatformConfigResponse(config=config)
 
 
+@router.get("/audit-log", response_model=PaginatedAuditLogResponse)
+async def get_audit_log(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedAuditLogResponse:
+    from services.analytics.schemas import AuditLogEntryResponse
+    from services.analytics.service import AnalyticsService
+    entries, total = await AnalyticsService(db).list_audit_log(page, page_size)
+    return PaginatedAuditLogResponse(
+        items=[
+            AuditLogEntryResponse(
+                id=str(e.id),
+                admin_id=str(e.actor_id),
+                action=e.action,
+                resource=e.target_type,
+                resource_id=e.target_id,
+                metadata=e.after,
+                created_at=e.created_at.isoformat(),
+            )
+            for e in entries
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
 # ── Hub management ────────────────────────────────────────────────────────────
 
 def _hub_resp(hub: object) -> HubResponse:
@@ -453,6 +485,28 @@ async def create_hub(
     svc = AdminService(db)
     hub = await svc.create_hub(data.name, data.capacity, data.lat, data.lng)
     return _hub_resp(hub)
+
+
+@router.patch("/hubs/{hub_id}", response_model=HubResponse)
+async def update_hub(
+    hub_id: str,
+    data: UpdateHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    svc = AdminService(db)
+    hub = await svc.update_hub(hub_id, data.name, data.capacity)
+    return _hub_resp(hub)
+
+
+@router.delete("/hubs/{hub_id}", status_code=204)
+async def delete_hub(
+    hub_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    svc = AdminService(db)
+    await svc.delete_hub(hub_id)
 
 
 @router.patch("/users/{user_id}/hub", response_model=UserResponse)

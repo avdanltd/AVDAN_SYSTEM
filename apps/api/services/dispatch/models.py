@@ -27,6 +27,11 @@ class Rider(BaseModel):
     vehicle_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     lat: Mapped[Decimal | None] = mapped_column(Numeric(10, 8), nullable=True)
     lng: Mapped[Decimal | None] = mapped_column(Numeric(11, 8), nullable=True)
+    # Payout account — mirrors Vendor's payout columns exactly (services/vendor/models.py).
+    paystack_recipient_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    payout_account_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    payout_bank_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    payout_account_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
 
 
 class RiderLocation(Base):

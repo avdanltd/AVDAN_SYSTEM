@@ -19,7 +19,7 @@ Usage
     uv run python scripts/simulate_paystack_webhook.py --order <order_id>   # look the ref up
 
     # point at a non-default host
-    uv run python scripts/simulate_paystack_webhook.py <reference> --api http://172.20.10.3:8000
+    uv run python scripts/simulate_paystack_webhook.py <reference> --api http://192.168.1.4:8000
 
 The real alternative is an ngrok tunnel plus a webhook URL configured in the Paystack
 dashboard; use that when you want to test Paystack's own retry behaviour.

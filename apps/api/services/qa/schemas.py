@@ -55,3 +55,8 @@ class CreateHubRequest(BaseModel):
 
 class AssignHubRequest(BaseModel):
     hub_id: str | None = None
+
+
+class UpdateHubRequest(BaseModel):
+    name: str
+    capacity: int = 100
