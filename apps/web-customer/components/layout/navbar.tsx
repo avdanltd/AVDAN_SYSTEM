@@ -32,6 +32,7 @@ import {
   cn,
   CategoryIcon,
   Logo,
+  ThemeToggle,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
@@ -226,6 +227,7 @@ function MobileNav({ isAuthenticated, user, onNav, onLogout, isPending }: Mobile
         <Link href={ROUTES.home} onClick={onNav}>
           <Logo size="sm" />
         </Link>
+        <ThemeToggle />
       </div>
 
       {/* Search with type toggle */}
@@ -462,6 +464,8 @@ export function Navbar() {
             >
               {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </Button>
+
+            <ThemeToggle />
 
             {/* Cart */}
             <Button

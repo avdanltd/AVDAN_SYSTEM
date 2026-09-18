@@ -4,9 +4,11 @@ import type { PaginatedResponse, OrderStatus } from '@avdan/types'
 export interface OrderItem {
   id: string
   product_id: string
-  name: string
+  product_name: string
+  product_image_url: string | null
   price_kobo: number
   quantity: number
+  subtotal_kobo: number
 }
 
 export interface OrderEvent {
@@ -23,6 +25,7 @@ export interface Order {
   vendor_name?: string
   status: OrderStatus
   total_kobo: number
+  delivery_fee_kobo: number
   delivery_address: Record<string, unknown>
   contact_phone?: string
   created_at: string

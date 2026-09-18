@@ -103,7 +103,7 @@ function StoreProductCard({ product, vendorId, vendorName }: StoreProductCardPro
           )}
         </div>
         <CardContent className="flex flex-col gap-2 p-3">
-          <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+          <p className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug text-foreground">
             {product.name}
           </p>
           <div className="flex items-center justify-between gap-2">
@@ -345,7 +345,7 @@ export function VendorDetailPage({ slug }: { slug: string }) {
                 </h1>
                 <Badge
                   variant="secondary"
-                  className={cn(vendor.status === 'active' && 'bg-green-100 text-green-700')}
+                  className={cn(vendor.status === 'active' && 'bg-success-muted text-success')}
                 >
                   {vendor.status === 'active' ? 'Open' : vendor.status}
                 </Badge>
@@ -356,7 +356,7 @@ export function VendorDetailPage({ slug }: { slug: string }) {
                 </p>
               )}
               {vendor.rating !== null && (
-                <div className="mt-2 flex items-center gap-1 text-sm text-amber-500 font-medium">
+                <div className="mt-2 flex items-center gap-1 text-sm text-warning font-medium">
                   <Star className="h-3.5 w-3.5 fill-current" />
                   {vendor.rating.toFixed(1)}
                 </div>

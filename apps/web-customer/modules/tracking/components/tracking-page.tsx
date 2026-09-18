@@ -78,8 +78,8 @@ export function TrackingPage({ id }: { id: string }) {
           <div className="mt-1.5 flex items-center gap-3">
             <OrderStatusBadge status={tracking.status ?? order.status} />
             {tracking.connected && (
-              <Badge variant="outline" className="gap-1 text-xs text-green-600 border-green-200 bg-green-50">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+              <Badge variant="outline" className="gap-1 text-xs text-success border-success/30 bg-success-muted">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse inline-block" />
                 Live
               </Badge>
             )}
@@ -153,7 +153,7 @@ export function TrackingPage({ id }: { id: string }) {
             <ul className="list-inside list-disc space-y-0.5">
               {order.items.map((item) => (
                 <li key={item.id}>
-                  {item.name} × {item.quantity}
+                  {item.product_name} × {item.quantity}
                 </li>
               ))}
             </ul>
@@ -161,7 +161,11 @@ export function TrackingPage({ id }: { id: string }) {
             <p>Order details loading…</p>
           )}
           <p className="pt-2 font-semibold text-foreground">
-            Total: {(order.total_kobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })}
+            Total:{' '}
+            {((order.total_kobo + order.delivery_fee_kobo) / 100).toLocaleString('en-NG', {
+              style: 'currency',
+              currency: 'NGN',
+            })}
           </p>
         </CardContent>
       </Card>

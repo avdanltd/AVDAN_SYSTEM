@@ -15,6 +15,7 @@ export interface CreateOrderPayload {
 export interface OrderCreated {
   id: string
   total_kobo: number
+  delivery_fee_kobo: number
   status: string
 }
 
@@ -23,9 +24,17 @@ export interface PaymentInitiated {
   reference: string
 }
 
+export interface PaymentVerified {
+  paid: boolean
+  order_id: string
+  status: string
+}
+
 export const checkoutService = {
   createOrder: (payload: CreateOrderPayload) =>
     apiClient.post<OrderCreated>('/orders', payload),
   initiatePayment: (order_id: string) =>
     apiClient.post<PaymentInitiated>(`/payment/initiate/${order_id}`),
+  verifyPayment: (reference: string) =>
+    apiClient.post<PaymentVerified>(`/payment/verify/${reference}`),
 }

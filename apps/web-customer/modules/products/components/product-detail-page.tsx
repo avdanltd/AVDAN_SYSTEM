@@ -167,7 +167,7 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
               <span className="text-3xl font-bold text-foreground">
                 {formatPrice(product.price_kobo)}
               </span>
-              <Badge variant={inStock ? 'secondary' : 'destructive'} className={inStock ? 'bg-green-100 text-green-700' : ''}>
+              <Badge variant={inStock ? 'secondary' : 'destructive'} className={inStock ? 'bg-success-muted text-success' : ''}>
                 {inStock ? `In stock (${product.stock_qty})` : 'Out of stock'}
               </Badge>
             </div>

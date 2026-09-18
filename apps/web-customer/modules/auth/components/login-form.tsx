@@ -5,12 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import Link from 'next/link'
 
 import {
+  AuthSplitShell,
   Button,
-  Card,
-  CardHeader,
-  CardContent,
-  CardTitle,
-  CardDescription,
   Form,
   FormField,
   FormItem,
@@ -35,55 +31,59 @@ export function LoginForm() {
   })
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <Logo size="lg" className="mb-2" />
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>Welcome back — enter your credentials to continue</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit((data) => login(data))} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="you@example.com" type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <PasswordInput placeholder="••••••••" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isPending}>
-                {isPending ? 'Signing in...' : 'Sign in'}
-              </Button>
-              <p className="text-center text-sm text-muted-foreground">
-                Don&apos;t have an account?{' '}
-                <Link href={ROUTES.register} className="text-primary hover:underline">
-                  Create one
-                </Link>
-              </p>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-    </div>
+    <AuthSplitShell
+      imageSrc="/brand/auth-hero.jpg"
+      imageAlt="AVDAN delivery rider en route at night"
+      badgeSrc="/brand/logo-badge.png"
+      tagline="Everything you need, delivered — from trusted local vendors to your door."
+      badges={[
+        { value: '500+', label: 'Vendors' },
+        { value: '10k+', label: 'Orders delivered' },
+      ]}
+    >
+      <Logo size="md" className="mb-8" />
+      <h1 className="font-display text-2xl font-bold text-foreground">Welcome back</h1>
+      <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to your account</p>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit((data) => login(data))} className="mt-6 space-y-4">
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email address</FormLabel>
+                <FormControl>
+                  <Input placeholder="you@example.com" type="email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <PasswordInput placeholder="••••••••" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full" size="lg" disabled={isPending}>
+            {isPending ? 'Signing in...' : 'Sign in'}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?{' '}
+            <Link href={ROUTES.register} className="font-medium text-primary hover:underline">
+              Create one
+            </Link>
+          </p>
+        </form>
+      </Form>
+    </AuthSplitShell>
   )
 }

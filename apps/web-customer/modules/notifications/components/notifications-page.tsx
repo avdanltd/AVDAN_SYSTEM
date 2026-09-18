@@ -33,7 +33,7 @@ export function NotificationsPage() {
   const { mutate: markAllRead, isPending: isMarkingAll } = useMarkAllRead()
 
   const notifications = data?.items ?? []
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.read_at).length
 
   function handleMarkAll() {
     markAllRead(undefined, {
@@ -97,18 +97,18 @@ export function NotificationsPage() {
               key={notification.id}
               className={cn(
                 'w-full text-left flex gap-3 rounded-xl border p-4 transition-colors',
-                notification.read
+                notification.read_at
                   ? 'border-border bg-background hover:bg-secondary/50'
                   : 'border-primary/20 bg-primary/5 hover:bg-primary/10',
               )}
               onClick={() => {
-                if (!notification.read) markRead(notification.id)
+                if (!notification.read_at) markRead(notification.id)
               }}
             >
               <div
                 className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
-                  notification.read ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
+                  notification.read_at ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary',
                 )}
               >
                 {getNotificationIcon(notification.type ?? '')}
@@ -118,19 +118,19 @@ export function NotificationsPage() {
                   <p
                     className={cn(
                       'text-sm',
-                      notification.read ? 'font-normal text-foreground' : 'font-semibold text-foreground',
+                      notification.read_at ? 'font-normal text-foreground' : 'font-semibold text-foreground',
                     )}
                   >
-                    {notification.title}
+                    {notification.content.title}
                   </p>
                   <div className="flex items-center gap-2 shrink-0">
-                    {!notification.read && (
+                    {!notification.read_at && (
                       <span className="h-2 w-2 rounded-full bg-primary" />
                     )}
                     <span className="text-xs text-muted-foreground">{formatDate(notification.created_at)}</span>
                   </div>
                 </div>
-                <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{notification.body}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{notification.content.body}</p>
               </div>
             </button>
           ))}
