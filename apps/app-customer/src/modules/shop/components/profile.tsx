@@ -1,4 +1,5 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import {
   ChevronRight,
@@ -10,7 +11,19 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react-native'
-import { AvdanMark, Button, Card, fonts, initials, radius, spacing, useSession, useLogout, useTheme } from '@avdan/mobile'
+import {
+  AvdanMark,
+  Button,
+  Card,
+  ConfirmDialog,
+  fonts,
+  initials,
+  radius,
+  spacing,
+  useSession,
+  useLogout,
+  useTheme,
+} from '@avdan/mobile'
 
 function NavRow({
   icon,
@@ -47,13 +60,7 @@ export function Profile() {
   const { mutate: logout, isPending } = useLogout()
   const { colors, preference } = useTheme()
   const router = useRouter()
-
-  const confirmLogout = () => {
-    Alert.alert('Sign out?', 'You can sign back in any time.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => logout() },
-    ])
-  }
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
   const themeLabel = preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'
 
@@ -113,8 +120,22 @@ export function Profile() {
         label={isPending ? 'Signing out…' : 'Sign out'}
         variant="destructive"
         icon={<LogOut size={16} color={colors.destructiveForeground} />}
-        onPress={confirmLogout}
+        onPress={() => setLogoutDialogOpen(true)}
         loading={isPending}
+      />
+
+      <ConfirmDialog
+        visible={logoutDialogOpen}
+        onClose={() => setLogoutDialogOpen(false)}
+        title="Sign out?"
+        description="You can sign back in any time."
+        confirmLabel="Sign out"
+        destructive
+        loading={isPending}
+        onConfirm={() => {
+          setLogoutDialogOpen(false)
+          logout()
+        }}
       />
 
       <View style={styles.footer}>

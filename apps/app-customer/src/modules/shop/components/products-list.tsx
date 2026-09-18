@@ -43,7 +43,11 @@ export function ProductsList() {
       showsVerticalScrollIndicator={false}
       renderItem={({ item }) => <ProductCard product={item} width={CARD_W} />}
       ListEmptyComponent={
-        <EmptyState icon={<ShoppingBag size={30} color={colors.subtleForeground} />} title="No products yet" />
+        <EmptyState
+          icon={<ShoppingBag size={30} color={colors.subtleForeground} />}
+          title="No products yet"
+          description="Vendors haven't listed anything here yet. Check back soon."
+        />
       }
     />
   )

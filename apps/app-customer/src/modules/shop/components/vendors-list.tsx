@@ -1,14 +1,14 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Star, Store as StoreIcon } from 'lucide-react-native'
-import { Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { useVendors } from '../hooks/use-shop'
 
 export function VendorsList() {
   const { colors } = useTheme()
   const router = useRouter()
-  const { data, isLoading } = useVendors()
+  const { data, isLoading, isError, refetch } = useVendors()
   const vendors = data?.items ?? []
 
   if (isLoading) {
@@ -20,6 +20,19 @@ export function VendorsList() {
           </Card>
         ))}
       </ScrollView>
+    )
+  }
+
+  if (isError) {
+    return (
+      <View style={styles.centered}>
+        <EmptyState
+          icon={<StoreIcon size={30} color={colors.subtleForeground} />}
+          title="Couldn't load stores"
+          description="Something went wrong. Please try again."
+          action={<Button label="Retry" variant="outline" onPress={() => refetch()} fullWidth={false} />}
+        />
+      </View>
     )
   }
 

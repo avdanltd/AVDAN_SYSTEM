@@ -24,6 +24,7 @@ import {
 
 import { useCheckout } from '../hooks/use-checkout'
 import { groupByVendor, useCartStore } from '../store/cart.store'
+import type { CustomerOrder } from '../types'
 
 // Mirrors DeliveryAddress on the API.
 const addressSchema = z.object({
@@ -37,7 +38,7 @@ export function Checkout() {
   const { colors } = useTheme()
   const router = useRouter()
   const lines = useCartStore((s) => s.lines)
-  const { checkout, stage, isBusy } = useCheckout()
+  const { placeOrder, payExistingOrder, stage, isBusy } = useCheckout()
 
   const groups = useMemo(() => groupByVendor(lines), [lines])
 
@@ -47,8 +48,9 @@ export function Checkout() {
   const [notes, setNotes] = useState('')
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [placedOrder, setPlacedOrder] = useState<CustomerOrder | null>(null)
 
-  if (groups.length === 0) {
+  if (groups.length === 0 && !placedOrder) {
     return (
       <View style={styles.centered}>
         <EmptyState
@@ -61,11 +63,13 @@ export function Checkout() {
   }
 
   // One vendor at a time. The API takes a single vendor_id per order, so the button pays for
-  // the first group and returns here with the rest still in the cart.
+  // the first group and returns here with the rest still in the cart. Once an order is placed,
+  // its lines are cleared from the cart (see placeOrder), so from then on the summary reads from
+  // the confirmed order itself rather than the live (now-shifted) cart groups.
   const current = groups[0]
-  const remaining = groups.length - 1
+  const remaining = placedOrder ? groups.length : groups.length - 1
 
-  const handlePay = async () => {
+  const handlePlaceOrder = async () => {
     const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined })
     if (!parsed.success) {
       const next: Record<string, string> = {}
@@ -78,7 +82,7 @@ export function Checkout() {
     }
     setErrors({})
 
-    const outcome = await checkout(current, {
+    const order = await placeOrder(current, {
       street: parsed.data.street,
       city: parsed.data.city,
       state: parsed.data.state,
@@ -86,6 +90,14 @@ export function Checkout() {
       notes: parsed.data.notes ?? null,
     })
 
+    if (order) {
+      setPlacedOrder(order)
+    }
+  }
+
+  const handleConfirmPay = async () => {
+    if (!placedOrder) return
+    const outcome = await payExistingOrder(placedOrder.id)
     if (outcome) {
       router.replace(`/orders/${outcome.orderId}`)
     }
@@ -100,14 +112,17 @@ export function Checkout() {
     },
   ]
 
-  const label =
-    stage === 'creating'
-      ? 'Creating order…'
-      : stage === 'paying'
-        ? 'Waiting for payment…'
-        : stage === 'verifying'
-          ? 'Confirming payment…'
-          : `Pay ${formatKobo(current.subtotalKobo)}`
+  const grandTotalKobo = placedOrder ? placedOrder.total_kobo + placedOrder.delivery_fee_kobo : null
+
+  const label = !placedOrder
+    ? stage === 'creating'
+      ? 'Placing order…'
+      : 'Continue to payment'
+    : stage === 'paying'
+      ? 'Waiting for payment…'
+      : stage === 'verifying'
+        ? 'Confirming payment…'
+        : `Pay ${formatKobo(grandTotalKobo!)}`
 
   return (
     <KeyboardAvoidingView
@@ -123,26 +138,51 @@ export function Checkout() {
               <Store size={15} color={colors.primary} />
             </View>
             <Text style={[styles.storeName, { color: colors.foreground }]} numberOfLines={1}>
-              {current.vendorName}
+              {placedOrder ? placedOrder.vendor_name ?? 'Vendor' : current.vendorName}
             </Text>
           </View>
 
-          {current.lines.map((l) => (
-            <View key={l.productId} style={styles.sumLine}>
-              <Text style={[styles.sumQty, { color: colors.mutedForeground }]}>{l.quantity}×</Text>
-              <Text style={[styles.sumName, { color: colors.foreground }]} numberOfLines={1}>
-                {l.name}
-              </Text>
-              <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
-                {formatKobo(l.priceKobo * l.quantity)}
-              </Text>
-            </View>
-          ))}
+          {placedOrder
+            ? placedOrder.items.map((item) => (
+                <View key={item.id} style={styles.sumLine}>
+                  <Text style={[styles.sumQty, { color: colors.mutedForeground }]}>{item.quantity}×</Text>
+                  <Text style={[styles.sumName, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.product_name}
+                  </Text>
+                  <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+                    {formatKobo(item.subtotal_kobo)}
+                  </Text>
+                </View>
+              ))
+            : current.lines.map((l) => (
+                <View key={l.productId} style={styles.sumLine}>
+                  <Text style={[styles.sumQty, { color: colors.mutedForeground }]}>{l.quantity}×</Text>
+                  <Text style={[styles.sumName, { color: colors.foreground }]} numberOfLines={1}>
+                    {l.name}
+                  </Text>
+                  <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+                    {formatKobo(l.priceKobo * l.quantity)}
+                  </Text>
+                </View>
+              ))}
+
+          <View style={styles.sumLine}>
+            <Text style={[styles.sumName, { color: colors.mutedForeground }]}>Subtotal</Text>
+            <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+              {formatKobo(placedOrder ? placedOrder.total_kobo : current.subtotalKobo)}
+            </Text>
+          </View>
+          <View style={styles.sumLine}>
+            <Text style={[styles.sumName, { color: colors.mutedForeground }]}>Delivery fee</Text>
+            <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+              {placedOrder ? formatKobo(placedOrder.delivery_fee_kobo) : 'Confirmed on next step'}
+            </Text>
+          </View>
 
           <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
             <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Total</Text>
             <Text style={[styles.totalValue, { color: colors.foreground }]}>
-              {formatKobo(current.subtotalKobo)}
+              {formatKobo(grandTotalKobo ?? current.subtotalKobo)}
             </Text>
           </View>
 
@@ -155,6 +195,18 @@ export function Checkout() {
         </Card>
 
         {/* Delivery */}
+        {placedOrder ? (
+          <Card style={styles.block}>
+            <View style={styles.blockHead}>
+              <MapPin size={16} color={colors.primary} />
+              <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivering to</Text>
+            </View>
+            <Text style={[styles.sumName, { color: colors.foreground }]}>
+              {placedOrder.delivery_address.street}, {placedOrder.delivery_address.city},{' '}
+              {placedOrder.delivery_address.state}
+            </Text>
+          </Card>
+        ) : (
         <Card style={styles.block}>
           <View style={styles.blockHead}>
             <MapPin size={16} color={colors.primary} />
@@ -235,6 +287,7 @@ export function Checkout() {
             </View>
           </View>
         </Card>
+        )}
 
         {/* Escrow reassurance — this is the product's actual promise */}
         <Card style={[styles.escrow, { backgroundColor: colors.successMuted }]}>
@@ -247,7 +300,7 @@ export function Checkout() {
 
         <Button
           label={label}
-          onPress={handlePay}
+          onPress={placedOrder ? handleConfirmPay : handlePlaceOrder}
           loading={isBusy}
           size="lg"
           icon={<CreditCard size={17} color={colors.primaryForeground} />}

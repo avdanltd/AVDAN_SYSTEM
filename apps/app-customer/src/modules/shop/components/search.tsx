@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import { ArrowLeft, Search as SearchIcon, Store as StoreIcon, X } from 'lucide-react-native'
 import { EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
@@ -14,6 +15,7 @@ const DEBOUNCE_MS = 350
 
 export function Search() {
   const { colors } = useTheme()
+  const insets = useSafeAreaInsets()
   const router = useRouter()
   const [input, setInput] = useState('')
   const [term, setTerm] = useState('')
@@ -31,7 +33,7 @@ export function Search() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
         <Pressable onPress={() => router.back()} hitSlop={10} accessibilityLabel="Back">
           <ArrowLeft size={22} color={colors.foreground} />
         </Pressable>

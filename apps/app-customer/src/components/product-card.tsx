@@ -81,13 +81,19 @@ const styles = StyleSheet.create({
   image: { width: '100%', height: '100%' },
   imageEmpty: { alignItems: 'center', justifyContent: 'center' },
   soldOut: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   soldOutText: { color: '#fff', fontFamily: fonts.sansSemiBold, fontSize: 13, letterSpacing: 0.4 },
   body: { padding: spacing.md, gap: 2 },
-  name: { fontFamily: fonts.sansSemiBold, fontSize: 14, lineHeight: 19 },
+  // minHeight reserves 2 full lines (lineHeight × 2) regardless of actual title length, so a
+  // short title doesn't shrink the card and break grid uniformity with its neighbours.
+  name: { fontFamily: fonts.sansSemiBold, fontSize: 14, lineHeight: 19, minHeight: 38 },
   vendor: { fontFamily: fonts.sans, fontSize: 12 },
   footer: {
     flexDirection: 'row',

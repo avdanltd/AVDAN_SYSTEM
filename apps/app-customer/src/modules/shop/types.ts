@@ -87,6 +87,7 @@ export interface CustomerOrder {
   vendor_name?: string | null
   status: string
   total_kobo: number
+  delivery_fee_kobo: number
   delivery_address: DeliveryAddress
   items: OrderItem[]
   created_at: string

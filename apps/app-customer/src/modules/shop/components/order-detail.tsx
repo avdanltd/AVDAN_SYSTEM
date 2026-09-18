@@ -149,6 +149,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <EmptyState
           icon={<Package size={30} color={colors.subtleForeground} />}
           title="Order not found"
+          description="This order may have been removed, or you don't have access to it."
           action={<Button label="Go back" variant="outline" onPress={() => router.back()} fullWidth={false} />}
         />
       </View>
@@ -171,7 +172,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <View style={styles.summaryHeadings}>
             <Text style={[styles.ref, { color: colors.mutedForeground }]}>{orderRef(order.id)}</Text>
             <Text style={[styles.amount, { color: colors.foreground }]}>
-              {formatKobo(order.total_kobo)}
+              {formatKobo(order.total_kobo + order.delivery_fee_kobo)}
             </Text>
           </View>
           <Badge label={statusLabel(order.status)} bg={colors.primaryMuted} fg={colors.primary} />
@@ -304,10 +305,16 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             </Text>
           </View>
         ))}
+        <View style={styles.feeRow}>
+          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Delivery fee</Text>
+          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>
+            {formatKobo(order.delivery_fee_kobo)}
+          </Text>
+        </View>
         <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
           <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Order total</Text>
           <Text style={[styles.totalValue, { color: colors.foreground }]}>
-            {formatKobo(order.total_kobo)}
+            {formatKobo(order.total_kobo + order.delivery_fee_kobo)}
           </Text>
         </View>
       </Card>
@@ -348,6 +355,7 @@ const styles = StyleSheet.create({
   halted: { padding: spacing.md, borderRadius: radius.md },
   haltedText: { fontFamily: fonts.sansMedium, fontSize: 13.5, lineHeight: 19 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  feeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingTop: spacing.sm },
   itemThumb: { width: 40, height: 40, borderRadius: radius.sm, borderWidth: 1 },
   itemThumbEmpty: { alignItems: 'center', justifyContent: 'center', borderWidth: 0 },
   qty: { paddingHorizontal: spacing.sm, paddingVertical: 3, borderRadius: radius.sm, minWidth: 34, alignItems: 'center' },

@@ -11,7 +11,7 @@ import {
 } from 'react-native'
 import { useRouter } from 'expo-router'
 import { ChevronRight, Search, ShoppingBag, Store } from 'lucide-react-native'
-import { Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { ProductCard } from '@/components/product-card'
 import { useCategories, useProducts, useVendors } from '../hooks/use-shop'
@@ -126,6 +126,17 @@ export function Home() {
             </Card>
           ))}
         </View>
+      ) : newest.isError ? (
+        <Card>
+          <EmptyState
+            icon={<ShoppingBag size={30} color={colors.subtleForeground} />}
+            title="Couldn't load products"
+            description="Something went wrong. Pull down to try again."
+            action={
+              <Button label="Retry" variant="outline" onPress={() => newest.refetch()} fullWidth={false} />
+            }
+          />
+        </Card>
       ) : products.length === 0 ? (
         <Card>
           <EmptyState
