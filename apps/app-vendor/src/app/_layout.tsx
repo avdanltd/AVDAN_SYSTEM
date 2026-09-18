@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Slot } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import * as SplashScreen from 'expo-splash-screen'
@@ -28,6 +28,7 @@ import {
   secureStorage,
   toastConfig,
   useAuthStore,
+  usePushNotifications,
   useTheme,
 } from '@avdan/mobile'
 import Constants from 'expo-constants'
@@ -40,6 +41,7 @@ SplashScreen.preventAutoHideAsync()
 configureApiClient({
   baseUrl: (Constants.expoConfig?.extra?.apiUrl as string | undefined) ?? 'http://localhost:8000',
   wsUrl: Constants.expoConfig?.extra?.wsUrl as string | undefined,
+  devHostUri: Constants.expoConfig?.hostUri,
   onUnauthorized: () => router.replace('/login'),
 })
 
@@ -54,6 +56,12 @@ const queryClient = new QueryClient({
 
 function AppShell() {
   const { colors, isDark } = useTheme()
+  // Registers this device for push after sign-in (skipped in builds without push credentials —
+  // see PUSH_AVAILABLE) and opens the order a tapped notification is about.
+  const openOrder = useCallback((id: string) => {
+    router.push({ pathname: '/orders/[id]', params: { id } })
+  }, [])
+  usePushNotifications({ onOpenOrder: openOrder })
   const [isHydrating, setIsHydrating] = useState(true)
   const setUser = useAuthStore((s) => s.setUser)
   const [fontsLoaded] = useFonts({

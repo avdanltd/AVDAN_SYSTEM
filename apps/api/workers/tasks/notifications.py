@@ -7,10 +7,13 @@ from workers import run_and_dispose
 from workers.celery_app import celery_app
 
 # ── Notification triggers: (from_state, to_state) → [{recipient, title, body}] ──
-# recipient: "customer" | "vendor"
+# recipient: "customer" | "vendor" | "rider"
 _TRIGGERS: dict[tuple[str | None, str], list[dict]] = {
-    (None, "PENDING"): [
-        {"recipient": "vendor", "title": "New Order", "body": "You have a new order waiting for your review"},
+    # Order creation (None -> PENDING) is recorded directly by OrderService.create_order, never
+    # through transition(), so it can't trigger anything — and an unpaid order isn't actionable
+    # for the vendor anyway. PAID is the moment the vendor can (and must) accept it.
+    ("PENDING", "PAID"): [
+        {"recipient": "vendor", "title": "New Order", "body": "You have a new paid order waiting for your review"},
     ],
     ("PAID", "VENDOR_ACCEPTED"): [
         {"recipient": "customer", "title": "Order Accepted", "body": "Your order has been accepted and is being prepared"},
@@ -26,6 +29,9 @@ _TRIGGERS: dict[tuple[str | None, str], list[dict]] = {
     ],
     ("READY_FOR_PICKUP", "PICKED_UP"): [
         {"recipient": "customer", "title": "Rider Assigned", "body": "A rider has picked up your order and is on the way"},
+    ],
+    ("QA_IN_PROGRESS", "QA_PASSED"): [
+        {"recipient": "rider", "title": "Ready at Hub", "body": "Your parcel passed quality check — collect it from the hub for delivery"},
     ],
     ("QA_PASSED", "OUT_FOR_DELIVERY"): [
         {"recipient": "customer", "title": "Out for Delivery", "body": "Your order has passed quality check and is out for delivery!"},
@@ -89,15 +95,7 @@ async def _notify_rider_assigned_async(order_id: str, rider_user_id: str) -> Non
                 content=content,
                 sent_at=now,
             ))
-            fcm_token = await _get_fcm_token(db, uuid.UUID(rider_user_id))
-            if fcm_token:
-                db.add(Notification(
-                    user_id=uuid.UUID(rider_user_id),
-                    type="rider_assigned",
-                    channel="push",
-                    content=content,
-                    sent_at=now if await _send_fcm(fcm_token, title, body, content) else None,
-                ))
+            await _push(db, uuid.UUID(rider_user_id), "rider_assigned", title, body, content, now)
 
 
 # ── Legacy task signature kept for backwards compatibility ────────────────────
@@ -142,7 +140,7 @@ async def _dispatch_async(
                 if not recipient_info:
                     continue
                 user_id = recipient_info["id"]
-                email = recipient_info["email"]
+                email = recipient_info.get("email")
                 name = recipient_info["name"]
 
                 content = {
@@ -178,23 +176,18 @@ async def _dispatch_async(
                         sent_at=now if send_email_via_resend(email, subject, html) else None,
                     ))
 
-                # Attempt FCM push
-                fcm_token = await _get_fcm_token(db, user_id)
-                if fcm_token:
-                    db.add(Notification(
-                        user_id=user_id,
-                        type=to_state.lower(),
-                        channel="push",
-                        content=content,
-                        sent_at=now if await _send_fcm(fcm_token, trigger["title"], trigger["body"], content) else None,
-                    ))
+                await _push(db, user_id, to_state.lower(), trigger["title"], trigger["body"], content, now)
 
 
 async def _resolve_recipients(db, order) -> dict[str, dict]:
-    """Returns {"customer": {"id": UUID, "name": str, "email": str}, "vendor": ...}."""
+    """Returns {"customer": {"id": UUID, "name": str, "email": str}, "vendor": ..., "rider": ...}.
+
+    The rider gets push + in-app only (no "email" key) — delivery prompts are time-critical and
+    an email for every hub pickup would be noise."""
     from sqlalchemy import select
 
     from services.auth.models import User
+    from services.dispatch.models import Rider
     from services.vendor.models import Vendor
 
     recipient_map = {}
@@ -222,10 +215,44 @@ async def _resolve_recipients(db, order) -> dict[str, dict]:
                 "email": vendor_user.email,
             }
 
+    # Rider
+    if order.rider_id:
+        rider_res = await db.execute(select(Rider.user_id).where(Rider.id == order.rider_id))
+        rider_user_id = rider_res.scalar_one_or_none()
+        if rider_user_id:
+            recipient_map["rider"] = {"id": rider_user_id, "name": "", "email": None}
+
     return recipient_map
 
 
-async def _get_fcm_token(db, user_id) -> str | None:
+_EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+
+
+async def _push(db, user_id, notif_type: str, title: str, body: str, content: dict, now) -> None:
+    """Send a push to the user's registered device (if any) and record it as a `push` row.
+
+    The token is an Expo push token (`ExponentPushToken[...]`) registered by the mobile apps via
+    PATCH /auth/me/push-token — stored in the `users.fcm_token` column, named for the original
+    FCM design. Expo's push service relays to FCM/APNs with the credentials uploaded to EAS, so
+    the backend needs no Firebase key. A user with no token (web-only, or an app build without
+    push configured) simply gets no push row.
+    """
+    from services.notification.models import Notification
+
+    token = await _get_push_token(db, user_id)
+    if not token:
+        return
+    delivered = await _send_expo_push(db, user_id, token, title, body, content)
+    db.add(Notification(
+        user_id=user_id,
+        type=notif_type,
+        channel="push",
+        content=content,
+        sent_at=now if delivered else None,
+    ))
+
+
+async def _get_push_token(db, user_id) -> str | None:
     from sqlalchemy import select
 
     from services.auth.models import User
@@ -233,28 +260,52 @@ async def _get_fcm_token(db, user_id) -> str | None:
     return result.scalar_one_or_none()
 
 
-async def _send_fcm(token: str, title: str, body: str, data: dict) -> bool:
-    """Sends a push notification via FCM Legacy API. Returns True on success."""
-    from core.config import settings
-    if not settings.fcm_server_key:
-        return False
+async def _send_expo_push(db, user_id, token: str, title: str, body: str, data: dict) -> bool:
+    """Send one push via Expo's push API. Returns True if Expo accepted it.
+
+    A `DeviceNotRegistered` error means the app was uninstalled or the token rotated — the
+    token is cleared so we stop sending to it; the app re-registers on its next launch.
+    """
+    import logging
 
     import httpx
+    from sqlalchemy import update
+
+    from core.config import settings
+    from services.auth.models import User
+
+    log = logging.getLogger(__name__)
+    if not token.startswith(("ExponentPushToken[", "ExpoPushToken[")):
+        return False  # a pre-Expo FCM token from the old design — not deliverable here
+
+    headers = {"Accept": "application/json", "Content-Type": "application/json"}
+    if settings.expo_access_token:
+        headers["Authorization"] = f"Bearer {settings.expo_access_token}"
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
-                "https://fcm.googleapis.com/fcm/send",
-                headers={
-                    "Authorization": f"key={settings.fcm_server_key}",
-                    "Content-Type": "application/json",
-                },
+                _EXPO_PUSH_URL,
+                headers=headers,
                 json={
                     "to": token,
-                    "notification": {"title": title, "body": body},
-                    "data": {k: str(v) for k, v in data.items()},
+                    "title": title,
+                    "body": body,
+                    "data": data,
+                    "sound": "default",
+                    "priority": "high",
+                    "channelId": "default",
                 },
                 timeout=10,
             )
-        return response.status_code == 200
-    except Exception:
+        ticket = response.json().get("data", {})
+    except Exception as exc:  # noqa: BLE001 — push is best-effort, never breaks the caller
+        log.warning("Expo push to user %s failed: %s", user_id, exc)
         return False
+
+    if ticket.get("status") == "ok":
+        return True
+    error = (ticket.get("details") or {}).get("error")
+    log.warning("Expo push to user %s rejected: %s (%s)", user_id, ticket.get("message"), error)
+    if error == "DeviceNotRegistered":
+        await db.execute(update(User).where(User.id == user_id).values(fcm_token=None))
+    return False

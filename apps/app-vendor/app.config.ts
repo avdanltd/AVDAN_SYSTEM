@@ -2,6 +2,11 @@ import type { ExpoConfig } from 'expo/config'
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000'
 const WS_URL = process.env.EXPO_PUBLIC_WS_URL ?? 'ws://localhost:8000/ws'
+// Path to the Firebase `google-services.json` for Android push — an EAS "file" env var in cloud
+// builds. Optional: without it the build still succeeds and push registration is skipped at
+// runtime (see PUSH_AVAILABLE in @avdan/mobile), because Android can't get a push token without
+// Firebase compiled in.
+const GOOGLE_SERVICES_JSON = process.env.GOOGLE_SERVICES_JSON
 
 const config: ExpoConfig = {
   name: 'AVDAN Vendor',
@@ -16,6 +21,7 @@ const config: ExpoConfig = {
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
+    hasPushConfig: Boolean(GOOGLE_SERVICES_JSON),
     eas: {
       projectId: '4224d0fc-fb18-432f-bfc1-5add0a663507',
     },
@@ -32,6 +38,7 @@ const config: ExpoConfig = {
     },
   },
   android: {
+    ...(GOOGLE_SERVICES_JSON ? { googleServicesFile: GOOGLE_SERVICES_JSON } : {}),
     package: 'com.avdanstore.vendor',
     adaptiveIcon: {
       backgroundColor: '#E07A06',
@@ -50,6 +57,7 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-font',
     'expo-secure-store',
+    ['expo-notifications', { color: '#0A2480' }],
     [
       'expo-splash-screen',
       {

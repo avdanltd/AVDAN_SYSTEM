@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { StyleSheet, Text, View } from 'react-native'
+import { Platform, StyleSheet, Text, View } from 'react-native'
+import Constants, { ExecutionEnvironment } from 'expo-constants'
 import MapView, { Marker, Polyline, type Region } from 'react-native-maps'
 import { Navigation2 } from 'lucide-react-native'
 
@@ -16,6 +17,13 @@ const MAP_HEIGHT = 200
 // Padding around the two points so neither marker sits flush against the card edge.
 const REGION_PADDING_FACTOR = 1.8
 const MIN_DELTA = 0.01
+// Android's Google Maps SDK needs an API key baked into the manifest at build time and throws
+// when one is missing; iOS uses Apple Maps and needs none. Expo Go ships its own key, so this
+// only ever disables the map in an Android build made without GOOGLE_MAPS_API_KEY_ANDROID.
+const MAP_AVAILABLE =
+  Platform.OS !== 'android' ||
+  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
+  Constants.expoConfig?.extra?.hasAndroidMapsKey === true
 
 function regionFor(rider: LiveLocation, destination: { lat: number; lng: number }): Region {
   const latitude = (rider.lat + destination.lat) / 2
@@ -83,6 +91,17 @@ export function DeliveryMap({ rider, destination }: DeliveryMapProps) {
       <View style={[styles.placeholder, { backgroundColor: colors.muted, borderColor: colors.border }]}>
         <Text style={[styles.placeholderText, { color: colors.mutedForeground }]}>
           Waiting for your location to show the live map…
+        </Text>
+      </View>
+    )
+  }
+
+  if (!MAP_AVAILABLE) {
+    return (
+      <View style={[styles.placeholder, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+        <Text style={[styles.placeholderText, { color: colors.mutedForeground }]}>
+          {distanceKm != null ? `${distanceKm.toFixed(1)} km away (straight line). ` : ''}
+          Live map unavailable in this build — use Navigate for directions.
         </Text>
       </View>
     )

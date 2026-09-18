@@ -27,6 +27,13 @@ export const authService = {
 
   getMe: () => apiClient.get<User>('/auth/me'),
 
+  /** Registers this device's Expo push token for the signed-in user. */
+  savePushToken: (token: string) =>
+    apiClient.patch<{ message: string }>('/auth/me/push-token', { token }),
+
+  /** Detaches this device from the user on sign-out so their pushes stop arriving here. */
+  clearPushToken: () => apiClient.delete<{ message: string }>('/auth/me/push-token'),
+
   updateMe: (payload: Partial<Pick<User, 'name' | 'phone'>>) =>
     apiClient.patch<User>('/auth/me', payload),
 }

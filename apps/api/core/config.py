@@ -25,8 +25,10 @@ class Settings(BaseSettings):
     # to the app via deep link; the web URL above cannot, because the app is not a browser tab.
     payment_callback_url_mobile: str = "avdancustomer://checkout/callback"
 
-    # Push notifications — FCM legacy server key (empty = push disabled)
-    fcm_server_key: str = ""
+    # Push notifications go through Expo's push service (workers/tasks/notifications.py), which
+    # relays to FCM/APNs using the credentials uploaded to EAS — no Firebase key lives here.
+    # Optional: only needed if "Enhanced push security" is turned on for the Expo account.
+    expo_access_token: str = ""
 
     # Error tracking — Sentry. Empty/None = tracking fully disabled (default); no account exists
     # yet, so this must stay inert until a real DSN is set. See main.py's create_app().

@@ -28,15 +28,38 @@ interface ApiClientConfig {
    * Tokens have already been cleared by the time this fires — send the user to sign-in.
    */
   onUnauthorized?: () => void
+  /**
+   * `Constants.expoConfig?.hostUri` — the `host:port` the phone loaded the JS bundle from (the
+   * Metro dev server). In development only, a `localhost` or private-LAN API host is rewritten to
+   * this host, so the app follows the dev machine's current IP instead of whatever IP was
+   * hard-coded in `.env.local` when the network last changed. Ignored in release builds
+   * (`__DEV__` is false, and there is no Metro host), and ignored when the configured URL is a
+   * public hostname such as the production API — so an APK always uses exactly its build-time URL.
+   */
+  devHostUri?: string | null
 }
 
 let config: ApiClientConfig = { baseUrl: 'http://localhost:8000', wsUrl: 'ws://localhost:8000/ws' }
 
+const LOCAL_HOST = /^(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/
+const IPV4 = /^\d+\.\d+\.\d+\.\d+$/
+
+function followDevHost(url: string, devHostUri: string | null | undefined): string {
+  if (!__DEV__ || !devHostUri) return url
+  const devHost = devHostUri.split(':')[0]
+  // Tunnel mode (`expo start --tunnel`) serves the bundle from an *.exp.direct hostname that only
+  // proxies Metro, not the API — only an IP host means the phone can reach the dev machine directly.
+  if (!IPV4.test(devHost)) return url
+  const match = url.match(/^(\w+:\/\/)([^/:]+)(.*)$/)
+  if (!match || !LOCAL_HOST.test(match[2])) return url
+  return `${match[1]}${devHost}${match[3]}`
+}
+
 export function configureApiClient(next: ApiClientConfig): void {
   config = {
     ...next,
-    baseUrl: next.baseUrl.replace(/\/$/, ''),
-    wsUrl: next.wsUrl?.replace(/\/$/, ''),
+    baseUrl: followDevHost(next.baseUrl, next.devHostUri).replace(/\/$/, ''),
+    wsUrl: next.wsUrl && followDevHost(next.wsUrl, next.devHostUri).replace(/\/$/, ''),
   }
 }
 
