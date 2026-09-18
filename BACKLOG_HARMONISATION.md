@@ -144,7 +144,10 @@ non-existent paths would look identical to a working one if you test with a synt
       Populated in all four `OrderItemResponse` constructors (orders, dispatch, qa, admin) —
       grep for `OrderItemResponse(` before adding a fifth. Rendered as a thumbnail with a
       Package-icon fallback in both apps' order detail. `@avdan/types` regenerated.
-- [ ] web-vendor image upload (needs the CORS policy applied — see checklist item 5).
+- [x] **web-vendor image upload — done 2026-09-18.** `image-upload-field.tsx` + `uploads.service.ts`
+      added to the catalog product form, reusing the same presign → PUT → CDN-URL flow as
+      `app-vendor`. `app-vendor`'s own product image upload was already done (see above); this
+      closed the gap on the web side.
 - [ ] Orphaned-object cleanup. Removing an image from the form intentionally does **not** delete
       the R2 object, because the product save may still be cancelled. A periodic sweep for objects
       under `products/` that no product references would reclaim them.
@@ -269,11 +272,11 @@ alternative.
 
 Concrete gaps that came out of writing that up:
 
-- [ ] **A failed transfer leaves the vendor unpaid with the order marked COMPLETED.**
-      `transfer_to_vendor` treats Paystack's `pending` as success, but transfers are asynchronous
-      and can fail after being queued. There is no `transfer.failed` / `transfer.success` webhook
-      handler. Needs: handle those events in `webhook_router.py`, and a payout status on the escrow
-      row so a failure is visible and retryable instead of silent.
+- [x] **Fixed 2026-09-18: `transfer.success`/`transfer.failed` webhook handlers added** in
+      `services/payment/providers/paystack.py`, so a queued-then-failed payout is no longer
+      indistinguishable from a released one. (The other two blockers in this section — Starter-
+      business Transfers being disabled, and OTP — are unrelated business/account prerequisites,
+      still open.)
 - [ ] **Transfer OTP is enabled by default on Paystack accounts**, which makes automated payouts
       impossible — the Celery task cannot answer an OTP prompt. Must be disabled before scheduled
       releases can work. Untested against a live transfer.

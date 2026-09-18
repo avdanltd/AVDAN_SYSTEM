@@ -238,6 +238,14 @@ milestone above is "code exists", not "feature works". Phase 14 exists specifica
 - [x] `workers/tasks/escrow.py::release_escrow(order_id)` task implemented
 - [x] Task calls `PaymentProvider.transfer_to_vendor`, deducts platform commission
 - [x] Commission rate loaded from config (not hardcoded)
+      **2026-09-18: now genuinely admin-editable.** Commission rate, escrow release window, and
+      order-cancellation window previously lived on both a static env setting AND the admin-editable
+      `PlatformConfig` row — meaning an admin's Settings change silently did nothing. Removed
+      `commission_rate_percent` from `core/config.py` entirely; `AnalyticsService.get_config()` is now
+      the single source of truth (merged with safe defaults), and `payment/service.py`'s commission
+      calc, `workers/tasks/escrow.py`'s 48h-cutoff check, and a new `orders/service.py` cancellation-
+      window check all read from it. Cancellation window is enforced on PENDING orders only —
+      deliberately no refund-triggering post-payment cancellation logic was built.
 - [x] Task is idempotent — running twice on same order does nothing on second run
 - [x] `workers/beat_schedule.py` adds beat task: every 15 minutes, query orders in PAYMENT_RELEASE_PENDING where 48h elapsed, enqueue `release_escrow` per order
 - [x] Beat schedule verified running as single instance
@@ -355,6 +363,9 @@ milestone above is "code exists", not "feature works". Phase 14 exists specifica
 - [x] `PATCH /admin/config` — update settings (admin only, changes logged to audit_log)
 - [x] `audit_log` table migration (id, actor_id, action, target_type, target_id, before JSONB, after JSONB, timestamp)
 - [x] All admin config changes write to audit_log
+- [x] **2026-09-18: `GET/PATCH /admin/config` now the sole source of truth for commission rate,
+      escrow release window, and order-cancellation window** — see Phase 5.4 note above; no more
+      shadow env setting that made an admin's change silently do nothing.
 
 **Phase 10 complete when:** Admin has a working analytics dashboard. Platform config is editable. All changes audited.
 
@@ -593,8 +604,9 @@ These were all invisible to type-checking and to code review — only running th
       "use the web dashboard" card.
 - [x] **`docs/ESCROW_MODEL.md`** — why transfers-from-balance is the only viable escrow mechanism
       with Paystack, and why subaccounts cannot work for this product.
-- [ ] **No `transfer.failed` webhook handler.** A queued-then-failed payout would leave the order
-      COMPLETED with the vendor unpaid. See `BACKLOG_HARMONISATION.md` §7.
+- [x] **`transfer.success`/`transfer.failed` webhook handlers added (2026-09-18).** A queued
+      transfer was previously indistinguishable from a released one — `paystack.py` now handles both
+      events so a failed payout no longer leaves the order COMPLETED with the vendor silently unpaid.
 - [ ] **Transfer OTP must be disabled** on the Paystack account or automated payouts cannot run.
 
 ### 14.11 First real Celery worker run (2026-08-31) — every post-transition notification was silently dead
@@ -620,6 +632,31 @@ invisible to every other form of testing:
       Verified: restarted worker + beat, backlog drained with zero `InvalidRequestError`s, then a
       full order lifecycle produced 8 correct notification rows (in-app + email, vendor_accepted /
       out_for_delivery / delivered) for the right recipients.
+
+### 14.13 Fifth wave — 2026-09-18 session (delivery fee, address privacy, rider payouts, infra)
+
+- [x] **`delivery_fee_kobo` added to order responses** (orders/dispatch/admin/qa routers) — the
+      delivery fee was being charged at payment time without ever appearing in any API response the
+      frontends could show beforehand. Now every `OrderResponse`/`OrderDetailResponse` construction
+      site includes it.
+- [x] **Rider delivery-address privacy.** `services/dispatch/router.py` now gates the customer's
+      delivery address behind a new `_PRE_HUB_HANDOFF_STATUSES` set — a rider cannot see the full
+      address until the order has actually been picked up from the hub; before that the response
+      falls back to the hub's own location so the rider can still navigate there. Verified live at
+      three different order statuses via direct DB query.
+- [x] **Rider earnings + payout endpoints.** `GET /dispatch/me/earnings` (summary) and
+      `GET /dispatch/me/payouts` (paginated history), backed by a new `RiderPayout` model/migration
+      (`0017_rider_payout.py`). Verified via a temporary raw-SQL test row (created, curl-verified,
+      deleted).
+- [x] **Sentry wired into the API** (`sentry-sdk[fastapi]`), guarded behind `settings.sentry_dsn` —
+      fully inert until a real DSN is set (none configured yet, no Sentry account exists).
+- [x] **Automated nightly Postgres backups added** — `db-backup` Docker Compose service running
+      `pg_dump` via cron, gzip, 14-day local retention. **Not yet complete:** off-VPS upload
+      (`BACKUP_S3_BUCKET`/`AWS_ACCESS_KEY_ID`/etc.) is wired in the script but the `postgres:16-alpine`
+      base image has no `aws` CLI installed, so it will currently just log a warning and skip even
+      with those vars set — needs a small custom Dockerfile. Also needs a *separate* R2 bucket +
+      scoped credential (do not reuse the app's `avdan-media` upload credentials) and a real restore
+      drill, which has never been run. See `infra/docker/README.md`.
 
 ### 14.12 Known issues found but NOT fixed
 

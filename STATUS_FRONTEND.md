@@ -15,6 +15,16 @@
 match the codebase; both were fully built while their checklists showed unticked.
 **Blocking Issues:** None blocking mobile. Backend Phase 12 is done, so Phase 3A's old blocker is gone.
 
+### Session handoff — 2026-09-18
+
+Delivery-fee visibility, admin-driven platform config, rider earnings/payouts, address privacy,
+theme support + token polish across all web apps, three real app-customer bugs fixed, and infra
+basics (backups + Sentry) — all committed on `jaycee` (15 commits), pushed, PR open into `main`.
+Full detail is in `STATUS_DESIGN.md` and the dated notes added throughout this file and
+`STATUS_BACKEND.md` (search `2026-09-18`). Still open, none of it blocking: Sentry DSNs, the
+off-VPS backup bucket + a restore drill, a production routing-provider decision, mobile Sentry,
+uptime monitoring.
+
 ### Session handoff — state as of 2026-08-22
 
 **Next task:** device-test all three mobile apps together (a real order end to end across
@@ -72,6 +82,12 @@ equivalent in `app-rider` (which also fixes three bugs still live in `web-rider`
 card disappearing mid-transit, a guaranteed-error QA_PASSED action, and online/offline state never
 persisting across reload). Clear to retire `web-rider` on feature-parity grounds once a physical
 device pass on `app-rider` (Phase 8.9) confirms it live.
+
+> **Superseded by CLAUDE.md's 2026-08-22 decision: all web apps stay, including `web-rider`.**
+> Mobile is additive, not a replacement. Accordingly, this session (2026-09-18) brought `web-rider`
+> to feature parity with `app-rider` instead of letting it stay behind pending retirement: Active/
+> History order tabs, earnings + payout-history screens, a bank-verify-and-save payout flow, and
+> the same road-following live map / address-privacy changes as `app-rider` (see Phase 8.12/8.13).
 
 **Bugs found and fixed during the UI walk:**
 - **Credentials leaking into the URL/dev-server log.** None of the 5 apps declared
@@ -166,6 +182,15 @@ and applies it everywhere, screen by screen, reusing real data/hooks rather than
       hub queue's in-progress row highlight) → real `success`/`warning` theme tokens — same class
       of bug as the `hsl(199 89% 48%)` chart-color one, just via Tailwind palette classes instead
       of raw hsl(). No off-brand recharts colors found in either app (neither uses charts).
+- [x] **2026-09-18: theme support + token polish across all 5 web apps.** `next-themes`
+      `ThemeProvider`/`ThemeToggle` added to `@avdan/ui` (light-mode-locked, `enableSystem: false`)
+      and wired into every web app. `--radius` bumped 0.5rem → 0.75rem; the `--shadow-card`/
+      `--shadow-modal` tokens (defined earlier but never actually used anywhere) wired into
+      `card.tsx`/`dialog.tsx`; subtle shadow + transition added to inputs; smoother button
+      transitions. Found and fixed ~15+ more hardcoded Tailwind color literals (status-badge,
+      tracking page, vendor cards, product-detail) → semantic `success`/`warning`/`info`/
+      `destructive` (+ `-muted`) tokens — same recurring bug class as the earlier chart-color and
+      badge-color fixes above.
 
 ### Next (in order)
 > Re-sequenced 2026-08-22: `app-rider` polish moved ahead of the web-customer pass, because the
@@ -375,8 +400,14 @@ and applies it everywhere, screen by screen, reusing real data/hooks rather than
 - [x] `modules/checkout/components/checkout-page.tsx` — split layout: delivery form + order summary
 - [x] `app/(main)/checkout/page.tsx` — thin wrapper; empty cart redirects home
 - [x] `app/(main)/checkout/success/page.tsx` — Paystack callback success page
-- [x] `app/(main)/checkout/failed/page.tsx` — Paystack callback failure page
 - [x] On submit: createOrder → initiatePayment → `window.location.href` to Paystack URL
+- [x] **2026-09-18: redesigned as a two-step "place order (see real fee) → pay" flow.** The delivery
+      fee was previously charged at payment time without ever being shown — `checkout-page.tsx` now
+      calls create-only first, displays the real Subtotal/Delivery fee/Total from `delivery_fee_kobo`,
+      then pays. Removed the dead `checkout/failed/page.tsx` (never linked to); `checkout-success-page.tsx`
+      now actually verifies payment status (loading/no-reference/verify-failed/not-paid/paid) instead
+      of always showing a celebratory "paid" screen regardless of outcome. Same split applied to
+      `app-customer` (Phase 10 below): `placeOrder()` + `payExistingOrder()`.
 
 ### 4.3 Order History & Detail
 - [x] `modules/orders/services/orders.service.ts` — `getOrders()`, `getOrder(id)`, `cancelOrder(id)`
@@ -742,6 +773,17 @@ mobile client. Fixed additively (see `STATUS_BACKEND.md` 2.7) — web behavior i
 - [ ] **8.11 Android EAS build** (`eas build -p android --profile preview`) installed and walked
       end-to-end on a physical Android device — this is where 8.3 background location and 8.7 push
       finally become provable
+- [x] **8.12 Earnings + payout account (2026-09-18).** Earnings summary + paginated payout-history
+      screens (`GET /dispatch/me/earnings`, `/payouts`), and a bank-select → verify → save payout
+      flow with the same Paystack bank-list dedupe fix as app-vendor. Same features added to
+      `web-rider` for parity.
+- [x] **8.13 Road-following live map (2026-09-18), prototype only.** The delivery map's straight-line
+      indicator is replaced with a real road route via the OSRM public demo API
+      (`router.project-osrm.org`) plus the rider's live GPS position. **Not production-hardened** —
+      the OSRM demo server has no SLA; a paid routing provider decision (Mapbox recommended vs.
+      Google Maps Platform / HERE / self-hosted OSRM+Valhalla) is still open, with a cost comparison
+      in `STATUS_DESIGN.md`. Delivery address is now hidden from the rider until pickup from the hub
+      (falls back to hub location before that) — see `STATUS_BACKEND.md` 14.13.
 
 ---
 
@@ -795,18 +837,23 @@ apps installed. All icons generated from the traced vector geometry, no placehol
 - [ ] 9.12 Android EAS build
 
 ### Deliberately not built
-- **Payout / bank account setup.** Verifying a bank account is a multi-step Paystack flow
-  (`/vendors/me/banks` → `/payout-account/verify` → `/payout-account`). The profile screen shows a
-  warning card pointing at the web dashboard when no payout account exists, rather than shipping a
-  half flow. Note this blocks escrow release — `release_escrow` raises
-  `VENDOR_PAYOUT_NOT_CONFIGURED` without it.
 - **Product image upload.** `expo-image-picker` is installed and permissions are declared, but
-  there is no image upload endpoint on the API yet — products carry `image_urls` only. Existing
-  images are preserved on edit; new ones cannot be added from mobile.
+  there is no image upload endpoint wired for app-vendor yet — products carry `image_urls` only.
+  (web-vendor got this on 2026-09-18 — `modules/catalog/components/image-upload-field.tsx` — the
+  same endpoint could be wired into app-vendor's `product-form.tsx` when picked up.)
 
 ### Fixed after first build (2026-08-22)
 - [x] Availability toggle threw an error on device — root cause was a backend 500, not the app.
       See `STATUS_BACKEND.md` 14.9c.
+
+### 2026-09-18 session
+- [x] The full bank-verify-and-save payout flow (`/vendors/me/banks` → verify → save) was already
+      built (not this session — see git history) and does work end-to-end; the "deliberately not
+      built" note above describing it as a stub pointing at the web dashboard was stale and has
+      been removed. This session added a dismissible payout-account nudge card on the dashboard for
+      vendors who still have no payout account on file, and fixed a real bug in the shared banks
+      list: Paystack repeats the same `code` under multiple entries, causing ambiguous picker
+      selection — deduped once in the `useBanks` query.
 - [x] `commission_rate` rendered 100x low (API returns a fraction).
 - [x] `PENDING` orders no longer filed under "Completed".
 
@@ -897,13 +944,31 @@ app/checkout/callback.tsx        deep-link landing safety net (outside the tab g
 - [ ] 10.9 Live device test — not yet run on any of the three apps
 - [ ] 10.10 Push notifications for order status changes
 - [ ] 10.11 Android EAS build
+- [x] 10.12 Live order-tracking map added (rider's live location, consumed on the order-detail
+      screen) — see the "Deliberately not built" note below, now stale and struck.
+- [x] **10.13 Real bugs found and fixed live via `expo start --web` (2026-09-18).** Personally
+      diagnosed, not guessed: (1) a hard crash — an unhandled `ExpoSecureStore` promise rejection in
+      root `_layout.tsx`'s `hydrate()` left the app stuck on the skeleton screen forever with no
+      products ever loading; wrapped in try/catch/finally. (2) search screen was missing
+      `useSafeAreaInsets`, rendering its header under the status bar/notch — every other custom-header
+      screen in the app already used it. (3) the login screen had no way back to public browsing,
+      violating the app's own "public browsing allowed" design principle — added an optional
+      `onBack` prop to the shared `AuthSplitShell` (via `@avdan/mobile`). (4) checkout split into
+      `placeOrder()`/`payExistingOrder()` so the delivery fee is shown before payment — see Phase 4.2.
+      Also: fixed a stale LAN IP (`172.20.10.3`, an old hotspot subnet) across ~13 files that was
+      silently breaking every API call from a physical device, and added
+      `@react-native-community/netinfo`-backed `configureQueryNetworking()` to `@avdan/mobile` (all
+      3 RN apps) fixing a TanStack Query false-negative: its default browser-event-based online
+      detection never fires in React Native, so a stuck-offline screen was indistinguishable from a
+      loaded-but-empty one.
 
 ### Deliberately not built
 - **Saved delivery addresses.** The API has no address-book endpoint — `delivery_address` is
   captured per order, not stored against the customer. Checkout asks each time. A saved-addresses
   feature needs a backend endpoint first.
-- **Order tracking map.** `app-rider` broadcasts live location; nothing customer-facing consumes it
-  yet. The order detail screen shows the buyer-facing status trail, not a map.
+- ~~**Order tracking map.** `app-rider` broadcasts live location; nothing customer-facing consumes it
+  yet. The order detail screen shows the buyer-facing status trail, not a map.~~ **Stale — built**
+  (see 10.12 above).
 - **Notification center.** `GET /notifications` exists and is unused by this app — same shape as
   the gap already noted for the other two apps.
 
