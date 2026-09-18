@@ -12,3 +12,9 @@ export function useInitiatePayment() {
     mutationFn: (order_id: string) => checkoutService.initiatePayment(order_id),
   })
 }
+
+export function useVerifyPayment() {
+  return useMutation({
+    mutationFn: (reference: string) => checkoutService.verifyPayment(reference),
+  })
+}

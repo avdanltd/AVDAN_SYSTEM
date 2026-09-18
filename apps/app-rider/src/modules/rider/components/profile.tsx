@@ -1,6 +1,8 @@
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import {
+  BadgeDollarSign,
   ChevronRight,
   CircleUser,
   LogOut,
@@ -9,10 +11,12 @@ import {
   Phone,
   ShieldCheck,
   Truck,
+  Wallet,
 } from 'lucide-react-native'
 
 import { useRiderProfile } from '../hooks/use-availability'
-import { AvdanMark, Badge, Button, Card, fonts, initials, radius, spacing, useLogout, useSession, useTheme } from '@avdan/mobile'
+import { usePayoutAccount } from '../hooks/use-payout'
+import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, initials, radius, spacing, useLogout, useSession, useTheme } from '@avdan/mobile'
 
 function NavRow({
   icon,
@@ -49,14 +53,9 @@ export function Profile() {
   const { mutate: logout, isPending } = useLogout()
   const { colors, preference } = useTheme()
   const { data: rider } = useRiderProfile()
+  const { data: payoutAccount } = usePayoutAccount()
   const router = useRouter()
-
-  const confirmLogout = () => {
-    Alert.alert('Sign out?', 'You will stop receiving delivery assignments until you sign in again.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => logout() },
-    ])
-  }
+  const [confirmingLogout, setConfirmingLogout] = useState(false)
 
   const themeLabel = preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'
 
@@ -127,6 +126,19 @@ export function Profile() {
             value={themeLabel}
             onPress={() => router.push('/profile/appearance')}
           />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<Wallet size={17} color={colors.primary} />}
+            label="Payout account"
+            value={payoutAccount?.has_payout_account ? 'Active' : 'Not set'}
+            onPress={() => router.push('/profile/payout')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<BadgeDollarSign size={17} color={colors.primary} />}
+            label="Earnings"
+            onPress={() => router.push('/profile/earnings')}
+          />
         </Card>
       </View>
 
@@ -134,8 +146,22 @@ export function Profile() {
         label={isPending ? 'Signing out…' : 'Sign out'}
         variant="destructive"
         icon={<LogOut size={16} color={colors.destructiveForeground} />}
-        onPress={confirmLogout}
+        onPress={() => setConfirmingLogout(true)}
         loading={isPending}
+      />
+
+      <ConfirmDialog
+        visible={confirmingLogout}
+        onClose={() => setConfirmingLogout(false)}
+        title="Sign out?"
+        description="You will stop receiving delivery assignments until you sign in again."
+        confirmLabel="Sign out"
+        destructive
+        loading={isPending}
+        onConfirm={() => {
+          setConfirmingLogout(false)
+          logout()
+        }}
       />
 
       <View style={styles.footer}>

@@ -176,6 +176,13 @@ export function useBanks() {
     queryFn: () => vendorService.getBanks(),
     // Paystack's bank list changes rarely; refetching it on every screen visit is waste.
     staleTime: 24 * 60 * 60_000,
+    // Paystack's list occasionally repeats the same `code` under more than one entry — dedupe
+    // once here so nothing downstream (a FlatList key, a picker's selected-value lookup) has to
+    // handle it.
+    select: (banks) => {
+      const seen = new Set<string>()
+      return banks.filter((b) => (seen.has(b.code) ? false : (seen.add(b.code), true)))
+    },
   })
 }
 

@@ -50,6 +50,16 @@ const config: ExpoConfig = {
       'FOREGROUND_SERVICE_LOCATION',
       'CAMERA',
     ],
+    // react-native-maps wraps the native Google Maps SDK on Android, which — unlike iOS's
+    // Apple Maps default — refuses to render without an API key baked into the manifest at
+    // build time. Read directly from a plain (non-EXPO_PUBLIC_) env var since app.config.ts
+    // only runs in Node during prebuild/build, never in the JS bundle. Until a real key is
+    // set, the live map renders fine on iOS but shows a blank grey tile on Android.
+    config: {
+      googleMaps: {
+        apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
+      },
+    },
   },
   web: {
     output: 'static',

@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native'
 import { useRouter } from 'expo-router'
-import { ChevronRight, PackagePlus, Search } from 'lucide-react-native'
+import { AlertTriangle, ChevronRight, PackagePlus, Search } from 'lucide-react-native'
 
 import { useSetAvailability, useVendorProfile } from '../hooks/use-vendor'
 import type { Product } from '../types'
@@ -82,7 +82,7 @@ function ProductRow({ product, onPress }: { product: Product; onPress: () => voi
 export function Catalog() {
   const router = useRouter()
   const { colors } = useTheme()
-  const { data: profile, isLoading, isRefetching, refetch } = useVendorProfile()
+  const { data: profile, isLoading, isError, isRefetching, refetch } = useVendorProfile()
   const [query, setQuery] = useState('')
 
   const products = useMemo(() => {
@@ -145,6 +145,15 @@ export function Catalog() {
               <Skeleton height={64} />
             </Card>
           ))}
+        </View>
+      ) : isError ? (
+        <View style={styles.listEmpty}>
+          <EmptyState
+            icon={<AlertTriangle size={30} color={colors.subtleForeground} />}
+            title="Couldn't load your catalog"
+            description="Something went wrong. Please try again."
+            action={<Button label="Retry" onPress={() => refetch()} fullWidth={false} />}
+          />
         </View>
       ) : (
         <FlatList

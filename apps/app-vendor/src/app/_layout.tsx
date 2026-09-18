@@ -24,6 +24,7 @@ import {
   ThemeProvider,
   authService,
   configureApiClient,
+  configureQueryNetworking,
   secureStorage,
   toastConfig,
   useAuthStore,
@@ -41,6 +42,11 @@ configureApiClient({
   wsUrl: Constants.expoConfig?.extra?.wsUrl as string | undefined,
   onUnauthorized: () => router.replace('/login'),
 })
+
+// React Query's default online detection listens for browser online/offline events, which don't
+// exist in React Native — without this, queries can get stuck permanently "paused" (see the
+// helper's own doc comment). Must also run before any query fires.
+configureQueryNetworking()
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },

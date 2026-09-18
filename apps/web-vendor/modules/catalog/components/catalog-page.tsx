@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Package, Plus, Pencil, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -141,7 +141,7 @@ function ProductSkeletons() {
 
 export function CatalogPage() {
   const [addOpen, setAddOpen] = useState(false)
-  const { data, isLoading, error } = useCatalog()
+  const { data, isLoading, error, refetch } = useCatalog()
   const products = data?.products ?? []
 
   return (
@@ -163,13 +163,16 @@ export function CatalogPage() {
 
       {!isLoading && error && (
         <EmptyState
+          icon={<Package className="h-6 w-6" />}
           title="Failed to load products"
-          description="There was a problem loading your product catalog. Please refresh the page."
+          description="There was a problem loading your product catalog. Please try again."
+          action={{ label: 'Retry', onClick: () => refetch() }}
         />
       )}
 
       {!isLoading && !error && products.length === 0 && (
         <EmptyState
+          icon={<Package className="h-6 w-6" />}
           title="No products yet"
           description="Add your first product to start receiving orders."
           action={{ label: 'Add Product', onClick: () => setAddOpen(true) }}

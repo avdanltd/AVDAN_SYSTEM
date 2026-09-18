@@ -28,6 +28,10 @@ class Settings(BaseSettings):
     # Push notifications — FCM legacy server key (empty = push disabled)
     fcm_server_key: str = ""
 
+    # Error tracking — Sentry. Empty/None = tracking fully disabled (default); no account exists
+    # yet, so this must stay inert until a real DSN is set. See main.py's create_app().
+    sentry_dsn: str | None = None
+
     # Email notifications — Resend settings
     resend_api_key: str = ""
     # email_from: str = "AVDAN <noreply@avdanstore.com>"
@@ -60,8 +64,12 @@ class Settings(BaseSettings):
     environment: str = "development"
     frontend_urls: list[str] = ["http://localhost:3000"]
 
-    # Platform
-    commission_rate_percent: int = 10
+    # Platform business settings (commission rate, delivery fee structure, escrow release
+    # window, cancellation window) live in the admin-editable `PlatformConfig` DB row
+    # (services/analytics/models.py's DEFAULT_PLATFORM_CONFIG), not here — an env var and an
+    # admin-facing Settings screen editing the "same" value is exactly the kind of split-brain
+    # config that makes an admin's change silently do nothing. Deliberately no env fallback for
+    # these; PlatformConfig always has a default row.
 
     @property
     def is_production(self) -> bool:

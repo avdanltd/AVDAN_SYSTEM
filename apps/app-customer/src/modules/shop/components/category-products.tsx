@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Dimensions, FlatList, StyleSheet } from 'react-native'
-import { Card, EmptyState, Skeleton, spacing, useTheme } from '@avdan/mobile'
+import { useRouter } from 'expo-router'
+import { Button, Card, EmptyState, Skeleton, spacing, useTheme } from '@avdan/mobile'
 import { Grid3x3 } from 'lucide-react-native'
 
 import { ProductCard } from '@/components/product-card'
@@ -12,6 +13,7 @@ const CARD_W = (Dimensions.get('window').width - GUTTER * 2 - GAP) / 2
 
 export function CategoryProducts({ categoryId }: { categoryId: string }) {
   const { colors } = useTheme()
+  const router = useRouter()
   const { data, isLoading } = useProducts({ categoryId, pageSize: 40 })
   const products = useMemo(() => data?.items ?? [], [data])
 
@@ -46,6 +48,15 @@ export function CategoryProducts({ categoryId }: { categoryId: string }) {
         <EmptyState
           icon={<Grid3x3 size={30} color={colors.subtleForeground} />}
           title="No products in this category yet"
+          description="Vendors haven't listed anything here yet. Check back soon."
+          action={
+            <Button
+              label="Browse all products"
+              variant="outline"
+              fullWidth={false}
+              onPress={() => router.push('/products')}
+            />
+          }
         />
       }
     />

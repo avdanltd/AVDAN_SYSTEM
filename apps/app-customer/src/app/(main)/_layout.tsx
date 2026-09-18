@@ -1,20 +1,22 @@
-import { Redirect, Tabs } from 'expo-router'
+import { Tabs } from 'expo-router'
 import { Home, Package, ShoppingCart, Store, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { fonts, useSession, useTheme } from '@avdan/mobile'
+import { fonts, useTheme } from '@avdan/mobile'
 
 import { cartCount, useCartStore } from '@/modules/shop/store/cart.store'
 
+// This app is publicly browsable — AVDAN is a storefront, not a members-only tool. Login is only
+// required to actually buy (checkout) or to view account-specific data (orders, profile), each of
+// which guards itself with <SignInGate> — see modules/shop/components/sign-in-gate.tsx. Do not
+// re-add a blanket redirect here; that would force account creation just to look at products,
+// which is a straightforward conversion killer for an e-commerce app. web-customer's proxy.ts
+// already gets this right (`PROTECTED_PATHS = ['/orders', '/checkout', '/profile', ...]`,
+// "Everything else is publicly browsable") — this mirrors that same per-route policy on mobile.
 export default function MainLayout() {
-  const { isAuthenticated } = useSession()
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const lines = useCartStore((s) => s.lines)
   const count = cartCount(lines)
-
-  if (!isAuthenticated) {
-    return <Redirect href="/login" />
-  }
 
   return (
     <Tabs

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -11,9 +11,9 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useNavigation, useRouter } from 'expo-router'
 import { BadgeCheck, Building2, Check, Search, ShieldCheck, X } from 'lucide-react-native'
-import { Badge, Button, Card, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Badge, Button, Card, ConfirmDialog, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import {
   useBanks,
@@ -34,11 +34,11 @@ import type { Bank } from '../types'
 export function PayoutAccount() {
   const { colors } = useTheme()
   const router = useRouter()
+  const navigation = useNavigation()
 
   const { data: existing, isLoading } = usePayoutAccount()
   const { data: banks, isLoading: banksLoading } = useBanks()
   const verify = useVerifyAccount()
-  const save = useSavePayoutAccount(() => router.back())
 
   const [bank, setBank] = useState<Bank | null>(null)
   const [accountNumber, setAccountNumber] = useState('')
@@ -46,6 +46,42 @@ export function PayoutAccount() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [focused, setFocused] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
+
+  // A saved account is not "unsaved progress" — the beforeRemove guard below must let that
+  // specific back-navigation through without popping the discard dialog.
+  const justSavedRef = useRef(false)
+  const save = useSavePayoutAccount(() => {
+    justSavedRef.current = true
+    router.back()
+  })
+
+  // The vendor picking a bank and/or typing part of an account number without saving is exactly
+  // the "unsaved progress" this screen's discard confirmation exists to protect, per
+  // STATUS_DESIGN.md §5.
+  const isDirty = !!bank || accountNumber.length > 0
+  const pendingActionRef = useRef<Parameters<typeof navigation.dispatch>[0] | null>(null)
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (justSavedRef.current || !isDirty) return
+      e.preventDefault()
+      pendingActionRef.current = e.data.action
+      setDiscardOpen(true)
+    })
+    return unsubscribe
+  }, [navigation, isDirty])
+
+  const confirmDiscard = () => {
+    setDiscardOpen(false)
+    const action = pendingActionRef.current
+    pendingActionRef.current = null
+    if (action) {
+      navigation.dispatch(action)
+    } else {
+      router.back()
+    }
+  }
 
   const filteredBanks = useMemo(() => {
     const list = banks ?? []
@@ -288,6 +324,17 @@ export function PayoutAccount() {
           />
         </View>
       </Modal>
+
+      <ConfirmDialog
+        visible={discardOpen}
+        onClose={() => setDiscardOpen(false)}
+        title="Discard payout account changes?"
+        description="You've started entering a payout account but haven't saved it. Discarding will clear what you've entered."
+        confirmLabel="Discard"
+        cancelLabel="Keep editing"
+        destructive
+        onConfirm={confirmDiscard}
+      />
     </KeyboardAvoidingView>
   )
 }

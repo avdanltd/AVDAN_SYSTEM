@@ -42,8 +42,11 @@ import { useAdminDisputes } from '@/modules/disputes/hooks/use-admin-disputes'
 import type { AdminDispute } from '@/modules/disputes/types'
 import { ROUTES } from '@/config/routes'
 
-const BRAND_PRIMARY = '#135BEC'
-const BORDER_COLOR = 'hsl(214 32% 91%)'
+// CSS custom properties, not literal hex — resolved from tokens.css at paint time, so these
+// charts stay correct in dark mode instead of freezing to a light-mode-only palette.
+const BRAND_PRIMARY = 'hsl(var(--primary))'
+const BORDER_COLOR = 'hsl(var(--border))'
+const POPOVER_COLOR = 'hsl(var(--popover))'
 
 function formatSecondsAgo(timestampMs: number): string {
   const seconds = Math.max(0, Math.floor((Date.now() - timestampMs) / 1000))
@@ -213,7 +216,7 @@ export function DashboardPage() {
                   <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
                   <Tooltip
                     contentStyle={{
-                      background: 'white',
+                      background: POPOVER_COLOR,
                       border: `1px solid ${BORDER_COLOR}`,
                       borderRadius: 8,
                     }}
@@ -263,7 +266,7 @@ export function DashboardPage() {
                   />
                   <Tooltip
                     contentStyle={{
-                      background: 'white',
+                      background: POPOVER_COLOR,
                       border: `1px solid ${BORDER_COLOR}`,
                       borderRadius: 8,
                     }}

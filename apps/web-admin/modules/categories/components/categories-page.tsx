@@ -20,7 +20,7 @@ import { CategoryDialog } from './category-dialog'
 import type { Category } from '../types'
 
 export function CategoriesPage() {
-  const { data: categories = [], isLoading } = useCategories()
+  const { data: categories = [], isLoading, isError, refetch } = useCategories()
   const { mutate: deactivate } = useDeactivateCategory()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
@@ -68,7 +68,7 @@ export function CategoriesPage() {
       cell: (cat) => (
         <Badge
           variant={cat.active ? 'default' : 'secondary'}
-          className={cat.active ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}
+          className={cat.active ? 'bg-success-muted text-success hover:bg-success-muted' : ''}
         >
           {cat.active ? 'Active' : 'Inactive'}
         </Badge>
@@ -136,6 +136,9 @@ export function CategoriesPage() {
         columns={columns}
         keyExtractor={(row) => row.id}
         loading={isLoading}
+        error={isError}
+        errorMessage="Couldn't load categories."
+        onRetry={() => refetch()}
         emptyMessage="No categories yet. Create your first category so vendors can classify their products."
       />
 

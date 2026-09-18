@@ -42,12 +42,26 @@ class AnalyticsService:
             select(func.count()).select_from(Rider).where(Rider.online.is_(True))
         )).scalar_one()
 
-        revenue_today = int((await self.db.execute(
-            select(func.coalesce(func.sum(EscrowTransaction.amount_kobo), 0)).where(
+        config = await self.get_config()
+        commission_rate = config["commission_rate_percent"] / 100
+
+        # `EscrowTransaction.amount_kobo` is the full customer charge (order.total_kobo +
+        # delivery_fee_kobo) — most of that is NOT platform revenue: the vendor's payout (order
+        # total minus commission) and the rider's delivery fee are both paid out separately. The
+        # platform's actual revenue is only its commission cut. Summing amount_kobo directly (the
+        # old code here) overstated "revenue" by the vendor payout + rider fee on every released
+        # order. Fixed the same way as `get_vendor_analytics`: sum `Order.total_kobo` for released
+        # orders, then apply commission once.
+        revenue_gross_today = int((await self.db.execute(
+            select(func.coalesce(func.sum(Order.total_kobo), 0))
+            .select_from(Order)
+            .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
+            .where(
                 EscrowTransaction.status == EscrowStatus.RELEASED,
                 EscrowTransaction.created_at >= today_start,
             )
         )).scalar_one())
+        revenue_today = int(revenue_gross_today * commission_rate)
 
         gmv_today = int((await self.db.execute(
             select(func.coalesce(func.sum(Order.total_kobo), 0)).where(
@@ -132,31 +146,41 @@ class AnalyticsService:
             )
         )).scalar_one()
 
-        revenue = int((await self.db.execute(
-            select(func.coalesce(func.sum(EscrowTransaction.amount_kobo), 0))
-            .join(Order, Order.id == EscrowTransaction.order_id)
+        config = await self.get_config()
+        commission_rate = config["commission_rate_percent"] / 100
+
+        # `EscrowTransaction.amount_kobo` is the full customer charge (order.total_kobo +
+        # delivery_fee_kobo) — the delivery-fee portion is the rider's (paid out separately via
+        # RiderPayout, see services/payment/service.py's release_rider_payout) and commission is
+        # the platform's, so summing amount_kobo directly overstates vendor revenue by both. The
+        # vendor's actual take per order is `order.total_kobo - commission` (release_escrow's own
+        # formula) — sum `Order.total_kobo` for matching orders, then apply commission once here.
+        revenue_gross = int((await self.db.execute(
+            select(func.coalesce(func.sum(Order.total_kobo), 0))
+            .select_from(Order)
+            .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
             .where(
                 Order.vendor_id == v_uuid,
                 EscrowTransaction.status == EscrowStatus.RELEASED,
             )
         )).scalar_one())
+        revenue = revenue_gross - int(revenue_gross * commission_rate)
 
         # Escrow goes HELD the instant payment is confirmed — before the vendor has even
         # accepted. Counting it as "pending" from that moment shows the vendor money that can
         # still vanish (a still-possible VENDOR_REJECTED auto-refunds the customer), so this
         # only counts orders the vendor has actually committed to fulfil.
-        pending_release = int((await self.db.execute(
-            select(func.coalesce(func.sum(EscrowTransaction.amount_kobo), 0))
-            .join(Order, Order.id == EscrowTransaction.order_id)
+        pending_gross = int((await self.db.execute(
+            select(func.coalesce(func.sum(Order.total_kobo), 0))
+            .select_from(Order)
+            .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
             .where(
                 Order.vendor_id == v_uuid,
                 EscrowTransaction.status == EscrowStatus.HELD,
                 Order.status != OrderStatus.PAID,
             )
         )).scalar_one())
-
-        from core.config import settings
-        commission_rate = settings.commission_rate_percent / 100
+        pending_release = pending_gross - int(pending_gross * commission_rate)
 
         return {
             "vendor_id": vendor_id,
@@ -177,7 +201,12 @@ class AnalyticsService:
             select(PlatformConfig).where(PlatformConfig.key == "global")
         )
         row = result.scalar_one_or_none()
-        return dict(row.value) if row else DEFAULT_PLATFORM_CONFIG.copy()
+        if not row:
+            return DEFAULT_PLATFORM_CONFIG.copy()
+        # Merge over the defaults rather than trusting the stored row alone — a row saved before
+        # a new config field existed would otherwise KeyError every reader of that field instead
+        # of quietly falling back to its default.
+        return {**DEFAULT_PLATFORM_CONFIG, **dict(row.value)}
 
     async def update_config(self, updates: dict, admin_id: str) -> dict:
         old_config = await self.get_config()
@@ -204,3 +233,13 @@ class AnalyticsService:
         )
         await self.db.flush()
         return new_config
+
+    async def list_audit_log(self, page: int = 1, page_size: int = 20) -> tuple[list[AuditLog], int]:
+        total = (await self.db.execute(
+            select(func.count()).select_from(AuditLog)
+        )).scalar_one()
+        offset = (page - 1) * page_size
+        result = await self.db.execute(
+            select(AuditLog).order_by(AuditLog.created_at.desc()).offset(offset).limit(page_size)
+        )
+        return list(result.scalars().all()), total

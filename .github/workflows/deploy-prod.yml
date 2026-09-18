@@ -161,6 +161,12 @@ jobs:
           scp -i ~/.ssh/deploy_key \
             infra/nginx/nginx.prod.conf \
             ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/infra/nginx/
+          ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} \
+            "mkdir -p /opt/avdan/infra/docker/backup"
+          scp -i ~/.ssh/deploy_key \
+            infra/docker/backup/backup-db.sh \
+            infra/docker/backup/crontab \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/opt/avdan/infra/docker/backup/
 
       - name: Deploy on VPS
         run: |

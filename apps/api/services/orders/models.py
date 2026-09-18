@@ -26,6 +26,11 @@ class Order(BaseModel):
     hub_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
     total_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Rider's flat delivery fee for this order, computed once at checkout from platform_config's
+    # delivery_fee_structure (base_fee_kobo + per_km_kobo * distance) — see
+    # OrderService._calculate_delivery_fee. Stored rather than recomputed so a later change to
+    # the fee structure or either party's address never alters what was already promised.
+    delivery_fee_kobo: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     delivery_address: Mapped[dict] = mapped_column(JSONB, nullable=False)
 
     items: Mapped[list["OrderItem"]] = relationship(

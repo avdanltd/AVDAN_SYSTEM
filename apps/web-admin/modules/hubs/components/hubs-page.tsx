@@ -133,7 +133,7 @@ function EditHubDialog({ hub, onOpenChange }: { hub: Hub; onOpenChange: (o: bool
 }
 
 export function HubsPage() {
-  const { data: hubs = [], isLoading } = useHubs()
+  const { data: hubs = [], isLoading, isError, refetch } = useHubs()
   const { mutate: createHub, isPending: creating } = useCreateHub()
   const { mutate: deleteHub, isPending: deleting } = useDeleteHub()
 
@@ -231,6 +231,9 @@ export function HubsPage() {
           data={hubs}
           keyExtractor={(row) => row.id}
           loading={isLoading}
+          error={isError}
+          errorMessage="Couldn't load hubs."
+          onRetry={() => refetch()}
           emptyMessage="No hubs yet. Create one to assign agents."
         />
       </div>

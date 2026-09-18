@@ -1,14 +1,16 @@
 import { useState } from 'react'
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Building2, CheckCircle2, MapPin, Navigation, Package, Receipt } from 'lucide-react-native'
+import { AlertCircle, Building2, CheckCircle2, MapPin, Navigation, Package, Receipt } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useRiderOrder } from '../hooks/use-rider-orders'
 import { useOrderAction } from '../hooks/use-order-actions'
+import { useLiveLocation } from '../hooks/use-live-location'
 import { ORDER_ACTIONS, type RiderOrderAction } from '../types'
 import { formatAddress, openCoordsInMaps, openInMaps } from './dashboard'
-import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatDateTime, formatKobo, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
+import { DeliveryMap } from './delivery-map'
+import { Badge, Button, Card, ConfirmDialog, EmptyState, Skeleton, fonts, formatDateTime, formatKobo, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
 /** The rider-visible leg of the lifecycle, in order, for the progress trail. */
 const RIDER_JOURNEY = [
@@ -77,9 +79,16 @@ function Journey({ status }: { status: string }) {
 export function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter()
   const { colors } = useTheme()
-  const { data: order, isLoading, isError } = useRiderOrder(orderId)
+  const { data: order, isLoading, isError, refetch } = useRiderOrder(orderId)
   const { execute, isPending } = useOrderAction(orderId)
-  const [confirming, setConfirming] = useState<RiderOrderAction | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ action: RiderOrderAction; label: string } | null>(null)
+
+  // Only the to-hub leg has coordinates to plot (see the note by `mapDestination` below) — the
+  // live watch stays off otherwise, so this screen never asks for location it has no use for.
+  // Called unconditionally, ahead of the early returns below, per the rules of hooks.
+  const hasHubCoords = !!order?.hub_id && order.hub_lat != null && order.hub_lng != null
+  const hasDeliveryAddressYet = Object.keys(order?.delivery_address ?? {}).length > 0
+  const riderLocation = useLiveLocation(hasHubCoords && !hasDeliveryAddressYet)
 
   if (isLoading) {
     return (
@@ -97,7 +106,20 @@ export function OrderDetail({ orderId }: { orderId: string }) {
     )
   }
 
-  if (isError || !order) {
+  if (isError) {
+    return (
+      <View style={styles.centered}>
+        <EmptyState
+          icon={<AlertCircle size={30} color={colors.subtleForeground} />}
+          title="Couldn't load this order"
+          description="Something went wrong. Check your connection and try again."
+          action={<Button label="Retry" variant="outline" onPress={() => refetch()} fullWidth={false} />}
+        />
+      </View>
+    )
+  }
+
+  if (!order) {
     return (
       <View style={styles.centered}>
         <EmptyState
@@ -115,10 +137,15 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   // and only through the leg it's relevant for; once the parcel is out for delivery the hub
   // stop is behind the rider and the delivery address card above is what matters.
   const HUB_RELEVANT_STATUSES = new Set([
-    'READY_FOR_PICKUP', 'PICKED_UP', 'IN_TRANSIT_TO_HUB', 'AT_HUB',
+    'READY_FOR_PICKUP', 'PICKED_UP', 'IN_TRANSIT_TO_HUB', 'ARRIVED_AT_HUB', 'AT_HUB',
     'QA_IN_PROGRESS', 'QA_PASSED', 'QA_FAILED', 'VENDOR_REMEDIATION',
   ])
   const showHub = !!order.hub_id && HUB_RELEVANT_STATUSES.has(order.status)
+  // The API itself withholds the real delivery_address until the rider has picked the order back
+  // up from the hub (see dispatch/router.py's `_PRE_HUB_HANDOFF_STATUSES`) — this isn't just a UI
+  // hide, `order.delivery_address` is genuinely `{}` on the wire until then. Gate on whether it
+  // actually has content rather than duplicating the status set, so the two can't drift apart.
+  const hasDeliveryAddress = Object.keys(order.delivery_address ?? {}).length > 0
 
   // Destructive / irreversible transitions get a confirm step — a stray tap while riding
   // should not mark a delivery failed.
@@ -127,18 +154,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       execute(action)
       return
     }
-    setConfirming(action)
-    Alert.alert('Are you sure?', `${label}. This cannot be undone.`, [
-      { text: 'Cancel', style: 'cancel', onPress: () => setConfirming(null) },
-      {
-        text: 'Confirm',
-        style: 'destructive',
-        onPress: () => {
-          setConfirming(null)
-          execute(action)
-        },
-      },
-    ])
+    setPendingAction({ action, label })
   }
 
   return (
@@ -148,8 +164,9 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         <View style={styles.summaryTop}>
           <View style={styles.summaryHeadings}>
             <Text style={[styles.ref, { color: colors.mutedForeground }]}>{orderRef(order.id)}</Text>
+            <Text style={[styles.earnLabel, { color: colors.mutedForeground }]}>You earn</Text>
             <Text style={[styles.amount, { color: colors.foreground }]}>
-              {formatKobo(order.total_kobo)}
+              {formatKobo(order.delivery_fee_kobo)}
             </Text>
           </View>
           <Badge
@@ -163,22 +180,34 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </Text>
       </Card>
 
-      {/* Delivery address */}
-      <Card style={styles.block}>
-        <View style={styles.blockHead}>
-          <MapPin size={16} color={colors.primary} />
-          <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
-        </View>
-        <Text style={[styles.addressText, { color: colors.foreground }]}>
-          {formatAddress(order.delivery_address)}
-        </Text>
-        <Button
-          label="Open in Maps"
-          variant="outline"
-          icon={<Navigation size={16} color={colors.foreground} />}
-          onPress={() => openInMaps(order.delivery_address)}
-        />
-      </Card>
+      {/* Delivery address — withheld until the order is back in the rider's hands post-hub */}
+      {hasDeliveryAddress ? (
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <MapPin size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
+          </View>
+          <Text style={[styles.addressText, { color: colors.foreground }]}>
+            {formatAddress(order.delivery_address)}
+          </Text>
+          <Button
+            label="Open in Maps"
+            variant="outline"
+            icon={<Navigation size={16} color={colors.foreground} />}
+            onPress={() => openInMaps(order.delivery_address)}
+          />
+        </Card>
+      ) : showHub ? (
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <MapPin size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
+          </View>
+          <Text style={[styles.addressText, { color: colors.mutedForeground }]}>
+            Revealed once you've picked this order up from the hub.
+          </Text>
+        </Card>
+      ) : null}
 
       {/* Hub — where this order is routed for QA before the last mile */}
       {showHub && (
@@ -191,12 +220,18 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             {order.hub_name ?? 'Assigned hub'}
           </Text>
           {order.hub_lat != null && order.hub_lng != null && (
-            <Button
-              label="Open in Maps"
-              variant="outline"
-              icon={<Navigation size={16} color={colors.foreground} />}
-              onPress={() => openCoordsInMaps(order.hub_lat!, order.hub_lng!)}
-            />
+            <>
+              <DeliveryMap
+                rider={riderLocation}
+                destination={{ lat: order.hub_lat, lng: order.hub_lng, label: order.hub_name ?? 'Drop-off hub' }}
+              />
+              <Button
+                label="Open in Maps"
+                variant="outline"
+                icon={<Navigation size={16} color={colors.foreground} />}
+                onPress={() => openCoordsInMaps(order.hub_lat!, order.hub_lng!)}
+              />
+            </>
           )}
         </Card>
       )}
@@ -253,6 +288,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             {formatKobo(order.total_kobo)}
           </Text>
         </View>
+        <View style={styles.totalRow}>
+          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Your delivery fee</Text>
+          <Text style={[styles.totalValue, { color: colors.success }]}>
+            {formatKobo(order.delivery_fee_kobo)}
+          </Text>
+        </View>
       </Card>
 
       {/* Actions */}
@@ -264,7 +305,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               label={a.label}
               variant={a.variant}
               size="lg"
-              loading={isPending && confirming === null}
+              loading={isPending && pendingAction === null}
               onPress={() => run(a.action, a.label, a.variant === 'destructive')}
             />
           ))}
@@ -276,6 +317,21 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </Text>
         </Card>
       )}
+
+      <ConfirmDialog
+        visible={pendingAction !== null}
+        onClose={() => setPendingAction(null)}
+        title="Are you sure?"
+        description={`${pendingAction?.label ?? ''}. This cannot be undone.`}
+        confirmLabel="Confirm"
+        destructive
+        loading={isPending}
+        onConfirm={() => {
+          if (!pendingAction) return
+          execute(pendingAction.action)
+          setPendingAction(null)
+        }}
+      />
     </ScrollView>
   )
 }
@@ -288,6 +344,7 @@ const styles = StyleSheet.create({
   summaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: spacing.md },
   summaryHeadings: { gap: 2, flex: 1 },
   ref: { fontFamily: fonts.sansMedium, fontSize: 12.5, letterSpacing: 0.4 },
+  earnLabel: { fontFamily: fonts.sans, fontSize: 11, marginTop: 2 },
   amount: { fontFamily: fonts.display, fontSize: 27 },
   updated: { fontFamily: fonts.sans, fontSize: 12 },
   block: { gap: spacing.md },

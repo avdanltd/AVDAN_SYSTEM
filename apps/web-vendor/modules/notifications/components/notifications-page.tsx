@@ -1,7 +1,7 @@
 'use client'
 
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Bell, CheckCheck } from 'lucide-react'
+import { Bell, BellOff, CheckCheck } from 'lucide-react'
 
 import { Button, EmptyState, PageLoader, cn, toast } from '@avdan/ui'
 import { useNotifications } from '../hooks/use-notifications'
@@ -38,8 +38,9 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
       <div className="min-w-0 flex-1">
         <p className={cn('text-sm', isUnread ? 'font-medium text-foreground' : 'text-foreground')}>
-          {notification.content}
+          {notification.content.title}
         </p>
+        <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{notification.content.body}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {formatRelativeTime(notification.created_at)}
         </p>
@@ -62,8 +63,8 @@ function NotificationItem({ notification }: { notification: Notification }) {
 
 export function NotificationsPage() {
   const queryClient = useQueryClient()
-  const { data, isLoading, error } = useNotifications()
-  const notifications = data?.notifications ?? []
+  const { data, isLoading, error, refetch } = useNotifications()
+  const notifications = data?.items ?? []
   const unreadCount = data?.unread_count ?? 0
 
   const { mutate: markAllRead, isPending: markingAll } = useMutation({
@@ -82,8 +83,10 @@ export function NotificationsPage() {
   if (error) {
     return (
       <EmptyState
+        icon={<Bell className="h-6 w-6" />}
         title="Failed to load notifications"
-        description="There was a problem loading your notifications. Please refresh the page."
+        description="There was a problem loading your notifications. Please try again."
+        action={{ label: 'Retry', onClick: () => refetch() }}
       />
     )
   }
@@ -113,6 +116,7 @@ export function NotificationsPage() {
       <div className="overflow-hidden rounded-lg border border-border bg-background shadow-card">
         {notifications.length === 0 ? (
           <EmptyState
+            icon={<BellOff className="h-6 w-6" />}
             title="No notifications"
             description="You're all caught up. New notifications will appear here."
             className="py-12"

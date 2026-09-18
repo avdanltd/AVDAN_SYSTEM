@@ -85,11 +85,21 @@ export function OrderCard({ order }: OrderCardProps) {
 
           {/* Items */}
           {order.items && order.items.length > 0 && (
-            <ul className="mt-3 space-y-1">
+            <ul className="mt-3 space-y-2">
               {order.items.map((item) => (
-                <li key={item.id} className="flex items-center justify-between text-sm">
-                  <span className="text-foreground">
-                    {item.name}
+                <li key={item.id} className="flex items-center gap-2 text-sm">
+                  {item.product_image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={item.product_image_url}
+                      alt={item.product_name}
+                      className="h-8 w-8 shrink-0 rounded object-cover"
+                    />
+                  ) : (
+                    <div className="h-8 w-8 shrink-0 rounded bg-muted" />
+                  )}
+                  <span className="flex-1 text-foreground">
+                    {item.product_name}
                     <span className="ml-1 text-muted-foreground">×{item.quantity}</span>
                   </span>
                   <span className="text-muted-foreground">{formatPrice(item.price_kobo * item.quantity)}</span>
@@ -100,7 +110,7 @@ export function OrderCard({ order }: OrderCardProps) {
 
           {/* Customer note */}
           {order.customer_note && (
-            <div className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="mt-3 rounded-md bg-warning-muted px-3 py-2 text-xs text-warning">
               <span className="font-medium">Note: </span>
               {order.customer_note}
             </div>
@@ -152,7 +162,7 @@ export function OrderCard({ order }: OrderCardProps) {
 
         {isReady && (
           <CardFooter className="border-t border-border p-3">
-            <p className="w-full text-center text-xs text-green-700">
+            <p className="w-full text-center text-xs text-success">
               Waiting for rider pickup
             </p>
           </CardFooter>

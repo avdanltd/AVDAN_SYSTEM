@@ -27,6 +27,7 @@ dependencies = [
     "fastembed>=0.4.0",
     "resend>=2.6.0",
     "aioboto3>=13.0",
+    "sentry-sdk[fastapi]>=2.69.2",
 ]
 
 [project.optional-dependencies]

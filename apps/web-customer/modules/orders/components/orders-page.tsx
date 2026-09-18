@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ShoppingBag, MapPin } from 'lucide-react'
 import { OrderStatusBadge, EmptyState, Skeleton, Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@avdan/ui'
 import { useOrders } from '../hooks/use-orders'
@@ -38,11 +39,20 @@ function isCompleted(status: string) { return COMPLETED_STATUSES.includes(status
 function isCancelled(status: string) { return CANCELLED_STATUSES.includes(status) }
 
 function OrderCard({ order }: { order: Order }) {
+  const router = useRouter()
   const active = isActive(order.status)
+  // Not a <Link> — the card also contains a "Track" link to a *different* route, and nested
+  // <a> elements are invalid HTML (and broke hydration). Navigation is handled with a click
+  // handler instead; the real anchors live only on the actionable buttons inside.
   return (
-    <Link
-      href={ROUTES.order(order.id)}
-      className="group block rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/50 hover:shadow-sm"
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push(ROUTES.order(order.id))}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') router.push(ROUTES.order(order.id))
+      }}
+      className="group block cursor-pointer rounded-xl border border-border bg-background p-4 transition-all hover:border-primary/50 hover:shadow-sm"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -58,7 +68,7 @@ function OrderCard({ order }: { order: Order }) {
           <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(order.created_at)}</p>
         </div>
         <div className="shrink-0 text-right">
-          <p className="font-bold text-foreground">{formatPrice(order.total_kobo)}</p>
+          <p className="font-bold text-foreground">{formatPrice(order.total_kobo + order.delivery_fee_kobo)}</p>
         </div>
       </div>
 
@@ -78,10 +88,12 @@ function OrderCard({ order }: { order: Order }) {
           </Button>
         )}
         <Button variant="ghost" size="sm" className="h-7 text-xs ml-auto" asChild>
-          <Link href={ROUTES.order(order.id)}>View Details →</Link>
+          <Link href={ROUTES.order(order.id)} onClick={(e) => e.stopPropagation()}>
+            View Details →
+          </Link>
         </Button>
       </div>
-    </Link>
+    </div>
   )
 }
 

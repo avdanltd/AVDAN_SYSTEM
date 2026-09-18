@@ -137,21 +137,20 @@ export function Cart() {
             can be delivered on its own schedule.
           </Text>
         ) : null}
+        <Text style={[styles.splitNote, { color: colors.mutedForeground }]}>
+          Delivery fee is calculated at checkout, once your address is known.
+        </Text>
       </ScrollView>
 
       <View
         style={[styles.bar, { backgroundColor: colors.background, borderTopColor: colors.border }]}
       >
         <View style={styles.barTotals}>
-          <Text style={[styles.barLabel, { color: colors.mutedForeground }]}>Total</Text>
+          <Text style={[styles.barLabel, { color: colors.mutedForeground }]}>Subtotal</Text>
           <Text style={[styles.barValue, { color: colors.foreground }]}>{formatKobo(total)}</Text>
         </View>
         <View style={styles.flex1}>
-          <Button
-            label={groups.length > 1 ? 'Checkout' : 'Checkout'}
-            onPress={() => router.push('/checkout')}
-            size="lg"
-          />
+          <Button label="Checkout" onPress={() => router.push('/checkout')} size="lg" />
         </View>
       </View>
     </View>

@@ -147,20 +147,24 @@ export function OrderDetailPage({ id }: { id: string }) {
                     {order.items.map((item) => (
                       <div key={item.id} className="flex items-center justify-between gap-4 py-2 border-b border-border last:border-0">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-foreground line-clamp-1">{item.name}</p>
+                          <p className="font-medium text-foreground line-clamp-1">{item.product_name}</p>
                           <p className="text-sm text-muted-foreground">
                             {formatPrice(item.price_kobo)} × {item.quantity}
                           </p>
                         </div>
                         <span className="font-semibold shrink-0">
-                          {formatPrice(item.price_kobo * item.quantity)}
+                          {formatPrice(item.subtotal_kobo)}
                         </span>
                       </div>
                     ))}
                     <Separator />
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>Delivery fee</span>
+                      <span>{formatPrice(order.delivery_fee_kobo)}</span>
+                    </div>
                     <div className="flex items-center justify-between font-bold text-base">
                       <span>Total</span>
-                      <span>{formatPrice(order.total_kobo)}</span>
+                      <span>{formatPrice(order.total_kobo + order.delivery_fee_kobo)}</span>
                     </div>
                   </div>
                 ) : (

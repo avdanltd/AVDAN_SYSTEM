@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,6 +24,7 @@ import {
 import { Loader2, ShoppingCart } from 'lucide-react'
 import { checkoutSchema, type CheckoutInput } from '../schemas/checkout.schemas'
 import { useCreateOrder, useInitiatePayment } from '../hooks/use-checkout'
+import type { OrderCreated } from '../services/checkout.service'
 import { useCartStore } from '@/modules/cart/store/cart.store'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { ROUTES } from '@/config/routes'
@@ -36,6 +37,8 @@ export function CheckoutPage() {
   const router = useRouter()
   const { items, vendorId, vendorName, totalKobo, clearCart } = useCartStore()
   const { user } = useSession()
+
+  const [placedOrder, setPlacedOrder] = useState<OrderCreated | null>(null)
 
   const { mutateAsync: createOrder, isPending: isCreating } = useCreateOrder()
   const { mutateAsync: initiatePayment, isPending: isInitiating } = useInitiatePayment()
@@ -76,16 +79,31 @@ export function CheckoutPage() {
         delivery_address: data.delivery_address,
         contact_phone: data.contact_phone,
       })
-
-      const payment = await initiatePayment(order.id)
-      clearCart()
-      // Redirect to Paystack payment page
-      window.location.href = payment.payment_url
+      // Order is placed but not yet paid — show the real, confirmed delivery
+      // fee before sending the customer to pay, rather than charging a total
+      // they never saw.
+      setPlacedOrder(order)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to place order. Please try again.'
       toast.error(message)
     }
   }
+
+  async function onPay() {
+    if (!placedOrder) return
+    try {
+      const payment = await initiatePayment(placedOrder.id)
+      clearCart()
+      // Redirect to Paystack payment page
+      window.location.href = payment.payment_url
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start payment. Please try again.'
+      toast.error(message)
+    }
+  }
+
+  const deliveryFeeKobo = placedOrder?.delivery_fee_kobo ?? null
+  const grandTotalKobo = totalKobo() + (deliveryFeeKobo ?? 0)
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -94,17 +112,20 @@ export function CheckoutPage() {
 
         {/* Step indicator */}
         <div className="mt-4 flex items-center gap-0">
-          {['Cart', 'Delivery', 'Payment'].map((step, i) => (
-            <div key={step} className="flex items-center">
-              <div className={`flex items-center gap-1.5 ${i === 1 ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
-                <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${i === 1 ? 'bg-primary text-white' : i < 1 ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
-                  {i + 1}
-                </span>
-                <span className="text-sm">{step}</span>
+          {(() => {
+            const activeStep = placedOrder ? 2 : 1
+            return ['Cart', 'Delivery', 'Payment'].map((step, i) => (
+              <div key={step} className="flex items-center">
+                <div className={`flex items-center gap-1.5 ${i === activeStep ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${i === activeStep ? 'bg-primary text-white' : i < activeStep ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                    {i + 1}
+                  </span>
+                  <span className="text-sm">{step}</span>
+                </div>
+                {i < 2 && <span className="mx-3 h-px w-8 bg-border" />}
               </div>
-              {i < 2 && <span className="mx-3 h-px w-8 bg-border" />}
-            </div>
-          ))}
+            ))
+          })()}
         </div>
       </div>
 
@@ -113,101 +134,123 @@ export function CheckoutPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Delivery Details</CardTitle>
+            {placedOrder && (
+              <p className="text-sm text-muted-foreground">
+                Order placed.{' '}
+                <button
+                  type="button"
+                  className="font-medium text-primary underline underline-offset-2"
+                  onClick={() => setPlacedOrder(null)}
+                >
+                  Edit details
+                </button>
+              </p>
+            )}
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="contact_phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 08012345678" type="tel" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="delivery_address.street"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Street Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. 12 Adeola Hopewell Street" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
+                <fieldset disabled={!!placedOrder || isLoading} className="space-y-4">
                   <FormField
                     control={form.control}
-                    name="delivery_address.city"
+                    name="contact_phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>City</FormLabel>
+                        <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Lagos" {...field} />
+                          <Input placeholder="e.g. 08012345678" type="tel" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
                   <FormField
                     control={form.control}
-                    name="delivery_address.state"
+                    name="delivery_address.street"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>State</FormLabel>
+                        <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g. Lagos" {...field} />
+                          <Input placeholder="e.g. 12 Adeola Hopewell Street" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
 
-                <FormField
-                  control={form.control}
-                  name="delivery_address.notes"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Delivery Notes (optional)</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Landmark, gate code, floor number…"
-                          className="resize-none"
-                          rows={3}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="delivery_address.city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Lagos" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="delivery_address.state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Lagos" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  size="lg"
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isCreating ? 'Placing order…' : 'Redirecting to payment…'}
-                    </>
-                  ) : (
-                    `Pay ${formatPrice(totalKobo())}`
-                  )}
-                </Button>
+                  <FormField
+                    control={form.control}
+                    name="delivery_address.notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Notes (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Landmark, gate code, floor number…"
+                            className="resize-none"
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </fieldset>
+
+                {!placedOrder ? (
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Placing order…
+                      </>
+                    ) : (
+                      'Continue to Payment'
+                    )}
+                  </Button>
+                ) : (
+                  <Button type="button" className="w-full" size="lg" disabled={isLoading} onClick={onPay}>
+                    {isInitiating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redirecting to payment…
+                      </>
+                    ) : (
+                      `Pay ${formatPrice(grandTotalKobo)}`
+                    )}
+                  </Button>
+                )}
               </form>
             </Form>
           </CardContent>
@@ -242,12 +285,14 @@ export function CheckoutPage() {
               </div>
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Delivery fee</span>
-                <span>Calculated at dispatch</span>
+                <span>
+                  {deliveryFeeKobo === null ? 'Confirmed after order is placed' : formatPrice(deliveryFeeKobo)}
+                </span>
               </div>
               <Separator />
               <div className="flex justify-between font-bold text-base">
-                <span>Total (min)</span>
-                <span>{formatPrice(totalKobo())}</span>
+                <span>Total</span>
+                <span>{formatPrice(grandTotalKobo)}</span>
               </div>
             </CardContent>
           </Card>

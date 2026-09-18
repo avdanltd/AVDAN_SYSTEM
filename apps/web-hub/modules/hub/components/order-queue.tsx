@@ -26,7 +26,7 @@ function OrderCard({ order }: { order: HubOrder }) {
     router.push(ROUTES.orderQa(order.id))
   }
 
-  const canReceive = order.status === 'IN_TRANSIT_TO_HUB'
+  const canReceive = order.status === 'ARRIVED_AT_HUB'
   const canQa = order.status === 'QA_IN_PROGRESS'
 
   return (

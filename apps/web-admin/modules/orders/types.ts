@@ -7,6 +7,7 @@ export interface AdminOrder {
   rider_id: string | null
   status: OrderStatus
   total_kobo: number
+  delivery_fee_kobo: number
   delivery_address: Record<string, unknown>
   created_at: string
   updated_at: string
@@ -17,7 +18,7 @@ export interface AdminOrder {
 export interface AdminOrderItem {
   id: string
   product_id: string
-  name: string
+  product_name: string
   price_kobo: number
   quantity: number
 }

@@ -52,13 +52,15 @@ class QAService:
         # IN_TRANSIT_TO_HUB without ever getting a hub (no active hub existed at assignment
         # time), which any hub can still self-claim, same as the original behaviour.
         hub_filter = or_(
-            (Order.status == OrderStatus.IN_TRANSIT_TO_HUB) & Order.hub_id.is_(None),
+            (Order.status.in_([OrderStatus.IN_TRANSIT_TO_HUB, OrderStatus.ARRIVED_AT_HUB]))
+            & Order.hub_id.is_(None),
             Order.hub_id == hub.id,
         )
         active_statuses = status_filter or [
             OrderStatus.READY_FOR_PICKUP,
             OrderStatus.PICKED_UP,
             OrderStatus.IN_TRANSIT_TO_HUB,
+            OrderStatus.ARRIVED_AT_HUB,
             OrderStatus.AT_HUB,
             OrderStatus.QA_IN_PROGRESS,
             OrderStatus.QA_PASSED,
@@ -99,7 +101,11 @@ class QAService:
         return order
 
     async def receive_order(self, agent_user_id: str, order_id: str) -> Order:
-        """IN_TRANSIT_TO_HUB → AT_HUB → QA_IN_PROGRESS (two transitions, one request)."""
+        """ARRIVED_AT_HUB → AT_HUB → QA_IN_PROGRESS (two transitions, one request).
+
+        Requires the rider to have already marked ARRIVED_AT_HUB — the state machine no longer
+        permits IN_TRANSIT_TO_HUB → AT_HUB directly, so `order_svc.transition` below raises
+        INVALID_TRANSITION on its own if the rider hasn't confirmed arrival yet."""
         hub = await self.get_hub_for_agent(agent_user_id)
         order = await self._get_order(order_id)
 
@@ -129,13 +135,16 @@ class QAService:
         return await self._reload(order_id)
 
     async def qa_pass(self, agent_user_id: str, order_id: str) -> Order:
-        """QA_IN_PROGRESS → QA_PASSED → OUT_FOR_DELIVERY (two transitions, one request)."""
+        """QA_IN_PROGRESS → QA_PASSED. Stops here — the rider must independently confirm
+        they've picked the parcel back up (QA_PASSED → OUT_FOR_DELIVERY, actor "rider", already
+        permitted by the state machine) before it's actually out for delivery. Previously this
+        auto-chained straight to OUT_FOR_DELIVERY, which meant the system recorded a delivery
+        leg starting before any rider had actually taken the parcel back from the hub."""
         hub = await self.get_hub_for_agent(agent_user_id)
         await self._assert_agent_hub_owns_order(hub, order_id)
 
         order_svc = OrderService(self.db)
         await order_svc.transition(order_id, OrderStatus.QA_PASSED, agent_user_id, "agent")
-        await order_svc.transition(order_id, OrderStatus.OUT_FOR_DELIVERY, agent_user_id, "agent")
 
         await self._update_inspection(order_id, agent_user_id, hub.id, "pass")
         return await self._reload(order_id)
@@ -209,23 +218,31 @@ class QAService:
 
         pass_rate = round((pass_count / total * 100), 2) if total > 0 else 0.0
 
-        # Average dwell time: time between AT_HUB and OUT_FOR_DELIVERY events
-        dwell_result = await self.db.execute(
+        # Average dwell time: time between AT_HUB and OUT_FOR_DELIVERY events.
+        # Postgres rejects an aggregate (avg) built directly over another aggregate expression
+        # (max/min) in the same SELECT — "aggregate function calls cannot be nested" — so the
+        # per-order dwell has to be computed in a subquery (one row per order, via GROUP BY) and
+        # then averaged in the outer query. The previous single-query version also called
+        # `.scalar_one_or_none()` on a GROUP BY'd query, which returns one row per order — that
+        # raises `MultipleResultsFound` the moment more than one order has dwell events, on top of
+        # the SQL itself failing outright with a 500 on every call.
+        per_order_dwell = (
             select(
-                func.avg(
-                    func.extract(
-                        "epoch",
-                        func.max(OrderEvent.created_at) - func.min(OrderEvent.created_at),
-                    )
-                )
-            ).select_from(OrderEvent)
+                func.extract(
+                    "epoch",
+                    func.max(OrderEvent.created_at) - func.min(OrderEvent.created_at),
+                ).label("dwell_seconds")
+            )
+            .select_from(OrderEvent)
             .join(Order, Order.id == OrderEvent.order_id)
             .where(
                 Order.hub_id == hub.id,
                 OrderEvent.to_state.in_([OrderStatus.AT_HUB, OrderStatus.OUT_FOR_DELIVERY]),
             )
             .group_by(OrderEvent.order_id)
+            .subquery()
         )
+        dwell_result = await self.db.execute(select(func.avg(per_order_dwell.c.dwell_seconds)))
         avg_seconds = dwell_result.scalar_one_or_none()
         avg_dwell_minutes = round(float(avg_seconds) / 60, 1) if avg_seconds else None
 

@@ -5,7 +5,7 @@ import { toast } from '@avdan/mobile'
 
 import { shopService } from '../services/shop.service'
 import { useCartStore, type VendorGroup } from '../store/cart.store'
-import type { DeliveryAddress } from '../types'
+import type { CustomerOrder, DeliveryAddress } from '../types'
 
 /** The deep link Paystack redirects to. Must match `scheme` in app.config.ts. */
 const RETURN_URL = 'avdancustomer://checkout/callback'
@@ -37,10 +37,16 @@ export function useCheckout() {
   const clearVendor = useCartStore((s) => s.clearVendor)
   const qc = useQueryClient()
 
-  const checkout = async (
+  /**
+   * Creates the order only — does not charge. The delivery fee is computed server-side at
+   * creation time, so the caller must show the real `total_kobo + delivery_fee_kobo` for
+   * confirmation before calling `payExistingOrder`, rather than charging a total the customer
+   * never saw.
+   */
+  const placeOrder = async (
     group: VendorGroup,
     address: DeliveryAddress,
-  ): Promise<CheckoutOutcome | null> => {
+  ): Promise<CustomerOrder | null> => {
     try {
       setStage('creating')
       const order = await shopService.createOrder({
@@ -55,33 +61,9 @@ export function useCheckout() {
       clearVendor(group.vendorId)
       qc.invalidateQueries({ queryKey: ['customer-orders'] })
 
-      setStage('paying')
-      const payment = await shopService.initiatePayment(order.id)
-
-      const result = await WebBrowser.openAuthSessionAsync(payment.payment_url, RETURN_URL)
-
-      // `dismiss` means the customer swiped the browser away. That does NOT mean they did not
-      // pay — they may have completed the charge and then closed it — so verify regardless.
-      setStage('verifying')
-      const verified = await shopService.verifyPayment(payment.reference)
-
-      qc.invalidateQueries({ queryKey: ['customer-orders'] })
-      qc.invalidateQueries({ queryKey: ['customer-order', order.id] })
-
-      if (verified.paid) {
-        toast.success('Payment confirmed', 'Your order has been sent to the vendor.')
-        return { orderId: order.id, paid: true, unconfirmed: false }
-      }
-
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        toast.info('Payment not completed', 'Your order is saved — you can pay for it any time.')
-        return { orderId: order.id, paid: false, unconfirmed: true }
-      }
-
-      toast.error('Payment not confirmed', 'If you were charged it will update shortly.')
-      return { orderId: order.id, paid: false, unconfirmed: true }
+      return order
     } catch (e) {
-      toast.error('Checkout failed', e instanceof Error ? e.message : 'Please try again.')
+      toast.error('Could not place order', e instanceof Error ? e.message : 'Please try again.')
       return null
     } finally {
       setStage('idle')
@@ -117,5 +99,5 @@ export function useCheckout() {
     }
   }
 
-  return { checkout, payExistingOrder, stage, isBusy: stage !== 'idle' }
+  return { placeOrder, payExistingOrder, stage, isBusy: stage !== 'idle' }
 }

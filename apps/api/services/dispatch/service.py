@@ -210,6 +210,7 @@ class DispatchService:
                 Order.hub_id.isnot(None),
                 Order.status.in_([
                     OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.ARRIVED_AT_HUB,
                     OrderStatus.AT_HUB,
                     OrderStatus.QA_IN_PROGRESS,
                     OrderStatus.QA_FAILED,
@@ -248,13 +249,15 @@ class DispatchService:
             .where(
                 Order.rider_id == rider.id,
                 Order.status.in_([
-                    # READY_FOR_PICKUP and QA_PASSED must be included: they are the two states
-                    # where the rider is the actor for the next transition (READY_FOR_PICKUP →
-                    # PICKED_UP, QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned
-                    # order invisible to the rider who alone could advance it — a deadlock.
+                    # READY_FOR_PICKUP, ARRIVED_AT_HUB and QA_PASSED must be included: they are
+                    # the states where the rider is the actor for the next transition
+                    # (READY_FOR_PICKUP → PICKED_UP, IN_TRANSIT_TO_HUB → ARRIVED_AT_HUB,
+                    # QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned order
+                    # invisible to the rider who alone could advance it — a deadlock.
                     OrderStatus.READY_FOR_PICKUP,
                     OrderStatus.PICKED_UP,
                     OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.ARRIVED_AT_HUB,
                     OrderStatus.AT_HUB,
                     OrderStatus.QA_PASSED,
                     OrderStatus.OUT_FOR_DELIVERY,
@@ -353,6 +356,97 @@ class DispatchService:
         result = await self.db.execute(query)
         return list(result.scalars().all())
 
+    # ── Payout account (mirrors services/vendor/service.py's payout methods exactly —
+    # riders had no payout mechanism at all before this) ────────────────────────────
+
+    async def list_banks(self) -> list:
+        from services.payment.providers.registry import get_provider
+        provider = get_provider("paystack")
+        return await provider.get_banks()
+
+    async def verify_payout_account(self, account_number: str, bank_code: str) -> object:
+        from services.payment.providers.registry import get_provider
+        provider = get_provider("paystack")
+        return await provider.resolve_account(account_number, bank_code)
+
+    async def save_payout_account(
+        self,
+        user_id: str,
+        account_number: str,
+        bank_code: str,
+        bank_name: str,
+        account_name: str,
+    ) -> Rider:
+        from services.payment.providers.registry import get_provider
+        rider = await self.get_or_create_rider(user_id)
+        provider = get_provider("paystack")
+        result = await provider.create_transfer_recipient(account_name, account_number, bank_code)
+        rider.paystack_recipient_code = result.recipient_code
+        rider.payout_account_number = account_number
+        rider.payout_bank_name = bank_name
+        rider.payout_account_name = account_name
+        return rider
+
+    async def get_payout_account(self, user_id: str) -> Rider:
+        return await self.get_or_create_rider(user_id)
+
+    # ── Earnings ──────────────────────────────────────────────────────────────
+    # Flagged earlier this session: the `RiderPayout` table has everything needed for an
+    # earnings view, but nothing exposed it via the API. Mirrors the vendor analytics pattern
+    # (a summary figure plus a plain paginated history) rather than anything fancier.
+
+    async def get_earnings_summary(self, user_id: str) -> dict:
+        from services.payment.models import RiderPayout, RiderPayoutStatus
+
+        rider = await self.get_or_create_rider(user_id)
+
+        total_earned = int((await self.db.execute(
+            select(func.coalesce(func.sum(RiderPayout.amount_kobo), 0)).where(
+                RiderPayout.rider_id == rider.id,
+                RiderPayout.status == RiderPayoutStatus.RELEASED,
+            )
+        )).scalar_one())
+
+        pending = int((await self.db.execute(
+            select(func.coalesce(func.sum(RiderPayout.amount_kobo), 0)).where(
+                RiderPayout.rider_id == rider.id,
+                RiderPayout.status.in_([RiderPayoutStatus.PENDING, RiderPayoutStatus.PAYOUT_PENDING]),
+            )
+        )).scalar_one())
+
+        deliveries_paid = (await self.db.execute(
+            select(func.count()).select_from(RiderPayout).where(
+                RiderPayout.rider_id == rider.id,
+                RiderPayout.status == RiderPayoutStatus.RELEASED,
+            )
+        )).scalar_one()
+
+        return {
+            "total_earned_kobo": total_earned,
+            "pending_kobo": pending,
+            "deliveries_paid": deliveries_paid,
+        }
+
+    async def list_payouts(
+        self, user_id: str, page: int = 1, page_size: int = 20
+    ) -> tuple[list, int]:
+        from services.payment.models import RiderPayout
+
+        rider = await self.get_or_create_rider(user_id)
+
+        total = (await self.db.execute(
+            select(func.count()).select_from(RiderPayout).where(RiderPayout.rider_id == rider.id)
+        )).scalar_one()
+
+        result = await self.db.execute(
+            select(RiderPayout)
+            .where(RiderPayout.rider_id == rider.id)
+            .order_by(RiderPayout.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return list(result.scalars().all()), total
+
     # ── Private ───────────────────────────────────────────────────────────────
 
     async def _get_order(self, order_id: str) -> Order:
@@ -372,13 +466,15 @@ class DispatchService:
             select(Order).where(
                 Order.rider_id == rider.id,
                 Order.status.in_([
-                    # READY_FOR_PICKUP and QA_PASSED must be included: they are the two states
-                    # where the rider is the actor for the next transition (READY_FOR_PICKUP →
-                    # PICKED_UP, QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned
-                    # order invisible to the rider who alone could advance it — a deadlock.
+                    # READY_FOR_PICKUP, ARRIVED_AT_HUB and QA_PASSED must be included: they are
+                    # the states where the rider is the actor for the next transition
+                    # (READY_FOR_PICKUP → PICKED_UP, IN_TRANSIT_TO_HUB → ARRIVED_AT_HUB,
+                    # QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned order
+                    # invisible to the rider who alone could advance it — a deadlock.
                     OrderStatus.READY_FOR_PICKUP,
                     OrderStatus.PICKED_UP,
                     OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.ARRIVED_AT_HUB,
                     OrderStatus.AT_HUB,
                     OrderStatus.QA_PASSED,
                     OrderStatus.OUT_FOR_DELIVERY,

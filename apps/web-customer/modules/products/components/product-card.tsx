@@ -124,8 +124,9 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
               {product.vendor_name}
             </Link>
 
-            {/* Name */}
-            <p className="line-clamp-2 text-sm font-semibold leading-snug text-foreground">
+            {/* Name — reserves 2 lines of height always, so a short title doesn't shrink the
+                card and break grid uniformity with its longer-titled neighbours. */}
+            <p className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug text-foreground">
               {product.name}
             </p>
 

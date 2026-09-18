@@ -51,7 +51,7 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
               variant="secondary"
               className={cn(
                 'shrink-0 text-xs',
-                vendor.status === 'active' && 'bg-green-100 text-green-700',
+                vendor.status === 'active' && 'bg-success-muted text-success',
               )}
             >
               {vendor.status === 'active' ? 'Open' : vendor.status}
@@ -66,7 +66,7 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
 
           <div className="mt-3 flex items-center justify-between">
             {vendor.rating !== null ? (
-              <span className="flex items-center gap-1 text-sm font-medium text-amber-500">
+              <span className="flex items-center gap-1 text-sm font-medium text-warning">
                 <Star className="h-3.5 w-3.5 fill-current" />
                 {vendor.rating.toFixed(1)}
               </span>

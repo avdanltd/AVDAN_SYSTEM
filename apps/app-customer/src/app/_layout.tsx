@@ -24,6 +24,7 @@ import {
   ThemeProvider,
   authService,
   configureApiClient,
+  configureQueryNetworking,
   secureStorage,
   toastConfig,
   useAuthStore,
@@ -43,6 +44,11 @@ configureApiClient({
   wsUrl: Constants.expoConfig?.extra?.wsUrl as string | undefined,
   onUnauthorized: () => router.replace('/login'),
 })
+
+// React Query's default online detection listens for browser online/offline events, which don't
+// exist in React Native — without this, queries can get stuck permanently "paused" (see the
+// helper's own doc comment). Must also run before any query fires.
+configureQueryNetworking()
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1 } },
@@ -71,21 +77,31 @@ function AppShell() {
 
   useEffect(() => {
     async function hydrate() {
-      const { accessToken } = await secureStorage.getTokens()
-      await Promise.all([
-        (async () => {
-          if (accessToken) {
-            try {
-              const user = await authService.getMe()
-              setUser(user)
-            } catch {
-              await secureStorage.clear()
+      // Nothing here may throw uncaught — `isHydrating` gates the entire app behind
+      // `<BrandLoader />`, so any unhandled rejection (a corrupted/inaccessible secure-storage
+      // entry, a platform quirk, anything) permanently strands the app on the loading screen
+      // with no products, no navigation, nothing. Any failure here should degrade to "not logged
+      // in" and let the public app load, never hang it.
+      try {
+        const { accessToken } = await secureStorage.getTokens()
+        await Promise.all([
+          (async () => {
+            if (accessToken) {
+              try {
+                const user = await authService.getMe()
+                setUser(user)
+              } catch {
+                await secureStorage.clear()
+              }
             }
-          }
-        })(),
-        hydrateCart(),
-      ])
-      setIsHydrating(false)
+          })(),
+          hydrateCart(),
+        ])
+      } catch {
+        // Fall through to finally — proceed unauthenticated rather than hang forever.
+      } finally {
+        setIsHydrating(false)
+      }
     }
     hydrate()
   }, [setUser, hydrateCart])

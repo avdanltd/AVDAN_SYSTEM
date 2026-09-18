@@ -1,9 +1,11 @@
 'use client'
 
+import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
+import { ChevronRight, Landmark, Wallet } from 'lucide-react'
 import { toast } from '@avdan/ui'
 import {
   Button,
@@ -25,6 +27,7 @@ import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { authService } from '@/modules/auth/services/auth.service'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
+import { ROUTES } from '@/config/routes'
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -116,6 +119,26 @@ export function ProfilePage() {
           </Form>
         </CardContent>
       </Card>
+
+      <Link href={ROUTES.earnings}>
+        <Card className="transition-colors hover:bg-secondary/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Wallet className="h-4 w-4 text-primary" />
+            <span className="flex-1 text-sm font-medium">Earnings</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
+
+      <Link href={ROUTES.payoutAccount}>
+        <Card className="transition-colors hover:bg-secondary/50">
+          <CardContent className="flex items-center gap-3 p-4">
+            <Landmark className="h-4 w-4 text-primary" />
+            <span className="flex-1 text-sm font-medium">Payout Account</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </CardContent>
+        </Card>
+      </Link>
 
       <Separator />
 

@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react'
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { CheckCircle2, ChevronRight, Inbox, Package } from 'lucide-react-native'
+import { AlertTriangle, CheckCircle2, ChevronRight, Inbox, Package } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useVendorOrders } from '../hooks/use-vendor'
 import { ACTIVE_STATUSES, type VendorOrder } from '../types'
-import { Badge, Card, EmptyState, Skeleton, fonts, formatKobo, formatRelative, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
+import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, formatRelative, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
 type Tab = 'new' | 'active' | 'done'
 
@@ -30,9 +30,19 @@ function OrderCard({ order, onPress }: { order: VendorOrder; onPress: () => void
           </Text>
         </View>
 
-        <Text style={[styles.items, { color: colors.foreground }]} numberOfLines={2}>
-          {order.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', ')}
-        </Text>
+        <View style={styles.itemsRow}>
+          {order.items[0]?.product_image_url ? (
+            <Image
+              source={{ uri: order.items[0].product_image_url }}
+              style={styles.thumb}
+            />
+          ) : (
+            <View style={[styles.thumb, { backgroundColor: colors.muted }]} />
+          )}
+          <Text style={[styles.items, { color: colors.foreground, flex: 1 }]} numberOfLines={2}>
+            {order.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', ')}
+          </Text>
+        </View>
 
         <View style={[styles.cardFoot, { borderTopColor: colors.border }]}>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>
@@ -47,9 +57,9 @@ function OrderCard({ order, onPress }: { order: VendorOrder; onPress: () => void
 
 export function OrdersList() {
   const router = useRouter()
-  const { colors } = useTheme()
+  const { colors, shadowCard } = useTheme()
   const [tab, setTab] = useState<Tab>('new')
-  const { data, isLoading, isRefetching, refetch } = useVendorOrders()
+  const { data, isLoading, isError, isRefetching, refetch } = useVendorOrders()
 
   const all = useMemo(() => data?.items ?? [], [data])
 
@@ -95,7 +105,7 @@ export function OrdersList() {
               accessibilityState={{ selected }}
               style={[
                 styles.segmentItem,
-                selected && { backgroundColor: colors.card, ...styles.segmentActive },
+                selected && { backgroundColor: colors.card, ...shadowCard },
               ]}
             >
               <Text
@@ -120,6 +130,15 @@ export function OrdersList() {
               <Skeleton height={13} width="50%" />
             </Card>
           ))}
+        </View>
+      ) : isError ? (
+        <View style={styles.listEmpty}>
+          <EmptyState
+            icon={<AlertTriangle size={30} color={colors.subtleForeground} />}
+            title="Couldn't load orders"
+            description="Something went wrong. Please try again."
+            action={<Button label="Retry" variant="outline" onPress={() => refetch()} fullWidth={false} />}
+          />
         </View>
       ) : (
         <FlatList
@@ -164,13 +183,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     minHeight: 40,
   },
-  segmentActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
   segmentText: { fontFamily: fonts.sansSemiBold, fontSize: 13 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
   listEmpty: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: spacing.lg },
@@ -178,6 +190,8 @@ const styles = StyleSheet.create({
   card: { gap: spacing.md },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   amount: { fontFamily: fonts.display, fontSize: 17 },
+  itemsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  thumb: { width: 36, height: 36, borderRadius: radius.sm },
   items: { fontFamily: fonts.sansMedium, fontSize: 14.5, lineHeight: 20 },
   cardFoot: {
     flexDirection: 'row',

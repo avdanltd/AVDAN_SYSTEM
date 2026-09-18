@@ -41,3 +41,20 @@ class PlatformConfigResponse(BaseModel):
 
 class UpdateConfigRequest(BaseModel):
     updates: dict
+
+
+class AuditLogEntryResponse(BaseModel):
+    id: str
+    admin_id: str
+    action: str
+    resource: str
+    resource_id: str | None
+    metadata: dict | None
+    created_at: str
+
+
+class PaginatedAuditLogResponse(BaseModel):
+    items: list[AuditLogEntryResponse]
+    total: int
+    page: int
+    page_size: int

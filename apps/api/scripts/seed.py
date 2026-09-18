@@ -78,6 +78,20 @@ USERS = [
 ]
 
 
+# ── Vendor locations (real Lagos addresses, spread across areas for meaningful
+# proximity-based dispatch testing) ───────────────────────────────────────────
+
+VENDOR_LOCATIONS: dict[str, tuple[str, float, float]] = {
+    "TechHub Electronics": ("Computer Village, Ikeja, Lagos", 6.5966, 3.3388),
+    "Fresh Farms Market": ("Mile 12 Market, Ketu, Lagos", 6.5880, 3.3960),
+    "Style Avenue Fashion": ("Balogun Market, Lagos Island, Lagos", 6.4550, 3.3841),
+    "HealthPlus Pharmacy": ("Herbert Macaulay Way, Yaba, Lagos", 6.5095, 3.3711),
+    "Kitchen Masters": ("Adeniran Ogunsanya St, Surulere, Lagos", 6.5000, 3.3500),
+    "SportZone NG": ("Adetokunbo Ademola St, Victoria Island, Lagos", 6.4281, 3.4219),
+    "Baby World Nigeria": ("Allen Avenue, Ikeja GRA, Lagos", 6.5833, 3.3500),
+    "Bookshelf NG": ("Admiralty Way, Lekki Phase 1, Lagos", 6.4400, 3.4700),
+}
+
 # ── Product catalogue (price in NGN kobo = NGN × 100) ─────────────────────────
 
 IMG = "https://images.unsplash.com/photo-{}?w=800&q=80"
@@ -88,18 +102,18 @@ VENDOR_PRODUCTS = {
         "description": "Your one-stop shop for the latest gadgets and electronics in Lagos.",
         "logo_url": "https://images.unsplash.com/photo-1518770660439-4636190af475?w=200&q=80",
         "products": [
-            {"name": "Samsung Galaxy A55 5G",        "desc": "6.6-inch AMOLED display, 8GB RAM, 256GB storage, triple camera.",       "price": 38000000, "stock": 15, "imgs": [IMG.format("1610945265189-5ebf-4909-a536-ac9b70c9fc28")]},
-            {"name": "Tecno Spark 20 Pro",            "desc": "6.78-inch display, 8GB RAM, 128GB, 5000mAh battery.",                  "price": 18500000, "stock": 22, "imgs": [IMG.format("1511707171634-56cf9b8be1b7")]},
-            {"name": "iPhone 14 (128GB)",             "desc": "A15 Bionic chip, dual 12MP cameras, 5G connectivity.",                 "price": 89000000, "stock": 8,  "imgs": [IMG.format("1592750475338-74b7b21085ab")]},
-            {"name": "JBL Tune 770NC Headphones",     "desc": "Wireless noise-cancelling over-ear headphones, 70hr battery.",         "price": 8500000,  "stock": 30, "imgs": [IMG.format("1505740420928-5e560c06d30e")]},
-            {"name": "Anker PowerBank 26800mAh",      "desc": "Massive capacity, dual USB-A + USB-C, fast charge.",                   "price": 5200000,  "stock": 40, "imgs": [IMG.format("1609091839311-d5365f9ff1c5")]},
-            {"name": "Samsung 65-inch UHD Smart TV",  "desc": "4K HDR, built-in WiFi, Tizen OS, 3 HDMI ports.",                      "price": 195000000,"stock": 5,  "imgs": [IMG.format("1593359677879-a26632322ede")]},
-            {"name": "Logitech MX Keys Keyboard",     "desc": "Wireless full-size keyboard, backlit, multi-device pairing.",          "price": 4500000,  "stock": 20, "imgs": [IMG.format("1587829741301-dc798b83add3")]},
-            {"name": "Xiaomi Mi Band 8",              "desc": "Fitness tracker, heart rate, SpO2, 16-day battery life.",              "price": 2800000,  "stock": 50, "imgs": [IMG.format("1544117519-31a4b7290f36")]},
-            {"name": "TP-Link Archer AX3000 Router",  "desc": "WiFi 6, dual-band, ideal for smart homes.",                           "price": 9800000,  "stock": 12, "imgs": [IMG.format("1558618666-fcd25c85cd64")]},
-            {"name": "SanDisk 1TB Portable SSD",      "desc": "USB-C, read 520MB/s, rugged and compact.",                            "price": 6500000,  "stock": 18, "imgs": [IMG.format("1629654291663-a91ade141093")]},
-            {"name": "Ring Light 18-inch LED",        "desc": "Dimmable, 3 colour modes, phone holder, tripod stand.",               "price": 3200000,  "stock": 25, "imgs": [IMG.format("1605106702734-205df224ecce")]},
-            {"name": "USB-C 7-in-1 Hub",              "desc": "4K HDMI, 3×USB-A, SD card, 100W PD charging.",                       "price": 1800000,  "stock": 35, "imgs": [IMG.format("1558618666-fcd25c85cd64")]},
+            {"name": "Samsung Galaxy A55 5G",        "desc": "6.6-inch AMOLED display, 8GB RAM, 256GB storage, triple camera.",       "price": 38000000, "stock": 15, "imgs": [IMG.format("1707485122968-56916bd2c464")]},
+            {"name": "Tecno Spark 20 Pro",            "desc": "6.78-inch display, 8GB RAM, 128GB, 5000mAh battery.",                  "price": 18500000, "stock": 22, "imgs": [IMG.format("1615655406736-b37c4fabf923")]},
+            {"name": "iPhone 14 (128GB)",             "desc": "A15 Bionic chip, dual 12MP cameras, 5G connectivity.",                 "price": 89000000, "stock": 8,  "imgs": [IMG.format("1526738549149-8e07eca6c147")]},
+            {"name": "JBL Tune 770NC Headphones",     "desc": "Wireless noise-cancelling over-ear headphones, 70hr battery.",         "price": 8500000,  "stock": 30, "imgs": [IMG.format("1515940175183-6798529cb860")]},
+            {"name": "Anker PowerBank 26800mAh",      "desc": "Massive capacity, dual USB-A + USB-C, fast charge.",                   "price": 5200000,  "stock": 40, "imgs": [IMG.format("1526406915894-7bcd65f60845")]},
+            {"name": "Samsung 65-inch UHD Smart TV",  "desc": "4K HDR, built-in WiFi, Tizen OS, 3 HDMI ports.",                      "price": 195000000,"stock": 5,  "imgs": [IMG.format("1468495244123-6c6c332eeece")]},
+            {"name": "Logitech MX Keys Keyboard",     "desc": "Wireless full-size keyboard, backlit, multi-device pairing.",          "price": 4500000,  "stock": 20, "imgs": [IMG.format("1636115305669-9096bffe87fd")]},
+            {"name": "Xiaomi Mi Band 8",              "desc": "Fitness tracker, heart rate, SpO2, 16-day battery life.",              "price": 2800000,  "stock": 50, "imgs": [IMG.format("1519335553051-96f1218cd5fa")]},
+            {"name": "TP-Link Archer AX3000 Router",  "desc": "WiFi 6, dual-band, ideal for smart homes.",                           "price": 9800000,  "stock": 12, "imgs": [IMG.format("1413708617479-50918bc877eb")]},
+            {"name": "SanDisk 1TB Portable SSD",      "desc": "USB-C, read 520MB/s, rugged and compact.",                            "price": 6500000,  "stock": 18, "imgs": [IMG.format("1602526432604-029a709e131c")]},
+            {"name": "Ring Light 18-inch LED",        "desc": "Dimmable, 3 colour modes, phone holder, tripod stand.",               "price": 3200000,  "stock": 25, "imgs": [IMG.format("1603389335957-10bea39c9d32")]},
+            {"name": "USB-C 7-in-1 Hub",              "desc": "4K HDMI, 3×USB-A, SD card, 100W PD charging.",                       "price": 1800000,  "stock": 35, "imgs": [IMG.format("1547489401-fcada4966052")]},
         ],
     },
     "Fresh Farms Market": {
@@ -107,16 +121,16 @@ VENDOR_PRODUCTS = {
         "description": "Farm-fresh produce and quality groceries delivered to your door.",
         "logo_url": "https://images.unsplash.com/photo-1542838132-92c53300491e?w=200&q=80",
         "products": [
-            {"name": "Basmati Rice 25kg",             "desc": "Premium long-grain basmati rice, fluffy and aromatic.",               "price": 5500000,  "stock": 50, "imgs": [IMG.format("1586201375761-83865001e31c")]},
-            {"name": "Groundnut Oil 5L",              "desc": "100% pure groundnut oil, cold-pressed, rich flavour.",                "price": 3200000,  "stock": 40, "imgs": [IMG.format("1474979266404-7eaacbcd87c5")]},
-            {"name": "Tomatoes (1 Basket ~15kg)",     "desc": "Fresh red tomatoes, perfect for stew and soups.",                    "price": 1800000,  "stock": 30, "imgs": [IMG.format("1518977676865-d78d41e68889")]},
-            {"name": "Indomie Noodles (1 Carton)",    "desc": "Indomie instant noodles, 40 packs per carton, assorted flavours.",   "price": 1450000,  "stock": 60, "imgs": [IMG.format("1569718212165-3a8278d5f624")]},
-            {"name": "Semovita 10kg",                 "desc": "Smooth semolina flour, great for swallow dishes.",                   "price": 1600000,  "stock": 45, "imgs": [IMG.format("1586201375761-83865001e31c")]},
-            {"name": "Quaker Oats 2kg",               "desc": "Wholesome rolled oats, perfect for a hearty breakfast.",             "price": 1200000,  "stock": 55, "imgs": [IMG.format("1517433456452-f9f2976d7f59")]},
-            {"name": "Seasoning Cubes (Maggi 2×100)", "desc": "Maggi seasoning cubes, 2 packs of 100 cubes each.",                 "price": 1100000,  "stock": 80, "imgs": [IMG.format("1598511796432-91f4b1e5a052")]},
+            {"name": "Basmati Rice 25kg",             "desc": "Premium long-grain basmati rice, fluffy and aromatic.",               "price": 5500000,  "stock": 50, "imgs": [IMG.format("1584269903637-e1b1c717a2b4")]},
+            {"name": "Groundnut Oil 5L",              "desc": "100% pure groundnut oil, cold-pressed, rich flavour.",                "price": 3200000,  "stock": 40, "imgs": [IMG.format("1654245495489-6616a6ca252e")]},
+            {"name": "Tomatoes (1 Basket ~15kg)",     "desc": "Fresh red tomatoes, perfect for stew and soups.",                    "price": 1800000,  "stock": 30, "imgs": [IMG.format("1725208961101-4c28375bdee7")]},
+            {"name": "Indomie Noodles (1 Carton)",    "desc": "Indomie instant noodles, 40 packs per carton, assorted flavours.",   "price": 1450000,  "stock": 60, "imgs": [IMG.format("1629430864843-6df13c168b35")]},
+            {"name": "Semovita 10kg",                 "desc": "Smooth semolina flour, great for swallow dishes.",                   "price": 1600000,  "stock": 45, "imgs": [IMG.format("1644377949116-c4a6b529241c")]},
+            {"name": "Quaker Oats 2kg",               "desc": "Wholesome rolled oats, perfect for a hearty breakfast.",             "price": 1200000,  "stock": 55, "imgs": [IMG.format("1645331465778-eb409d112198")]},
+            {"name": "Seasoning Cubes (Maggi 2×100)", "desc": "Maggi seasoning cubes, 2 packs of 100 cubes each.",                 "price": 1100000,  "stock": 80, "imgs": [IMG.format("1584680226833-0d680d0a0794")]},
             {"name": "Frozen Chicken Drumsticks 2kg", "desc": "Quality frozen chicken, halal-certified, ready to cook.",            "price": 2800000,  "stock": 35, "imgs": [IMG.format("1587593810167-a84920ea0781")]},
-            {"name": "Beans (Black-eyed Peas) 5kg",  "desc": "Nigerian black-eyed beans, cleaned and ready to cook.",              "price": 1900000,  "stock": 40, "imgs": [IMG.format("1516684732162-798a0062be99")]},
-            {"name": "Palm Oil 4L",                   "desc": "Fresh unrefined red palm oil, rich colour and taste.",               "price": 2100000,  "stock": 30, "imgs": [IMG.format("1474979266404-7eaacbcd87c5")]},
+            {"name": "Beans (Black-eyed Peas) 5kg",  "desc": "Nigerian black-eyed beans, cleaned and ready to cook.",              "price": 1900000,  "stock": 40, "imgs": [IMG.format("1754832002087-2a3e52e56602")]},
+            {"name": "Palm Oil 4L",                   "desc": "Fresh unrefined red palm oil, rich colour and taste.",               "price": 2100000,  "stock": 30, "imgs": [IMG.format("1654245201134-49f7e8115817")]},
         ],
     },
     "Style Avenue Fashion": {
@@ -124,17 +138,17 @@ VENDOR_PRODUCTS = {
         "description": "Contemporary African fashion — Ankara prints, luxury fabrics, modern cuts.",
         "logo_url": "https://images.unsplash.com/photo-1445205170230-053b83016050?w=200&q=80",
         "products": [
-            {"name": "Ankara Shirt (Men's)",          "desc": "100% cotton Ankara print shirt, fitted cut, sizes S–3XL.",           "price": 450000,   "stock": 60, "imgs": [IMG.format("1596755094514-f87e34085b2c")]},
-            {"name": "Aso-oke Fabric Set (3 yards)",  "desc": "Handwoven aso-oke fabric in assorted colours, traditional occasions.","price": 1800000,  "stock": 25, "imgs": [IMG.format("1558618666-fcd25c85cd64")]},
-            {"name": "Ladies Ankara Gown",            "desc": "Flared midi gown in vibrant Ankara print, off-shoulder option.",    "price": 750000,   "stock": 40, "imgs": [IMG.format("1516762689617-e1cffcef479d")]},
-            {"name": "Men's Chinos (Slim Fit)",       "desc": "Stretch chinos in khaki, navy, and grey. Sizes 28–40.",              "price": 650000,   "stock": 55, "imgs": [IMG.format("1542291026-7eec264c27ff")]},
-            {"name": "Leather Sneakers (Men's)",      "desc": "Premium faux leather sneakers, cushioned sole. Sizes 40–46.",       "price": 1200000,  "stock": 30, "imgs": [IMG.format("1542291026-7eec264c27ff")]},
-            {"name": "Ladies Block-heel Sandals",     "desc": "Elegant block heels, faux suede, sizes 36–42.",                    "price": 900000,   "stock": 35, "imgs": [IMG.format("1543163521-1bf539c55dd2")]},
-            {"name": "Structured Office Handbag",     "desc": "Faux leather tote with laptop compartment and zip closure.",        "price": 1500000,  "stock": 20, "imgs": [IMG.format("1553062407-98eeb64c6a62")]},
-            {"name": "Men's Polo Shirt (3-pack)",     "desc": "Plain polo shirts in assorted colours, sizes M–3XL.",               "price": 750000,   "stock": 70, "imgs": [IMG.format("1622470953373-0f7d531d5de5")]},
-            {"name": "Traditional Beaded Necklace",   "desc": "Handcrafted Nigerian coral-inspired beaded necklace.",              "price": 350000,   "stock": 45, "imgs": [IMG.format("1515562141207-7a88fb7ce338")]},
-            {"name": "Men's Native Senator Suit",     "desc": "Agbada-inspired native senator suit, embroidered.",                 "price": 2800000,  "stock": 15, "imgs": [IMG.format("1596755094514-f87e34085b2c")]},
-            {"name": "Ladies Wrap Skirt (Ankara)",    "desc": "Reversible wrap skirt, one-size fits most.",                       "price": 380000,   "stock": 50, "imgs": [IMG.format("1516762689617-e1cffcef479d")]},
+            {"name": "Ankara Shirt (Men's)",          "desc": "100% cotton Ankara print shirt, fitted cut, sizes S–3XL.",           "price": 450000,   "stock": 60, "imgs": [IMG.format("1551488831-00ddcb6c6bd3")]},
+            {"name": "Aso-oke Fabric Set (3 yards)",  "desc": "Handwoven aso-oke fabric in assorted colours, traditional occasions.","price": 1800000,  "stock": 25, "imgs": [IMG.format("1558769132-cb1aea458c5e")]},
+            {"name": "Ladies Ankara Gown",            "desc": "Flared midi gown in vibrant Ankara print, off-shoulder option.",    "price": 750000,   "stock": 40, "imgs": [IMG.format("1612423284934-2850a4ea6b0f")]},
+            {"name": "Men's Chinos (Slim Fit)",       "desc": "Stretch chinos in khaki, navy, and grey. Sizes 28–40.",              "price": 650000,   "stock": 55, "imgs": [IMG.format("1540221652346-e5dd6b50f3e7")]},
+            {"name": "Leather Sneakers (Men's)",      "desc": "Premium faux leather sneakers, cushioned sole. Sizes 40–46.",       "price": 1200000,  "stock": 30, "imgs": [IMG.format("1523754182607-2ff5903ec1e2")]},
+            {"name": "Ladies Block-heel Sandals",     "desc": "Elegant block heels, faux suede, sizes 36–42.",                    "price": 900000,   "stock": 35, "imgs": [IMG.format("1546678064-10516c83c2ef")]},
+            {"name": "Structured Office Handbag",     "desc": "Faux leather tote with laptop compartment and zip closure.",        "price": 1500000,  "stock": 20, "imgs": [IMG.format("1575201046471-082b5c1a1e79")]},
+            {"name": "Men's Polo Shirt (3-pack)",     "desc": "Plain polo shirts in assorted colours, sizes M–3XL.",               "price": 750000,   "stock": 70, "imgs": [IMG.format("1445205170230-053b83016050")]},
+            {"name": "Traditional Beaded Necklace",   "desc": "Handcrafted Nigerian coral-inspired beaded necklace.",              "price": 350000,   "stock": 45, "imgs": [IMG.format("1516763296043-f676c1105999")]},
+            {"name": "Men's Native Senator Suit",     "desc": "Agbada-inspired native senator suit, embroidered.",                 "price": 2800000,  "stock": 15, "imgs": [IMG.format("1665815844395-06f64f44b5e3")]},
+            {"name": "Ladies Wrap Skirt (Ankara)",    "desc": "Reversible wrap skirt, one-size fits most.",                       "price": 380000,   "stock": 50, "imgs": [IMG.format("1612423284934-2850a4ea6b0f")]},
         ],
     },
     "HealthPlus Pharmacy": {
@@ -144,11 +158,11 @@ VENDOR_PRODUCTS = {
         "products": [
             {"name": "Vitamin C 1000mg (60 Tablets)", "desc": "High-potency vitamin C with rose hip, immune support.",              "price": 350000,   "stock": 100,"imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
             {"name": "Multivitamin & Mineral Complex", "desc": "Daily multivitamin, 30 tablets, covers all essential nutrients.",   "price": 420000,   "stock": 80, "imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
-            {"name": "Paracetamol 500mg (100 tabs)",  "desc": "Fast-acting pain and fever relief, pharmacist-approved.",           "price": 120000,   "stock": 150,"imgs": [IMG.format("1550572017-edd951b04bf3")]},
+            {"name": "Paracetamol 500mg (100 tabs)",  "desc": "Fast-acting pain and fever relief, pharmacist-approved.",           "price": 120000,   "stock": 150,"imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
             {"name": "Dettol Antiseptic Liquid 500ml","desc": "Kills 99.9% of bacteria, ideal for wounds and general hygiene.",    "price": 280000,   "stock": 60, "imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
-            {"name": "Cetaphil Moisturising Lotion",  "desc": "250ml gentle daily lotion for sensitive and dry skin.",             "price": 850000,   "stock": 45, "imgs": [IMG.format("1556228578-8c89e6adf883")]},
-            {"name": "Neutrogena Face Wash",           "desc": "Oil-free acne wash, 175ml, for blemish-prone skin.",               "price": 720000,   "stock": 40, "imgs": [IMG.format("1556228578-8c89e6adf883")]},
-            {"name": "Oral-B Electric Toothbrush",    "desc": "Rechargeable electric toothbrush, 3 brushing modes.",              "price": 1800000,  "stock": 25, "imgs": [IMG.format("1607613009820-a29f7bb81c04")]},
+            {"name": "Cetaphil Moisturising Lotion",  "desc": "250ml gentle daily lotion for sensitive and dry skin.",             "price": 850000,   "stock": 45, "imgs": [IMG.format("1583784561126-c18e59057f3b")]},
+            {"name": "Neutrogena Face Wash",           "desc": "Oil-free acne wash, 175ml, for blemish-prone skin.",               "price": 720000,   "stock": 40, "imgs": [IMG.format("1598528738936-c50861cc75a9")]},
+            {"name": "Oral-B Electric Toothbrush",    "desc": "Rechargeable electric toothbrush, 3 brushing modes.",              "price": 1800000,  "stock": 25, "imgs": [IMG.format("1553091844-4204b59e3661")]},
             {"name": "Hand Sanitizer 500ml Pump",     "desc": "70% isopropyl alcohol, kills 99.9% of germs, moisturising.",       "price": 180000,   "stock": 120,"imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
             {"name": "First Aid Kit (40-piece)",      "desc": "Bandages, antiseptic wipes, scissors, tweezers, cotton wool.",     "price": 550000,   "stock": 35, "imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
             {"name": "Omega-3 Fish Oil (60 caps)",    "desc": "High-strength 1000mg fish oil, heart and brain health support.",   "price": 390000,   "stock": 70, "imgs": [IMG.format("1584308666744-24d5c474f2ae")]},
@@ -159,16 +173,16 @@ VENDOR_PRODUCTS = {
         "description": "Everything you need for a well-equipped Nigerian kitchen.",
         "logo_url": "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=200&q=80",
         "products": [
-            {"name": "Non-Stick Frying Pan 28cm",     "desc": "Granite-coated non-stick, induction compatible, glass lid.",       "price": 1200000,  "stock": 40, "imgs": [IMG.format("1556909114-f6e7ad7d3136")]},
-            {"name": "Pressure Cooker 6-Litre",       "desc": "Stainless steel pressure cooker with safety valve, fast cooking.",  "price": 2800000,  "stock": 20, "imgs": [IMG.format("1585515656618-9dba56cfce61")]},
-            {"name": "Blender 1.5L (600W)",           "desc": "Powerful blender for smoothies, soups, and tomatoes. 3 speeds.",  "price": 1500000,  "stock": 30, "imgs": [IMG.format("1570197788417-0e82375c9371")]},
-            {"name": "Kitchen Knife Set (6-piece)",   "desc": "Stainless steel chef knives with wooden block, ultra-sharp.",      "price": 1800000,  "stock": 25, "imgs": [IMG.format("1593618998000-fb219ac9d0b1")]},
-            {"name": "Stainless Mixing Bowl Set (3)", "desc": "Nesting mixing bowls: 2L, 3L, 4L, dishwasher safe.",               "price": 750000,   "stock": 50, "imgs": [IMG.format("1575367382197-8ccf5e6f769d")]},
-            {"name": "Electric Kettle 1.7L",          "desc": "Stainless steel kettle, auto shutoff, boils in 3 minutes.",       "price": 980000,   "stock": 35, "imgs": [IMG.format("1544787219-7f47ccb76574")]},
-            {"name": "Food Storage Set (10 pieces)",  "desc": "BPA-free airtight containers, microwave and freezer safe.",        "price": 850000,   "stock": 60, "imgs": [IMG.format("1606854428451-02ade43c793c")]},
-            {"name": "Cast Iron Dutch Oven 4L",       "desc": "Enamelled cast iron, oven-safe to 260°C, excellent heat retention.","price": 3200000, "stock": 12, "imgs": [IMG.format("1585515656618-9dba56cfce61")]},
-            {"name": "Dish Drying Rack (2-tier)",     "desc": "Stainless steel 2-tier dish rack with drip tray.",                "price": 650000,   "stock": 45, "imgs": [IMG.format("1575367382197-8ccf5e6f769d")]},
-            {"name": "Hand Mixer 300W",                "desc": "5-speed electric hand mixer, dough hooks and beaters included.",   "price": 750000,   "stock": 28, "imgs": [IMG.format("1570197788417-0e82375c9371")]},
+            {"name": "Non-Stick Frying Pan 28cm",     "desc": "Granite-coated non-stick, induction compatible, glass lid.",       "price": 1200000,  "stock": 40, "imgs": [IMG.format("1518291344630-4857135fb581")]},
+            {"name": "Pressure Cooker 6-Litre",       "desc": "Stainless steel pressure cooker with safety valve, fast cooking.",  "price": 2800000,  "stock": 20, "imgs": [IMG.format("1604414499020-f9ac575bc5ec")]},
+            {"name": "Blender 1.5L (600W)",           "desc": "Powerful blender for smoothies, soups, and tomatoes. 3 speeds.",  "price": 1500000,  "stock": 30, "imgs": [IMG.format("1654064754916-e3edeb09c042")]},
+            {"name": "Kitchen Knife Set (6-piece)",   "desc": "Stainless steel chef knives with wooden block, ultra-sharp.",      "price": 1800000,  "stock": 25, "imgs": [IMG.format("1584990347163-2b86b71390d6")]},
+            {"name": "Stainless Mixing Bowl Set (3)", "desc": "Nesting mixing bowls: 2L, 3L, 4L, dishwasher safe.",               "price": 750000,   "stock": 50, "imgs": [IMG.format("1584990347193-6bebebfeaeee")]},
+            {"name": "Electric Kettle 1.7L",          "desc": "Stainless steel kettle, auto shutoff, boils in 3 minutes.",       "price": 980000,   "stock": 35, "imgs": [IMG.format("1738520420652-0c47cea3922b")]},
+            {"name": "Food Storage Set (10 pieces)",  "desc": "BPA-free airtight containers, microwave and freezer safe.",        "price": 850000,   "stock": 60, "imgs": [IMG.format("1685514128186-c5d8d7e90e1a")]},
+            {"name": "Cast Iron Dutch Oven 4L",       "desc": "Enamelled cast iron, oven-safe to 260°C, excellent heat retention.","price": 3200000, "stock": 12, "imgs": [IMG.format("1588279102819-f4520e40b1c6")]},
+            {"name": "Dish Drying Rack (2-tier)",     "desc": "Stainless steel 2-tier dish rack with drip tray.",                "price": 650000,   "stock": 45, "imgs": [IMG.format("1556910633-5099dc3971e8")]},
+            {"name": "Hand Mixer 300W",                "desc": "5-speed electric hand mixer, dough hooks and beaters included.",   "price": 750000,   "stock": 28, "imgs": [IMG.format("1693875161720-b0c2401c1874")]},
         ],
     },
     "SportZone NG": {
@@ -176,14 +190,14 @@ VENDOR_PRODUCTS = {
         "description": "Quality sports equipment and fitness gear for every level.",
         "logo_url": "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200&q=80",
         "products": [
-            {"name": "Adidas Football (Size 5)",      "desc": "Official size 5 football, synthetic leather, ideal for outdoor.",  "price": 1200000,  "stock": 40, "imgs": [IMG.format("1516122572888-9a3c90b7b0cf")]},
-            {"name": "Speed Jump Rope",               "desc": "Adjustable steel wire jump rope with ball-bearing handles.",       "price": 250000,   "stock": 80, "imgs": [IMG.format("1517836357463-d25dfeac3438")]},
-            {"name": "Non-Slip Yoga Mat 6mm",         "desc": "TPE foam yoga mat, 183×61cm, carry strap included.",               "price": 680000,   "stock": 35, "imgs": [IMG.format("1545205597-3d9d02c29597")]},
-            {"name": "Resistance Band Set (5 packs)", "desc": "5 resistance levels, latex-free, includes carry bag.",             "price": 450000,   "stock": 60, "imgs": [IMG.format("1517836357463-d25dfeac3438")]},
-            {"name": "Adjustable Dumbbell Pair 10kg", "desc": "Cast iron dumbbells with rubber coating, 5kg × 2.",               "price": 1800000,  "stock": 20, "imgs": [IMG.format("1571019614242-c5c5dee81066")]},
-            {"name": "Gym Bag (30L Backpack)",        "desc": "Waterproof gym bag with shoe compartment, multiple pockets.",     "price": 850000,   "stock": 30, "imgs": [IMG.format("1553062407-98eeb64c6a62")]},
-            {"name": "Sports Water Bottle 1L",        "desc": "BPA-free Tritan bottle, leak-proof, with straw and carry loop.",  "price": 280000,   "stock": 70, "imgs": [IMG.format("1602143407955-d60d4608abb0")]},
-            {"name": "Cooling Sports Towel",          "desc": "Microfibre quick-dry towel, 120×40cm, stays cold for 2 hours.",   "price": 180000,   "stock": 90, "imgs": [IMG.format("1517836357463-d25dfeac3438")]},
+            {"name": "Adidas Football (Size 5)",      "desc": "Official size 5 football, synthetic leather, ideal for outdoor.",  "price": 1200000,  "stock": 40, "imgs": [IMG.format("1601879305068-751abb5821e6")]},
+            {"name": "Speed Jump Rope",               "desc": "Adjustable steel wire jump rope with ball-bearing handles.",       "price": 250000,   "stock": 80, "imgs": [IMG.format("1595909315417-2edd382a56dc")]},
+            {"name": "Non-Slip Yoga Mat 6mm",         "desc": "TPE foam yoga mat, 183×61cm, carry strap included.",               "price": 680000,   "stock": 35, "imgs": [IMG.format("1544441893-675973e31985")]},
+            {"name": "Resistance Band Set (5 packs)", "desc": "5 resistance levels, latex-free, includes carry bag.",             "price": 450000,   "stock": 60, "imgs": [IMG.format("1595909315417-2edd382a56dc")]},
+            {"name": "Adjustable Dumbbell Pair 10kg", "desc": "Cast iron dumbbells with rubber coating, 5kg × 2.",               "price": 1800000,  "stock": 20, "imgs": [IMG.format("1534438327276-14e5300c3a48")]},
+            {"name": "Gym Bag (30L Backpack)",        "desc": "Waterproof gym bag with shoe compartment, multiple pockets.",     "price": 850000,   "stock": 30, "imgs": [IMG.format("1585365341416-307e4fa22402")]},
+            {"name": "Sports Water Bottle 1L",        "desc": "BPA-free Tritan bottle, leak-proof, with straw and carry loop.",  "price": 280000,   "stock": 70, "imgs": [IMG.format("1555364003-c70d0b807023")]},
+            {"name": "Cooling Sports Towel",          "desc": "Microfibre quick-dry towel, 120×40cm, stays cold for 2 hours.",   "price": 180000,   "stock": 90, "imgs": [IMG.format("1601879305068-751abb5821e6")]},
         ],
     },
     "Baby World Nigeria": {
@@ -191,30 +205,30 @@ VENDOR_PRODUCTS = {
         "description": "Everything your little one needs — safe, quality, and affordable.",
         "logo_url": "https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?w=200&q=80",
         "products": [
-            {"name": "Baby Romper Set (3-pack)",      "desc": "Soft cotton rompers, sizes 0–18 months, snap-button closure.",    "price": 650000,   "stock": 50, "imgs": [IMG.format("1519689680058-324335573bb0")]},
-            {"name": "Dr. Brown's Bottles Set (3)",   "desc": "Anti-colic feeding bottles, 150ml + 250ml, BPA-free.",           "price": 1200000,  "stock": 35, "imgs": [IMG.format("1515488042361-ee00e0ddd4e4")]},
-            {"name": "Baby Wipes (6 packs × 80)",     "desc": "Fragrance-free, alcohol-free sensitive wipes for newborns.",     "price": 480000,   "stock": 80, "imgs": [IMG.format("1515488042361-ee00e0ddd4e4")]},
-            {"name": "Johnson's Baby Lotion 500ml",   "desc": "Gentle all-over baby lotion, hypoallergenic, dermatologist tested.","price": 350000, "stock": 100,"imgs": [IMG.format("1556228578-8c89e6adf883")]},
-            {"name": "Teething Toy Set (BPA-free)",   "desc": "Silicone teething rings in assorted shapes, soothing and safe.",  "price": 280000,   "stock": 60, "imgs": [IMG.format("1515488042361-ee00e0ddd4e4")]},
-            {"name": "Baby Blanket (Muslin 4-pack)",  "desc": "100% organic cotton muslin swaddle blankets, 120×120cm.",        "price": 580000,   "stock": 40, "imgs": [IMG.format("1519689680058-324335573bb0")]},
-            {"name": "Stroller Baby Toy Bar",         "desc": "Clip-on stroller toy bar with rattle, mirror, and teether.",     "price": 420000,   "stock": 30, "imgs": [IMG.format("1515488042361-ee00e0ddd4e4")]},
-            {"name": "Baby Walker (Adjustable)",      "desc": "3-in-1 adjustable baby walker, activity tray, 6–18 months.",    "price": 2200000,  "stock": 15, "imgs": [IMG.format("1515488042361-ee00e0ddd4e4")]},
-            {"name": "Diaper Bag Backpack",           "desc": "Multi-pocket diaper bag, includes changing mat, insulated pocket.","price": 1500000, "stock": 20, "imgs": [IMG.format("1553062407-98eeb64c6a62")]},
+            {"name": "Baby Romper Set (3-pack)",      "desc": "Soft cotton rompers, sizes 0–18 months, snap-button closure.",    "price": 650000,   "stock": 50, "imgs": [IMG.format("1626761543058-b7d8c6da82b6")]},
+            {"name": "Dr. Brown's Bottles Set (3)",   "desc": "Anti-colic feeding bottles, 150ml + 250ml, BPA-free.",           "price": 1200000,  "stock": 35, "imgs": [IMG.format("1769836215168-2c90327d786d")]},
+            {"name": "Baby Wipes (6 packs × 80)",     "desc": "Fragrance-free, alcohol-free sensitive wipes for newborns.",     "price": 480000,   "stock": 80, "imgs": [IMG.format("1769836215168-2c90327d786d")]},
+            {"name": "Johnson's Baby Lotion 500ml",   "desc": "Gentle all-over baby lotion, hypoallergenic, dermatologist tested.","price": 350000, "stock": 100,"imgs": [IMG.format("1583784561126-c18e59057f3b")]},
+            {"name": "Teething Toy Set (BPA-free)",   "desc": "Silicone teething rings in assorted shapes, soothing and safe.",  "price": 280000,   "stock": 60, "imgs": [IMG.format("1655087751207-1020c89f7eee")]},
+            {"name": "Baby Blanket (Muslin 4-pack)",  "desc": "100% organic cotton muslin swaddle blankets, 120×120cm.",        "price": 580000,   "stock": 40, "imgs": [IMG.format("1626761543058-b7d8c6da82b6")]},
+            {"name": "Stroller Baby Toy Bar",         "desc": "Clip-on stroller toy bar with rattle, mirror, and teether.",     "price": 420000,   "stock": 30, "imgs": [IMG.format("1628719209955-0620515dacea")]},
+            {"name": "Baby Walker (Adjustable)",      "desc": "3-in-1 adjustable baby walker, activity tray, 6–18 months.",    "price": 2200000,  "stock": 15, "imgs": [IMG.format("1659629150656-b6f87bd86954")]},
+            {"name": "Diaper Bag Backpack",           "desc": "Multi-pocket diaper bag, includes changing mat, insulated pocket.","price": 1500000, "stock": 20, "imgs": [IMG.format("1585365341416-307e4fa22402")]},
         ],
     },
     "Bookshelf NG": {
         "category": "books-stationery",
         "description": "Books, educational materials, and quality stationery for all ages.",
-        "logo_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80",
+        "logo_url": "https://images.unsplash.com/photo-1591203930900-5cb0eec7cc30?w=200&q=80",
         "products": [
-            {"name": "Things Fall Apart (Chinua Achebe)","desc": "The classic Nigerian novel by Chinua Achebe. Paperback edition.","price": 180000,  "stock": 80, "imgs": [IMG.format("1507003211169-0a1dd7228f2d")]},
-            {"name": "Rich Dad Poor Dad",             "desc": "Robert Kiyosaki's bestselling personal finance book.",            "price": 250000,   "stock": 60, "imgs": [IMG.format("1507003211169-0a1dd7228f2d")]},
-            {"name": "Python Crash Course (3rd Ed.)", "desc": "Hands-on introduction to Python programming for beginners.",     "price": 650000,   "stock": 30, "imgs": [IMG.format("1507003211169-0a1dd7228f2d")]},
-            {"name": "WAEC Past Questions (Sciences)", "desc": "10-year WAEC past questions for Biology, Chemistry, and Physics.","price": 120000,  "stock": 100,"imgs": [IMG.format("1507003211169-0a1dd7228f2d")]},
-            {"name": "JAMB CBT Practice App (Card)",  "desc": "Scratch card for JAMB past questions app, unlimited access 1 year.","price": 200000, "stock": 150,"imgs": [IMG.format("1507003211169-0a1dd7228f2d")]},
-            {"name": "A4 Drawing Pad (50 sheets)",    "desc": "110gsm cartridge drawing pad, acid-free, ideal for sketching.",  "price": 250000,   "stock": 70, "imgs": [IMG.format("1513364776144-60329b07e83a")]},
-            {"name": "BIC Ballpoint Pens (50 pack)",  "desc": "Reliable blue ballpoint pens, smooth writing, long-lasting.",   "price": 180000,   "stock": 120,"imgs": [IMG.format("1513364776144-60329b07e83a")]},
-            {"name": "Casio FX-991ES Scientific Calc","desc": "Solar-powered scientific calculator, 417 functions, WAEC approved.","price": 1500000,"stock": 45, "imgs": [IMG.format("1587829741301-dc798b83add3")]},
+            {"name": "Things Fall Apart (Chinua Achebe)","desc": "The classic Nigerian novel by Chinua Achebe. Paperback edition.","price": 180000,  "stock": 80, "imgs": [IMG.format("1683879025805-a268b690613e")]},
+            {"name": "Rich Dad Poor Dad",             "desc": "Robert Kiyosaki's bestselling personal finance book.",            "price": 250000,   "stock": 60, "imgs": [IMG.format("1726726192146-5532a7618201")]},
+            {"name": "Python Crash Course (3rd Ed.)", "desc": "Hands-on introduction to Python programming for beginners.",     "price": 650000,   "stock": 30, "imgs": [IMG.format("1591203930900-5cb0eec7cc30")]},
+            {"name": "WAEC Past Questions (Sciences)", "desc": "10-year WAEC past questions for Biology, Chemistry, and Physics.","price": 120000,  "stock": 100,"imgs": [IMG.format("1650806482474-83f371698b56")]},
+            {"name": "JAMB CBT Practice App (Card)",  "desc": "Scratch card for JAMB past questions app, unlimited access 1 year.","price": 200000, "stock": 150,"imgs": [IMG.format("1783099780225-406c0ec2aa7d")]},
+            {"name": "A4 Drawing Pad (50 sheets)",    "desc": "110gsm cartridge drawing pad, acid-free, ideal for sketching.",  "price": 250000,   "stock": 70, "imgs": [IMG.format("1566869112473-77c4fb94359c")]},
+            {"name": "BIC Ballpoint Pens (50 pack)",  "desc": "Reliable blue ballpoint pens, smooth writing, long-lasting.",   "price": 180000,   "stock": 120,"imgs": [IMG.format("1589412336918-bcae3dd7df0e")]},
+            {"name": "Casio FX-991ES Scientific Calc","desc": "Solar-powered scientific calculator, 417 functions, WAEC approved.","price": 1500000,"stock": 45, "imgs": [IMG.format("1654931800100-2ecf6eee7c64")]},
         ],
     },
 }
@@ -285,14 +299,21 @@ async def seed() -> None:
             vid = uuid.uuid4()
             slug = business.lower().replace(" ", "-").replace("&", "and")
             slug = "".join(c if c.isalnum() or c == "-" else "" for c in slug)
+            # Real, distinct Lagos-area coordinates so proximity-based hub/rider dispatch
+            # (DispatchService._pick_hub, _nearest_by_distance) has something meaningful to
+            # compare — previously vendors were seeded with no address/lat/lng at all, so every
+            # distance comparison against a vendor fell back to zone matching.
+            addr, lat, lng = VENDOR_LOCATIONS[business]
             await db.execute(text(
-                "INSERT INTO vendors (id, user_id, name, slug, description, logo_url, status, zone_id, rating) "
-                "VALUES (:id, :uid, :name, :slug, :desc, :logo, 'active', :zone, :rating)"
+                "INSERT INTO vendors "
+                "(id, user_id, name, slug, description, logo_url, status, zone_id, rating, address, lat, lng) "
+                "VALUES (:id, :uid, :name, :slug, :desc, :logo, 'active', :zone, :rating, :addr, :lat, :lng)"
             ), {"id": str(vid), "uid": uid, "name": business, "slug": slug,
                 "desc": VENDOR_PRODUCTS[business]["description"],
                 "logo": VENDOR_PRODUCTS[business]["logo_url"],
                 "zone": str(zone_id),
-                "rating": round(3.8 + (hash(business) % 13) / 10, 1)})
+                "rating": round(3.8 + (hash(business) % 13) / 10, 1),
+                "addr": addr, "lat": lat, "lng": lng})
 
             # Products
             cat_slug = VENDOR_PRODUCTS[business]["category"]
@@ -324,15 +345,20 @@ async def seed() -> None:
         print("  ✓ Rider profiles created")
 
         # 6. Hub agents + agent_hubs
-        hub_names = ["Hub Central Lagos", "Hub Lekki"]
-        hub_emails = ["hub1@avdan.com", "hub2@avdan.com"]
-        for email, hub_name in zip(hub_emails, hub_names):
+        # Real, distinct Lagos coordinates — both hubs used to seed identical (6.5244, 3.3792),
+        # which made haversine-distance-based nearest-hub dispatch (DispatchService._pick_hub)
+        # meaningless (every comparison was a tie).
+        hubs = [
+            ("Hub Central Lagos", "hub1@avdan.com", 6.6018, 3.3515),  # Ikeja
+            ("Hub Lekki", "hub2@avdan.com", 6.4698, 3.5852),  # Lekki Phase 1
+        ]
+        for hub_name, email, lat, lng in hubs:
             uid = user_id_map[email]
             hub_id = uuid.uuid4()
             await db.execute(text(
                 "INSERT INTO agent_hubs (id, name, zone_id, lat, lng, capacity, active) "
-                "VALUES (:id, :name, :zone, 6.5244, 3.3792, 50, true)"
-            ), {"id": str(hub_id), "name": hub_name, "zone": str(zone_id)})
+                "VALUES (:id, :name, :zone, :lat, :lng, 50, true)"
+            ), {"id": str(hub_id), "name": hub_name, "zone": str(zone_id), "lat": lat, "lng": lng})
             await db.execute(text(
                 "UPDATE users SET hub_id = :hub_id WHERE id = :uid"
             ), {"hub_id": str(hub_id), "uid": uid})

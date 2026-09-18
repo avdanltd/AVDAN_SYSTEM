@@ -3,8 +3,9 @@
 import { useEffect, useCallback, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useTheme } from 'next-themes'
 import { ArrowRight, ShoppingBag, ChevronLeft, ChevronRight, Search, Truck } from 'lucide-react'
-import { CategoryIcon } from '@avdan/ui'
+import { CategoryIcon, EmptyState } from '@avdan/ui'
 import {
   Button,
   Carousel,
@@ -26,7 +27,10 @@ import { cn } from '@avdan/ui'
 const HERO_SLIDES = [
   {
     id: 1,
-    image: 'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=1600&q=80&fit=crop',
+    // Replaced — the original photo was a flat-lay that was ~80% pure black background, nearly
+    // invisible under any legibility scrim (STATUS_DESIGN.md §6). This one is an actual market
+    // scene with warm light and a real vendor at a stall — reads correctly in both themes.
+    image: 'https://images.unsplash.com/photo-1533900298318-6b8da08a523e?w=1600&q=80&fit=crop',
     eyebrow: 'Fresh On AVDAN',
     headline: 'Shop from top',
     headlineAccent: 'local vendors.',
@@ -46,7 +50,9 @@ const HERO_SLIDES = [
   },
   {
     id: 3,
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1600&q=80&fit=crop',
+    // Replaced — the original photo was a clothing boutique interior, mismatched with an
+    // "Electronics & gadgets" slide (STATUS_DESIGN.md §6). This one is an actual tech flat-lay.
+    image: 'https://images.unsplash.com/photo-1547381826-d0daa1bf63d8?w=1600&q=80&fit=crop',
     eyebrow: 'Trending Now',
     headline: 'Electronics',
     headlineAccent: '& gadgets.',
@@ -69,6 +75,13 @@ const HERO_SLIDES = [
 function HeroCarousel() {
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)
+  const { resolvedTheme } = useTheme()
+  // `resolvedTheme` is undefined until next-themes mounts, specifically to avoid an SSR/CSR
+  // mismatch — guessing light here (the site's actual default) means the very first paint is
+  // already correct in the common case, with no visible flicker once it resolves.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const isDark = mounted && resolvedTheme === 'dark'
 
   const onSelect = useCallback(() => {
     if (!api) return
@@ -105,7 +118,12 @@ function HeroCarousel() {
         <CarouselContent className="-ml-0">
           {HERO_SLIDES.map((slide) => (
             <CarouselItem key={slide.id} className="pl-0">
-              <div className="relative h-[480px] w-full overflow-hidden bg-secondary sm:h-[560px] lg:h-[640px]">
+              <div
+                className={cn(
+                  'relative h-[480px] w-full overflow-hidden sm:h-[560px] lg:h-[640px]',
+                  isDark ? 'bg-[#080d1c]' : 'bg-white',
+                )}
+              >
                 {/* Background image */}
                 <Image
                   src={slide.image}
@@ -115,22 +133,51 @@ function HeroCarousel() {
                   sizes="100vw"
                   priority={slide.id === 1}
                 />
-                {/* Soft light wash so dark editorial text stays legible over photography */}
-                <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/20" />
+                {/* The scrim's colour follows theme explicitly (via `isDark`, not the `background`
+                    token) rather than a `dark:` variant — this project doesn't wire one up, since
+                    every other surface uses token-based classes (`bg-background` etc.) instead. A
+                    plain `background`-token gradient was tried here once and looked near-opaque in
+                    dark mode, hiding the photo — these two hand-picked scrims are tuned to actually
+                    fade gently over a photo in both themes. */}
+                <div
+                  className={cn(
+                    'absolute inset-0 bg-gradient-to-r',
+                    isDark
+                      ? 'from-[#080d1c] via-[#080d1c]/70 to-[#080d1c]/10'
+                      : 'from-white via-white/75 to-white/20',
+                  )}
+                />
 
                 {/* Slide content */}
                 <div className="absolute inset-0 flex items-center">
                   <div className="mx-auto w-full max-w-8xl px-6 sm:px-8 lg:px-12">
                     <div className="max-w-xl space-y-6">
-                      <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-bold uppercase tracking-widest text-primary">
+                      <span
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-widest',
+                          isDark
+                            ? 'border-blue-300/30 bg-blue-400/15 text-blue-200'
+                            : 'border-primary/20 bg-primary/10 text-primary',
+                        )}
+                      >
                         {slide.eyebrow}
                       </span>
-                      <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+                      <h1
+                        className={cn(
+                          'font-display text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl',
+                          isDark ? 'text-white' : 'text-foreground',
+                        )}
+                      >
                         {slide.headline}
                         <br />
-                        <span className="italic text-primary">{slide.headlineAccent}</span>
+                        <span className="italic text-brand-accent">{slide.headlineAccent}</span>
                       </h1>
-                      <p className="max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg">
+                      <p
+                        className={cn(
+                          'max-w-md text-base leading-relaxed sm:text-lg',
+                          isDark ? 'text-white/70' : 'text-muted-foreground',
+                        )}
+                      >
                         {slide.subline}
                       </p>
                       <div className="flex flex-wrap gap-3 pt-2">
@@ -140,7 +187,17 @@ function HeroCarousel() {
                             {slide.cta.label}
                           </Link>
                         </Button>
-                        <Button size="lg" variant="outline" asChild className="bg-background/80 backdrop-blur-sm">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          asChild
+                          className={cn(
+                            'backdrop-blur-sm',
+                            isDark
+                              ? 'border-white/30 bg-white/10 text-white hover:bg-white/20'
+                              : 'border-black/10 bg-black/5 text-foreground hover:bg-black/10',
+                          )}
+                        >
                           <Link href={slide.ctaSecondary.href}>{slide.ctaSecondary.label}</Link>
                         </Button>
                       </div>
@@ -152,17 +209,28 @@ function HeroCarousel() {
           ))}
         </CarouselContent>
 
-        {/* Prev / Next arrows */}
+        {/* Prev / Next arrows — float on the photo itself, so they follow the same isDark switch
+            as the scrim above rather than the app's own background surface tokens. */}
         <button
           onClick={() => api?.scrollPrev()}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-card backdrop-blur-sm transition-colors hover:bg-background"
+          className={cn(
+            'absolute left-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
+            isDark
+              ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
+              : 'border border-black/10 bg-white/70 text-foreground hover:bg-white',
+          )}
           aria-label="Previous slide"
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <button
           onClick={() => api?.scrollNext()}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background/80 text-foreground shadow-card backdrop-blur-sm transition-colors hover:bg-background"
+          className={cn(
+            'absolute right-4 top-1/2 z-10 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-sm transition-colors',
+            isDark
+              ? 'border border-white/20 bg-white/10 text-white hover:bg-white/20'
+              : 'border border-black/10 bg-white/70 text-foreground hover:bg-white',
+          )}
           aria-label="Next slide"
         >
           <ChevronRight className="h-5 w-5" />
@@ -176,7 +244,11 @@ function HeroCarousel() {
               onClick={() => api?.scrollTo(i)}
               className={cn(
                 'h-2 rounded-full transition-all duration-300',
-                i === current ? 'w-6 bg-primary' : 'w-2 bg-foreground/20 hover:bg-foreground/40',
+                i === current
+                  ? 'w-6 bg-primary'
+                  : isDark
+                    ? 'w-2 bg-white/25 hover:bg-white/40'
+                    : 'w-2 bg-black/15 hover:bg-black/25',
               )}
               aria-label={`Go to slide ${i + 1}`}
             />
@@ -251,7 +323,7 @@ function CategoryGrid() {
 export function StoreHomePage() {
   const { data: featuredData, isLoading: loadingFeatured } = useProducts({ sort: 'popular', limit: 8 })
   const { data: newArrivalsData, isLoading: loadingNew } = useProducts({ sort: 'newest', limit: 8 })
-  const { data: vendorsData, isLoading: loadingVendors } = useVendors({ limit: '4', status: 'active' })
+  const { data: vendorsData, isLoading: loadingVendors, error: vendorsError } = useVendors({ limit: '4', status: 'active' })
 
   return (
     <div>
@@ -285,9 +357,19 @@ export function StoreHomePage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {Array.from({ length: 4 }).map((_, i) => <VendorCardSkeleton key={i} />)}
             </div>
+          ) : vendorsError ? (
+            <EmptyState
+              title="Could not load vendors"
+              description="Something went wrong. Please try again."
+            />
+          ) : !vendorsData?.items?.length ? (
+            <EmptyState
+              title="No vendors yet"
+              description="Check back soon — new vendors join AVDAN every week."
+            />
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              {vendorsData?.items?.map((vendor) => (
+              {vendorsData.items.map((vendor) => (
                 <VendorCard key={vendor.id} vendor={vendor} />
               ))}
             </div>

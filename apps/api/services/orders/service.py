@@ -1,6 +1,7 @@
 """Order service — the only place that writes orders.status."""
 from __future__ import annotations
 
+import math
 import uuid
 
 from sqlalchemy import func, select
@@ -13,9 +14,43 @@ from services.orders.schemas import CreateOrderRequest, RejectOrderRequest
 from services.orders.state_machine import OrderStatus, validate_transition
 
 
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in kilometres. Duplicated from services/dispatch/service.py — that
+    module imports OrderService, so importing the other way would be circular."""
+    R = 6371.0  # noqa: N806 — standard symbol for Earth's radius
+    lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
+    return R * 2 * math.asin(math.sqrt(a))
+
+
 class OrderService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
+
+    async def _calculate_delivery_fee(self, vendor: object, delivery_address: dict) -> int:
+        """base_fee_kobo + per_km_kobo * distance(vendor, customer), from platform_config's
+        delivery_fee_structure. Falls back to the flat base fee whenever either coordinate is
+        missing — which, today, is every order: checkout's DeliveryAddress schema has no lat/lng
+        field, so customer coordinates are never actually captured yet. This degrades gracefully
+        now and picks up real distance-based pricing automatically once that's wired up."""
+        from services.analytics.service import AnalyticsService
+
+        config = await AnalyticsService(self.db).get_config()
+        fee_structure = config.get("delivery_fee_structure", {})
+        base_fee_kobo = int(fee_structure.get("base_fee_kobo", 0))
+        per_km_kobo = int(fee_structure.get("per_km_kobo", 0))
+
+        v_lat = getattr(vendor, "lat", None)
+        v_lng = getattr(vendor, "lng", None)
+        c_lat = delivery_address.get("lat")
+        c_lng = delivery_address.get("lng")
+        if v_lat is None or v_lng is None or c_lat is None or c_lng is None:
+            return base_fee_kobo
+
+        distance_km = _haversine_km(float(v_lat), float(v_lng), float(c_lat), float(c_lng))
+        return base_fee_kobo + int(per_km_kobo * distance_km)
 
     # ── Customer ──────────────────────────────────────────────────────────────
 
@@ -76,13 +111,17 @@ class OrderService:
                 }
             )
 
+        delivery_address = data.delivery_address.model_dump()
+        delivery_fee_kobo = await self._calculate_delivery_fee(vendor, delivery_address)
+
         # Create order
         order = Order(
             customer_id=uuid.UUID(customer_id),
             vendor_id=vendor.id,
             status=OrderStatus.PENDING,
             total_kobo=total_kobo,
-            delivery_address=data.delivery_address.model_dump(),
+            delivery_fee_kobo=delivery_fee_kobo,
+            delivery_address=delivery_address,
         )
         self.db.add(order)
         await self.db.flush()
@@ -143,11 +182,32 @@ class OrderService:
         return order
 
     async def cancel_order(self, customer_id: str, order_id: str) -> Order:
+        from datetime import UTC, datetime
+
+        from services.analytics.service import AnalyticsService
+
         order = await self._get_order(order_id)
         if str(order.customer_id) != customer_id:
             raise ForbiddenException("Access denied")
         if order.status != OrderStatus.PENDING:
             raise AppError(400, "INVALID_TRANSITION", "Only PENDING orders can be cancelled")
+
+        # `order_cancellation_window_minutes` (admin-configurable, PlatformConfig) existed as a
+        # config value with no enforcement anywhere until now. Scoped deliberately to PENDING-only
+        # cancellation (no money has moved yet, so this is purely a "how long is an unpaid order
+        # left cancellable before it's considered abandoned" policy) rather than extending
+        # self-service cancellation to PAID+ orders, which would need to trigger a real refund —
+        # a bigger product decision this session did not make unprompted.
+        config = await AnalyticsService(self.db).get_config()
+        window_minutes = config["order_cancellation_window_minutes"]
+        age_minutes = (datetime.now(UTC) - order.created_at).total_seconds() / 60
+        if age_minutes > window_minutes:
+            raise AppError(
+                400,
+                "CANCELLATION_WINDOW_EXPIRED",
+                f"This order can no longer be cancelled — the {window_minutes}-minute "
+                "cancellation window has passed. Contact support if you need help.",
+            )
 
         await self._apply_transition(order, OrderStatus.CANCELLED, customer_id, "customer")
         await self._restore_stock(order_id)

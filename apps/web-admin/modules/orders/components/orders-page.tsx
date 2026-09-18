@@ -62,7 +62,7 @@ export function OrdersPage() {
   if (dateFrom) params.date_from = dateFrom;
   if (dateTo) params.date_to = dateTo;
 
-  const { data, isLoading } = useAdminOrders(params);
+  const { data, isLoading, isError, refetch } = useAdminOrders(params);
   const orders = data?.items ?? [];
   const total = data?.total ?? 0;
   const pages = data ? Math.ceil(data.total / (data.page_size || 20)) : 1;
@@ -105,7 +105,7 @@ export function OrdersPage() {
       header: "Amount",
       cell: (row) => (
         <span className="font-medium tabular-nums">
-          {formatKobo(row.total_kobo)}
+          {formatKobo(row.total_kobo + row.delivery_fee_kobo)}
         </span>
       ),
     },
@@ -189,6 +189,9 @@ export function OrdersPage() {
           data={orders}
           keyExtractor={(row) => row.id}
           loading={isLoading}
+          error={isError}
+          errorMessage="Couldn't load orders."
+          onRetry={() => refetch()}
           emptyMessage="No orders found."
           onRowClick={(row) => router.push(ROUTES.order(row.id))}
         />

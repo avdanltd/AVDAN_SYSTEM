@@ -7,7 +7,7 @@ import { statusLabel } from '@/constants/status'
 import { useRiderOrders, useRiderOrderHistory } from '../hooks/use-rider-orders'
 import { formatAddress } from './dashboard'
 import type { RiderOrder } from '../types'
-import { Badge, Card, EmptyState, Skeleton, fonts, formatKobo, formatRelative, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
+import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, formatRelative, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
 type Tab = 'active' | 'history'
 
@@ -20,15 +20,20 @@ function OrderCard({ order, onPress }: { order: RiderOrder; onPress: () => void 
       <Card style={styles.card}>
         <View style={styles.cardTop}>
           <Badge label={statusLabel(order.status)} bg={tone.bg} fg={tone.fg} />
-          <Text style={[styles.amount, { color: colors.foreground }]}>
-            {formatKobo(order.total_kobo)}
-          </Text>
+          <View style={styles.amountBlock}>
+            <Text style={[styles.amountLabel, { color: colors.mutedForeground }]}>You earn</Text>
+            <Text style={[styles.amount, { color: colors.foreground }]}>
+              {formatKobo(order.delivery_fee_kobo)}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.addressRow}>
           <MapPin size={15} color={colors.subtleForeground} />
           <Text style={[styles.address, { color: colors.foreground }]} numberOfLines={2}>
-            {formatAddress(order.delivery_address)}
+            {Object.keys(order.delivery_address ?? {}).length > 0
+              ? formatAddress(order.delivery_address)
+              : (order.hub_name ?? 'Drop-off hub')}
           </Text>
         </View>
 
@@ -60,7 +65,7 @@ function LoadingList() {
 
 export function OrdersList() {
   const router = useRouter()
-  const { colors } = useTheme()
+  const { colors, shadowCard } = useTheme()
   const [tab, setTab] = useState<Tab>('active')
 
   const active = useRiderOrders()
@@ -83,7 +88,7 @@ export function OrdersList() {
               accessibilityState={{ selected }}
               style={[
                 styles.segmentItem,
-                selected && { backgroundColor: colors.card, ...styles.segmentActive },
+                selected && { backgroundColor: colors.card, ...shadowCard },
               ]}
             >
               <Text
@@ -102,6 +107,17 @@ export function OrdersList() {
 
       {query.isLoading ? (
         <LoadingList />
+      ) : query.isError ? (
+        <View style={styles.listEmpty}>
+          <EmptyState
+            icon={<Package size={30} color={colors.subtleForeground} />}
+            title="Couldn't load orders"
+            description="Something went wrong fetching your orders. Check your connection and try again."
+            action={
+              <Button label="Retry" variant="outline" onPress={() => query.refetch()} fullWidth={false} />
+            }
+          />
+        </View>
       ) : (
         <FlatList
           data={orders}
@@ -157,19 +173,14 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     minHeight: 40,
   },
-  segmentActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
   segmentText: { fontFamily: fonts.sansSemiBold, fontSize: 13.5 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },
   listEmpty: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: spacing.lg },
   pressed: { opacity: 0.75 },
   card: { gap: spacing.md },
   cardTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  amountBlock: { alignItems: 'flex-end' },
+  amountLabel: { fontFamily: fonts.sans, fontSize: 11 },
   amount: { fontFamily: fonts.display, fontSize: 17 },
   addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   address: { flex: 1, fontFamily: fonts.sansMedium, fontSize: 14.5, lineHeight: 20 },

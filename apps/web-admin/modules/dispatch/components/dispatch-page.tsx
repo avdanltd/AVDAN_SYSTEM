@@ -42,7 +42,7 @@ function RidersBadge() {
         <Skeleton className="h-4 w-16" />
       ) : (
         <span className="text-sm">
-          <span className={count > 0 ? 'font-semibold text-green-600' : 'font-semibold text-destructive'}>
+          <span className={count > 0 ? 'font-semibold text-success' : 'font-semibold text-destructive'}>
             {count}
           </span>
           <span className="ml-1 text-muted-foreground">rider{count !== 1 ? 's' : ''} online</span>
@@ -65,7 +65,7 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
             <OrderStatusBadge status={order.status} />
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-3 text-sm">
-            <span className="font-medium">{formatKobo(order.total_kobo)}</span>
+            <span className="font-medium">{formatKobo(order.total_kobo + order.delivery_fee_kobo)}</span>
             <span className="text-muted-foreground">
               {itemCount} item{itemCount !== 1 ? 's' : ''}
             </span>
@@ -79,7 +79,7 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
         {showAssign && (
           order.rider_id ? (
             <span className="ml-4 flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <CheckCircle2 className="h-4 w-4 text-success" />
               Rider assigned
             </span>
           ) : (
@@ -98,7 +98,7 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
       {dialogOpen && (
         <AssignRiderDialog
           orderId={order.id}
-          totalKobo={order.total_kobo}
+          totalKobo={order.total_kobo + order.delivery_fee_kobo}
           onOpenChange={(o) => !o && setDialogOpen(false)}
         />
       )}
@@ -109,6 +109,8 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
 function OrderList({
   orders,
   isLoading,
+  isError,
+  onRetry,
   showAssign,
   page,
   total,
@@ -117,6 +119,8 @@ function OrderList({
 }: {
   orders: DispatchOrder[]
   isLoading: boolean
+  isError?: boolean
+  onRetry?: () => void
   showAssign: boolean
   page: number
   total: number
@@ -129,6 +133,21 @@ function OrderList({
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-16 w-full rounded-lg" />
         ))}
+      </div>
+    )
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <Truck className="mb-3 h-10 w-10 text-destructive/40" />
+        <p className="text-sm font-medium text-destructive">Couldn't load this queue.</p>
+        {onRetry && (
+          <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Retry
+          </Button>
+        )}
       </div>
     )
   }
@@ -186,7 +205,7 @@ function AllRidersList() {
               >
                 <div className="flex items-center gap-2">
                   {rider.online ? (
-                    <Wifi className="h-3 w-3 text-green-500" />
+                    <Wifi className="h-3 w-3 text-success" />
                   ) : (
                     <WifiOff className="h-3 w-3 text-muted-foreground" />
                   )}
@@ -222,12 +241,12 @@ export function DispatchPage() {
   const [outPage, setOutPage] = useState(1)
   const [deliveredPage, setDeliveredPage] = useState(1)
 
-  const { data: readyData, isLoading: loadingReady } = useReadyOrders(readyPage)
-  const { data: pickedData, isLoading: loadingPicked } = usePickedUpOrders(pickedPage)
-  const { data: transitData, isLoading: loadingTransit } = useInTransitOrders(transitPage)
-  const { data: atHubData, isLoading: loadingAtHub } = useAtHubOrders(atHubPage)
-  const { data: outData, isLoading: loadingOut } = useOutForDeliveryOrders(outPage)
-  const { data: deliveredData, isLoading: loadingDelivered } = useDeliveredOrders(deliveredPage)
+  const { data: readyData, isLoading: loadingReady, isError: errorReady, refetch: refetchReady } = useReadyOrders(readyPage)
+  const { data: pickedData, isLoading: loadingPicked, isError: errorPicked, refetch: refetchPicked } = usePickedUpOrders(pickedPage)
+  const { data: transitData, isLoading: loadingTransit, isError: errorTransit, refetch: refetchTransit } = useInTransitOrders(transitPage)
+  const { data: atHubData, isLoading: loadingAtHub, isError: errorAtHub, refetch: refetchAtHub } = useAtHubOrders(atHubPage)
+  const { data: outData, isLoading: loadingOut, isError: errorOut, refetch: refetchOut } = useOutForDeliveryOrders(outPage)
+  const { data: deliveredData, isLoading: loadingDelivered, isError: errorDelivered, refetch: refetchDelivered } = useDeliveredOrders(deliveredPage)
 
   function handleRefresh() {
     void queryClient.invalidateQueries({ queryKey: ['dispatch-ready'] })
@@ -311,6 +330,8 @@ export function DispatchPage() {
               <OrderList
                 orders={readyData?.items ?? []}
                 isLoading={loadingReady}
+                isError={errorReady}
+                onRetry={() => refetchReady()}
                 showAssign={true}
                 page={readyPage}
                 total={readyData?.total ?? 0}
@@ -323,6 +344,8 @@ export function DispatchPage() {
               <OrderList
                 orders={pickedData?.items ?? []}
                 isLoading={loadingPicked}
+                isError={errorPicked}
+                onRetry={() => refetchPicked()}
                 showAssign={false}
                 page={pickedPage}
                 total={pickedData?.total ?? 0}
@@ -335,6 +358,8 @@ export function DispatchPage() {
               <OrderList
                 orders={transitData?.items ?? []}
                 isLoading={loadingTransit}
+                isError={errorTransit}
+                onRetry={() => refetchTransit()}
                 showAssign={false}
                 page={transitPage}
                 total={transitData?.total ?? 0}
@@ -347,6 +372,8 @@ export function DispatchPage() {
               <OrderList
                 orders={atHubData?.items ?? []}
                 isLoading={loadingAtHub}
+                isError={errorAtHub}
+                onRetry={() => refetchAtHub()}
                 showAssign={false}
                 page={atHubPage}
                 total={atHubData?.total ?? 0}
@@ -359,6 +386,8 @@ export function DispatchPage() {
               <OrderList
                 orders={outData?.items ?? []}
                 isLoading={loadingOut}
+                isError={errorOut}
+                onRetry={() => refetchOut()}
                 showAssign={false}
                 page={outPage}
                 total={outData?.total ?? 0}
@@ -371,6 +400,8 @@ export function DispatchPage() {
               <OrderList
                 orders={deliveredData?.items ?? []}
                 isLoading={loadingDelivered}
+                isError={errorDelivered}
+                onRetry={() => refetchDelivered()}
                 showAssign={false}
                 page={deliveredPage}
                 total={deliveredData?.total ?? 0}

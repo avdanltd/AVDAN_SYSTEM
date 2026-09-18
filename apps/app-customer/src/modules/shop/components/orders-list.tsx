@@ -32,7 +32,7 @@ function OrderCard({ order, onPress }: { order: CustomerOrder; onPress: () => vo
         <View style={styles.cardTop}>
           <Badge label={statusLabel(order.status)} bg={tone.bg} fg={tone.fg} />
           <Text style={[styles.amount, { color: colors.foreground }]}>
-            {formatKobo(order.total_kobo)}
+            {formatKobo(order.total_kobo + order.delivery_fee_kobo)}
           </Text>
         </View>
         <Text style={[styles.vendor, { color: colors.foreground }]} numberOfLines={1}>
@@ -52,7 +52,7 @@ function OrderCard({ order, onPress }: { order: CustomerOrder; onPress: () => vo
 
 export function OrdersList() {
   const router = useRouter()
-  const { colors } = useTheme()
+  const { colors, shadowCard } = useTheme()
   const [tab, setTab] = useState<Tab>('active')
   const { data, isLoading, isRefetching, refetch } = useOrders()
 
@@ -79,7 +79,7 @@ export function OrdersList() {
               accessibilityState={{ selected }}
               style={[
                 styles.segmentItem,
-                selected && { backgroundColor: colors.card, ...styles.segmentActive },
+                selected && { backgroundColor: colors.card, ...shadowCard },
               ]}
             >
               <Text
@@ -155,13 +155,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm + 2,
     borderRadius: radius.sm,
     minHeight: 40,
-  },
-  segmentActive: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
   },
   segmentText: { fontFamily: fonts.sansSemiBold, fontSize: 13 },
   list: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, gap: spacing.md },

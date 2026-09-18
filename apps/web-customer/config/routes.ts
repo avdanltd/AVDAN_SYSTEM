@@ -20,7 +20,6 @@ export const ROUTES = {
 
   checkout: '/checkout',
   checkoutSuccess: '/checkout/success',
-  checkoutFailed: '/checkout/failed',
 
   profile: '/profile',
   notifications: '/notifications',

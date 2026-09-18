@@ -16,6 +16,7 @@ import {
   SheetContent,
   SheetTrigger,
   Logo,
+  ThemeToggle,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
@@ -62,6 +63,7 @@ export function Navbar() {
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 w-9 rounded-full p-0" aria-label="User menu">

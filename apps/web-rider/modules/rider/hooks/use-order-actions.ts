@@ -23,6 +23,18 @@ export function useOrderAction(orderId: string) {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  const arrivedAtHub = useMutation({
+    mutationFn: () => riderService.arrivedAtHub(orderId),
+    onSuccess: () => { invalidate(); toast.success('Arrival confirmed') },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
+  const confirmPickup = useMutation({
+    mutationFn: () => riderService.confirmPickupFromHub(orderId),
+    onSuccess: () => { invalidate(); toast.success('Pickup confirmed') },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   const deliver = useMutation({
     mutationFn: () => riderService.deliverOrder(orderId),
     onSuccess: () => { invalidate(); toast.success('Delivery confirmed') },
@@ -38,11 +50,19 @@ export function useOrderAction(orderId: string) {
   const execute = (action: RiderOrderAction) => {
     if (action === 'pickup') pickup.mutate()
     else if (action === 'transit') transit.mutate()
+    else if (action === 'arrived-at-hub') arrivedAtHub.mutate()
+    else if (action === 'confirm-pickup') confirmPickup.mutate()
     else if (action === 'deliver') deliver.mutate()
     else if (action === 'fail') fail.mutate()
   }
 
-  const isPending = pickup.isPending || transit.isPending || deliver.isPending || fail.isPending
+  const isPending =
+    pickup.isPending ||
+    transit.isPending ||
+    arrivedAtHub.isPending ||
+    confirmPickup.isPending ||
+    deliver.isPending ||
+    fail.isPending
 
   return { execute, isPending }
 }

@@ -23,7 +23,11 @@ export function CategoriesList() {
   if (!categories || categories.length === 0) {
     return (
       <View style={styles.centered}>
-        <EmptyState icon={<Grid3x3 size={30} color={colors.subtleForeground} />} title="No categories yet" />
+        <EmptyState
+          icon={<Grid3x3 size={30} color={colors.subtleForeground} />}
+          title="No categories yet"
+          description="Categories will show up here once vendors start listing products."
+        />
       </View>
     )
   }

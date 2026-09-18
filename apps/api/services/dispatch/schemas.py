@@ -34,3 +34,26 @@ class AssignRiderResponse(BaseModel):
     order_id: str
     rider_id: str
     message: str
+
+
+class RiderEarningsSummaryResponse(BaseModel):
+    total_earned_kobo: int
+    pending_kobo: int
+    deliveries_paid: int
+
+
+class RiderPayoutResponse(BaseModel):
+    id: str
+    order_id: str
+    amount_kobo: int
+    status: str
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class PaginatedRiderPayoutsResponse(BaseModel):
+    items: list[RiderPayoutResponse]
+    total: int
+    page: int
+    page_size: int
