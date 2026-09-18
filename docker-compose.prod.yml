@@ -120,6 +120,30 @@ services:
     depends_on:
       - api
 
+  # ── Automated database backups ───────────────────────────────────────────────
+  # Runs a daily pg_dump (see infra/docker/backup/backup-db.sh + crontab) on a busybox-cron
+  # loop, writing compressed dumps to the pg_backups volume with a 14-day retention default.
+  # DATABASE_URL comes from the same secrets file the api/celery services already use — no
+  # postgres/redis service is defined in this compose file because production Postgres is an
+  # external/managed instance (see api.env), so this container just needs egress to it.
+  # See infra/docker/README.md for verifying a backup and restoring from one.
+  db-backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - /opt/avdan/secrets/api.env
+    environment:
+      - BACKUP_RETENTION_DAYS=14
+      # - BACKUP_S3_BUCKET=        # optional off-VPS upload — unset by default, see backup-db.sh
+      # - BACKUP_S3_ENDPOINT=      # optional, for R2/B2-style S3-compatible endpoints
+    volumes:
+      - /opt/avdan/infra/docker/backup/backup-db.sh:/usr/local/bin/backup-db.sh:ro
+      - /opt/avdan/infra/docker/backup/crontab:/etc/crontabs/root:ro
+      - pg_backups:/backups
+    entrypoint: ["crond", "-f", "-l", "2"]
+    networks:
+      - avdan
+
   # ── Nginx reverse proxy (SSL termination) ────────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
@@ -143,3 +167,6 @@ services:
 networks:
   avdan:
     driver: bridge
+
+volumes:
+  pg_backups:

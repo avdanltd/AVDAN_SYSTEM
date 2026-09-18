@@ -2,10 +2,13 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+from sentry_sdk.integrations.starlette import StarletteIntegration
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -39,6 +42,18 @@ from services.tracking.router import ws_router
 from services.vendor.router import products_router, router as vendor_router
 
 configure_logging(level="DEBUG" if settings.environment == "development" else "INFO")
+
+# Error tracking — completely inert until SENTRY_DSN is set (no Sentry account exists yet).
+# Never call this with a falsy DSN: sentry_sdk.init(dsn=None) is itself a harmless no-op, but
+# guarding explicitly keeps the "disabled by default" behavior obvious at a glance.
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        integrations=[StarletteIntegration(), FastApiIntegration()],
+        traces_sample_rate=0.1,
+        send_default_pii=False,
+    )
 
 _MEDIA_DIR = Path("media")
 _STATIC_DIR = Path(__file__).parent / "static"
