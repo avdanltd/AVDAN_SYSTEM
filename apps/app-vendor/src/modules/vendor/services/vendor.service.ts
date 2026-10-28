@@ -1,3 +1,4 @@
+import type { PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
 import type {
   Bank,
   Category,
@@ -86,4 +87,15 @@ export const vendorService = {
   }) => apiClient.post<PayoutAccount>('/vendors/me/payout-account', payload),
 
   getPayoutAccount: () => apiClient.get<PayoutAccount>('/vendors/me/payout-account'),
+
+  getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
+
+  getWalletEntries: () =>
+    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', { page_size: '20' }),
+
+  getPayoutRequests: () =>
+    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', { page_size: '20' }),
+
+  requestWithdrawal: (amountKobo: number) =>
+    apiClient.post<PayoutRequest>('/wallet/me/payout-requests', { amount_kobo: amountKobo }),
 }

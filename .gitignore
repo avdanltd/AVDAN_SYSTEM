@@ -68,6 +68,8 @@ coverage.xml
 # versions/ — committed
 
 docs/*
+# Explicit, so a future change to the docs/* rule cannot expose it
+docs/DEPLOY_SECRETS.local.md
 !docs/AVDAN_System_Architecture_v3.docx
 !docs/AVDAN_System_Design.docx
 

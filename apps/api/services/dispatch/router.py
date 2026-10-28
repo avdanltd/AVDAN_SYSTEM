@@ -11,13 +11,11 @@ from services.dispatch.schemas import (
     AssignRiderResponse,
     AvailabilityUpdate,
     LocationUpdate,
-    PaginatedRiderPayoutsResponse,
-    RiderEarningsSummaryResponse,
-    RiderPayoutResponse,
     RiderResponse,
 )
 from services.dispatch.service import DispatchService
 from services.orders.schemas import OrderItemResponse, OrderResponse
+
 # Payout schemas are provider-shaped, not vendor-specific (bank name/code, account
 # number/name) — reused as-is rather than duplicated for riders.
 from services.vendor.schemas import (
@@ -378,44 +376,6 @@ async def get_rider_payout_account(
         account_number=rider.payout_account_number,
         bank_name=rider.payout_bank_name,
         account_name=rider.payout_account_name,
-    )
-
-
-@router.get("/me/earnings", response_model=RiderEarningsSummaryResponse)
-async def get_my_earnings(
-    current_user: CurrentUser = Depends(require_role("rider")),
-    db: AsyncSession = Depends(get_db),
-    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
-) -> RiderEarningsSummaryResponse:
-    svc = DispatchService(db, redis)
-    summary = await svc.get_earnings_summary(current_user.user_id)
-    return RiderEarningsSummaryResponse(**summary)
-
-
-@router.get("/me/payouts", response_model=PaginatedRiderPayoutsResponse)
-async def list_my_payouts(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    current_user: CurrentUser = Depends(require_role("rider")),
-    db: AsyncSession = Depends(get_db),
-    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
-) -> PaginatedRiderPayoutsResponse:
-    svc = DispatchService(db, redis)
-    payouts, total = await svc.list_payouts(current_user.user_id, page=page, page_size=page_size)
-    return PaginatedRiderPayoutsResponse(
-        items=[
-            RiderPayoutResponse(
-                id=str(p.id),
-                order_id=str(p.order_id),
-                amount_kobo=p.amount_kobo,
-                status=p.status,
-                created_at=p.created_at.isoformat(),
-            )
-            for p in payouts
-        ],
-        total=total,
-        page=page,
-        page_size=page_size,
     )
 
 

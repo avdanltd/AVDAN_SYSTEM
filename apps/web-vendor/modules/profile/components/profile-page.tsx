@@ -516,8 +516,8 @@ export function ProfilePage() {
         <CardHeader>
           <CardTitle className="font-display text-base">Payout Account</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Link your Nigerian bank account to receive payments after order delivery. Required
-            before you can accept orders.
+            Link your Nigerian bank account. Earnings collect in your wallet; this is the account an
+            approved withdrawal is sent to.
           </p>
         </CardHeader>
         <Separator />

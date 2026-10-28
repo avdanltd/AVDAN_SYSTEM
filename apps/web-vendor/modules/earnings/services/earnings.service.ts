@@ -1,3 +1,5 @@
+import type { PayoutRequest, PaginatedResponse, WalletEntry, WalletSummary } from '@avdan/types'
+
 import { apiClient } from '@/lib/api-client'
 
 export interface EarningsSummary {
@@ -14,4 +16,10 @@ export interface EarningsSummary {
 
 export const earningsService = {
   getSummary: () => apiClient.get<EarningsSummary>('/analytics/vendor'),
+  getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
+  getEntries: () => apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', { page_size: '20' }),
+  getRequests: () =>
+    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', { page_size: '20' }),
+  requestWithdrawal: (amountKobo: number) =>
+    apiClient.post<PayoutRequest>('/wallet/me/payout-requests', { amount_kobo: amountKobo }),
 }

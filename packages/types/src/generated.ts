@@ -151,7 +151,11 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Clear Push Token
+         * @description Called by the mobile apps on sign-out so the device stops receiving this user's pushes.
+         */
+        delete: operations["clear_push_token_auth_me_push_token_delete"];
         options?: never;
         head?: never;
         /** Update Push Token */
@@ -415,6 +419,23 @@ export interface paths {
         patch: operations["update_platform_config_admin_config_patch"];
         trace?: never;
     };
+    "/admin/audit-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Audit Log */
+        get: operations["get_audit_log_admin_audit_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/hubs": {
         parameters: {
             query?: never;
@@ -433,6 +454,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/hubs/{hub_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Hub */
+        delete: operations["delete_hub_admin_hubs__hub_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Hub */
+        patch: operations["update_hub_admin_hubs__hub_id__patch"];
+        trace?: never;
+    };
     "/admin/users/{user_id}/hub": {
         parameters: {
             query?: never;
@@ -448,6 +487,126 @@ export interface paths {
         head?: never;
         /** Assign Agent Hub */
         patch: operations["assign_agent_hub_admin_users__user_id__hub_patch"];
+        trace?: never;
+    };
+    "/admin/payouts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin List Payout Requests */
+        get: operations["admin_list_payout_requests_admin_payouts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payouts/{request_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Get Payout Request */
+        get: operations["admin_get_payout_request_admin_payouts__request_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payouts/{request_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Approve Payout Request */
+        post: operations["admin_approve_payout_request_admin_payouts__request_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payouts/{request_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Reject Payout Request */
+        post: operations["admin_reject_payout_request_admin_payouts__request_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/wallet/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get My Wallet */
+        get: operations["get_my_wallet_wallet_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/wallet/me/entries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List My Wallet Entries */
+        get: operations["list_my_wallet_entries_wallet_me_entries_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/wallet/me/payout-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List My Payout Requests */
+        get: operations["list_my_payout_requests_wallet_me_payout_requests_get"];
+        put?: never;
+        /** Request Withdrawal */
+        post: operations["request_withdrawal_wallet_me_payout_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/categories": {
@@ -745,6 +904,27 @@ export interface paths {
         put?: never;
         /** Create Order */
         post: operations["create_order_orders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/delivery-quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Delivery Quote
+         * @description What delivering from this vendor to these coordinates would cost — shown at checkout
+         *     before the order exists, using the same calculation that prices the real order.
+         */
+        get: operations["delivery_quote_orders_delivery_quote_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1570,6 +1750,13 @@ export interface components {
             /** User Id */
             user_id: string;
         };
+        /** ApprovePayoutRequest */
+        ApprovePayoutRequest: {
+            /** Approved Kobo */
+            approved_kobo: number;
+            /** Note */
+            note?: string | null;
+        };
         /** AssignHubRequest */
         AssignHubRequest: {
             /** Hub Id */
@@ -1588,6 +1775,25 @@ export interface components {
             rider_id: string;
             /** Message */
             message: string;
+        };
+        /** AuditLogEntryResponse */
+        AuditLogEntryResponse: {
+            /** Id */
+            id: string;
+            /** Admin Id */
+            admin_id: string;
+            /** Action */
+            action: string;
+            /** Resource */
+            resource: string;
+            /** Resource Id */
+            resource_id: string | null;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /** Created At */
+            created_at: string;
         };
         /** AvailabilityUpdate */
         AvailabilityUpdate: {
@@ -1679,6 +1885,11 @@ export interface components {
             items: components["schemas"]["OrderItemRequest"][];
             delivery_address: components["schemas"]["DeliveryAddress"];
         };
+        /** CreatePayoutRequest */
+        CreatePayoutRequest: {
+            /** Amount Kobo */
+            amount_kobo: number;
+        };
         /** CreateProductRequest */
         CreateProductRequest: {
             /** Name */
@@ -1715,6 +1926,31 @@ export interface components {
             country: string;
             /** Notes */
             notes?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+        };
+        /** DeliveryQuoteResponse */
+        DeliveryQuoteResponse: {
+            /** Fee Kobo */
+            fee_kobo: number;
+            /** Method */
+            method: string;
+            /** Vendor To Hub Km */
+            vendor_to_hub_km: number | null;
+            /** Hub To Customer Km */
+            hub_to_customer_km: number | null;
+            /** Total Km */
+            total_km: number | null;
+            /** Base Fee Kobo */
+            base_fee_kobo: number;
+            /** Per Km Kobo */
+            per_km_kobo: number;
+            /** Road Factor */
+            road_factor: number;
+            /** Hub Name */
+            hub_name?: string | null;
         };
         /** DisputeResponse */
         DisputeResponse: {
@@ -1878,6 +2114,10 @@ export interface components {
             total_kobo: number;
             /** Delivery Fee Kobo */
             delivery_fee_kobo: number;
+            /** Delivery Quote */
+            delivery_quote?: {
+                [key: string]: unknown;
+            } | null;
             /** Delivery Address */
             delivery_address: {
                 [key: string]: unknown;
@@ -1964,6 +2204,10 @@ export interface components {
             total_kobo: number;
             /** Delivery Fee Kobo */
             delivery_fee_kobo: number;
+            /** Delivery Quote */
+            delivery_quote?: {
+                [key: string]: unknown;
+            } | null;
             /** Delivery Address */
             delivery_address: {
                 [key: string]: unknown;
@@ -2009,6 +2253,17 @@ export interface components {
             /** Pending Disputes */
             pending_disputes: number;
         };
+        /** PaginatedAuditLogResponse */
+        PaginatedAuditLogResponse: {
+            /** Items */
+            items: components["schemas"]["AuditLogEntryResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** PaginatedDisputesResponse */
         PaginatedDisputesResponse: {
             /** Items */
@@ -2044,6 +2299,21 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** PaginatedPayoutRequestsResponse */
+        PaginatedPayoutRequestsResponse: {
+            /** Items */
+            items: components["schemas"]["PayoutRequestResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            /** Pending Count */
+            pending_count: number;
+            /** Pending Kobo */
+            pending_kobo: number;
+        };
         /** PaginatedProductsResponse */
         PaginatedProductsResponse: {
             /** Items */
@@ -2077,6 +2347,17 @@ export interface components {
             /** Page Size */
             page_size: number;
         };
+        /** PaginatedWalletEntriesResponse */
+        PaginatedWalletEntriesResponse: {
+            /** Items */
+            items: components["schemas"]["WalletEntryResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** PayoutAccountResponse */
         PayoutAccountResponse: {
             /** Has Payout Account */
@@ -2087,6 +2368,62 @@ export interface components {
             bank_name: string | null;
             /** Account Name */
             account_name: string | null;
+        };
+        /** PayoutEventResponse */
+        PayoutEventResponse: {
+            /** Id */
+            id: string;
+            /** Event */
+            event: string;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Role */
+            actor_role: string;
+            /** Amount Kobo */
+            amount_kobo: number | null;
+            /** Note */
+            note: string | null;
+            /** Created At */
+            created_at: string;
+        };
+        /** PayoutRequestResponse */
+        PayoutRequestResponse: {
+            /** Id */
+            id: string;
+            /** Owner Type */
+            owner_type: string;
+            /** Owner Id */
+            owner_id: string;
+            /** Owner Name */
+            owner_name: string | null;
+            /** Requested Kobo */
+            requested_kobo: number;
+            /** Approved Kobo */
+            approved_kobo: number | null;
+            /** Status */
+            status: string;
+            /** Destination */
+            destination: {
+                [key: string]: unknown;
+            } | null;
+            /** Decided By */
+            decided_by: string | null;
+            /** Decided At */
+            decided_at: string | null;
+            /** Decision Note */
+            decision_note: string | null;
+            /** Paid At */
+            paid_at: string | null;
+            /** Failure Reason */
+            failure_reason: string | null;
+            /** Created At */
+            created_at: string;
+            /** Events */
+            events?: components["schemas"]["PayoutEventResponse"][] | null;
+            /** Owner Available Kobo */
+            owner_available_kobo?: number | null;
+            /** Owner Lifetime Earned Kobo */
+            owner_lifetime_earned_kobo?: number | null;
         };
         /** PlatformConfigResponse */
         PlatformConfigResponse: {
@@ -2275,6 +2612,11 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** RejectPayoutRequest */
+        RejectPayoutRequest: {
+            /** Note */
+            note: string;
+        };
         /** ResolveDisputeRequest */
         ResolveDisputeRequest: {
             /**
@@ -2347,6 +2689,16 @@ export interface components {
             updates: {
                 [key: string]: unknown;
             };
+        };
+        /** UpdateHubRequest */
+        UpdateHubRequest: {
+            /** Name */
+            name: string;
+            /**
+             * Capacity
+             * @default 100
+             */
+            capacity: number;
         };
         /** UpdateProductAvailabilityRequest */
         UpdateProductAvailabilityRequest: {
@@ -2552,6 +2904,46 @@ export interface components {
              * @description The order's status after verification
              */
             status: string;
+        };
+        /** WalletEntryResponse */
+        WalletEntryResponse: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Amount Kobo */
+            amount_kobo: number;
+            /** Order Id */
+            order_id: string | null;
+            /** Payout Request Id */
+            payout_request_id: string | null;
+            /** Metadata */
+            metadata: {
+                [key: string]: unknown;
+            } | null;
+            /** Created At */
+            created_at: string;
+        };
+        /** WalletSummaryResponse */
+        WalletSummaryResponse: {
+            /** Ongoing Kobo */
+            ongoing_kobo: number;
+            /** Clearing Kobo */
+            clearing_kobo: number;
+            /** On Hold Kobo */
+            on_hold_kobo: number;
+            /** Available Kobo */
+            available_kobo: number;
+            /** Requested Kobo */
+            requested_kobo: number;
+            /** Paid Out Kobo */
+            paid_out_kobo: number;
+            /** Lifetime Earned Kobo */
+            lifetime_earned_kobo: number;
+            /** Min Withdrawal Kobo */
+            min_withdrawal_kobo: number;
+            /** Has Payout Account */
+            has_payout_account: boolean;
         };
     };
     responses: never;
@@ -2868,6 +3260,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    clear_push_token_auth_me_push_token_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -3546,6 +3973,42 @@ export interface operations {
             };
         };
     };
+    get_audit_log_admin_audit_log_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAuditLogResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_hubs_admin_hubs_get: {
         parameters: {
             query?: never;
@@ -3616,6 +4079,78 @@ export interface operations {
             };
         };
     };
+    delete_hub_admin_hubs__hub_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hub_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_hub_admin_hubs__hub_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                hub_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHubRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     assign_agent_hub_admin_users__user_id__hub_patch: {
         parameters: {
             query?: never;
@@ -3642,6 +4177,299 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_list_payout_requests_admin_payouts_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                owner_type?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPayoutRequestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_get_payout_request_admin_payouts__request_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_approve_payout_request_admin_payouts__request_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovePayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_reject_payout_request_admin_payouts__request_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_wallet_wallet_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WalletSummaryResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_wallet_entries_wallet_me_entries_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedWalletEntriesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_my_payout_requests_wallet_me_payout_requests_get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedPayoutRequestsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_withdrawal_wallet_me_payout_requests_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePayoutRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutRequestResponse"];
                 };
             };
             /** @description Validation Error */
@@ -4444,6 +5272,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delivery_quote_orders_delivery_quote_get: {
+        parameters: {
+            query: {
+                vendor_id: string;
+                lat: number;
+                lng: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DeliveryQuoteResponse"];
                 };
             };
             /** @description Validation Error */

@@ -78,6 +78,9 @@ export interface DeliveryAddress {
   state: string
   country?: string
   notes?: string | null
+  // Where to deliver — drives the distance-based delivery fee.
+  lat: number
+  lng: number
 }
 
 export interface CustomerOrder {

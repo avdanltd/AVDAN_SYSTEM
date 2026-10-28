@@ -370,6 +370,23 @@ never touches the DB. Worth adding a real healthcheck (one that actually queries
 an alert on `postgres`/`redis` container presence, as defense in depth against whatever the next
 surprise turns out to be.
 
+## 10. Wallet + admin-approved withdrawals — DONE 2026-10-28 (needs deploy + Paystack settings)
+
+Replaced automatic per-order transfers with a ledger wallet for vendors **and** riders and an
+admin approval queue. Full model, lifecycle and go-live checklist in `WALLET_PAYOUTS.md`.
+Also: delivery fee now prices the real vendor → hub → customer route, with customer coordinates
+captured at checkout in web-customer and app-customer.
+
+- [x] API: `services/wallet/`, migration 0018, `/wallet/me*`, `/admin/payouts*`, 7 tests.
+- [x] web-vendor, web-rider, app-vendor, app-rider: balances, withdrawal request, history.
+- [x] web-admin: Payouts queue (approve amount / reject with reason / audit trail); Config gained road factor + minimum withdrawal.
+- [x] web-customer, app-customer: location capture + live delivery quote.
+- [ ] Not yet exercised against live Paystack (Transfer OTP must be off first) or in a browser/device — type-checked and unit-tested only.
+- [ ] No push/email to the requester when an admin decides (status is visible in-app only).
+- [ ] Customer location is "use my current location" only — no address search or map pin yet.
+
+---
+
 ## 8. Smaller items
 
 - [ ] `rider_profiles` is dead schema (0 rows) next to the real `riders` table, and

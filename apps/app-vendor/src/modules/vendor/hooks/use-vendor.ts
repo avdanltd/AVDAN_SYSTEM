@@ -220,3 +220,36 @@ export function useSavePayoutAccount(onDone?: () => void) {
     onError: (e: Error) => toast.error('Could not save payout account', e.message),
   })
 }
+
+/* ── Wallet ───────────────────────────────────────────────────────────────── */
+
+const WALLET_KEYS = ['vendor-wallet', 'vendor-wallet-entries', 'vendor-wallet-requests'] as const
+
+export function useWallet() {
+  const summary = useQuery({ queryKey: ['vendor-wallet'], queryFn: () => vendorService.getWallet() })
+  const entries = useQuery({
+    queryKey: ['vendor-wallet-entries'],
+    queryFn: () => vendorService.getWalletEntries(),
+  })
+  const requests = useQuery({
+    queryKey: ['vendor-wallet-requests'],
+    queryFn: () => vendorService.getPayoutRequests(),
+  })
+  return {
+    summary,
+    entries,
+    requests,
+    refetchAll: () => Promise.all([summary.refetch(), entries.refetch(), requests.refetch()]),
+  }
+}
+
+export function useRequestWithdrawal() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (amountKobo: number) => vendorService.requestWithdrawal(amountKobo),
+    onSuccess: () => {
+      WALLET_KEYS.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }))
+      toast.success('Withdrawal requested', 'An admin will review it shortly.')
+    },
+  })
+}

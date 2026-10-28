@@ -8,6 +8,7 @@ import {
   TextInput,
   View,
 } from 'react-native'
+import * as Location from 'expo-location'
 import { useRouter } from 'expo-router'
 import { CreditCard, MapPin, ShieldCheck, Store } from 'lucide-react-native'
 import { z } from 'zod'
@@ -17,12 +18,13 @@ import {
   EmptyState,
   fonts,
   formatKobo,
+  toast,
   radius,
   spacing,
   useTheme,
 } from '@avdan/mobile'
 
-import { useCheckout } from '../hooks/use-checkout'
+import { useCheckout, useDeliveryQuote } from '../hooks/use-checkout'
 import { groupByVendor, useCartStore } from '../store/cart.store'
 import type { CustomerOrder } from '../types'
 
@@ -49,6 +51,8 @@ export function Checkout() {
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [placedOrder, setPlacedOrder] = useState<CustomerOrder | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
 
   if (groups.length === 0 && !placedOrder) {
     return (
@@ -67,7 +71,26 @@ export function Checkout() {
   // its lines are cleared from the cart (see placeOrder), so from then on the summary reads from
   // the confirmed order itself rather than the live (now-shifted) cart groups.
   const current = groups[0]
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(current?.vendorId, coords)
   const remaining = placedOrder ? groups.length : groups.length - 1
+
+  const captureLocation = async () => {
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        toast.error('Location needed', 'Allow location access so we can price delivery by distance.')
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      setErrors((e) => ({ ...e, location: '' }))
+    } catch {
+      toast.error('Could not get your location', 'Check that location services are on and try again.')
+    } finally {
+      setLocating(false)
+    }
+  }
 
   const handlePlaceOrder = async () => {
     const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined })
@@ -80,6 +103,10 @@ export function Checkout() {
       setErrors(next)
       return
     }
+    if (!coords) {
+      setErrors({ location: 'Share your delivery location so we can price delivery by distance' })
+      return
+    }
     setErrors({})
 
     const order = await placeOrder(current, {
@@ -88,6 +115,8 @@ export function Checkout() {
       state: parsed.data.state,
       country: 'Nigeria',
       notes: parsed.data.notes ?? null,
+      lat: coords.lat,
+      lng: coords.lng,
     })
 
     if (order) {
@@ -112,7 +141,11 @@ export function Checkout() {
     },
   ]
 
-  const grandTotalKobo = placedOrder ? placedOrder.total_kobo + placedOrder.delivery_fee_kobo : null
+  const grandTotalKobo = placedOrder
+    ? placedOrder.total_kobo + placedOrder.delivery_fee_kobo
+    : quote
+      ? current.subtotalKobo + quote.fee_kobo
+      : null
 
   const label = !placedOrder
     ? stage === 'creating'
@@ -175,7 +208,13 @@ export function Checkout() {
           <View style={styles.sumLine}>
             <Text style={[styles.sumName, { color: colors.mutedForeground }]}>Delivery fee</Text>
             <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
-              {placedOrder ? formatKobo(placedOrder.delivery_fee_kobo) : 'Confirmed on next step'}
+              {placedOrder
+                ? formatKobo(placedOrder.delivery_fee_kobo)
+                : quote
+                  ? formatKobo(quote.fee_kobo)
+                  : quoting
+                    ? 'Calculating…'
+                    : 'Share your location to see it'}
             </Text>
           </View>
 
@@ -266,6 +305,27 @@ export function Checkout() {
                 <Text style={[styles.error, { color: colors.destructive }]}>{errors.state}</Text>
               ) : null}
             </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Delivery location</Text>
+            <Button
+              label={coords ? 'Update my location' : 'Use my current location'}
+              variant="outline"
+              loading={locating}
+              onPress={captureLocation}
+            />
+            {coords ? (
+              <Text style={[styles.error, { color: colors.success }]}>
+                Location saved
+                {quote?.total_km != null
+                  ? ` · about ${quote.total_km.toFixed(1)} km via ${quote.hub_name ?? 'our hub'}`
+                  : ''}
+              </Text>
+            ) : null}
+            {errors.location ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.location}</Text>
+            ) : null}
           </View>
 
           <View style={styles.fieldGroup}>

@@ -41,6 +41,61 @@ def calculate_eta_seconds(
     return int((distance_km / 30.0) * 3600)  # 30 km/h average speed
 
 
+async def pick_hub(db: AsyncSession, vendor: object | None) -> AgentHub | None:
+    """Picks the active hub nearest to the vendor, preferring hubs under capacity. Falls
+    back to the vendor's zone, then to the least-loaded active hub, when coordinates are
+    unavailable. Returns None only when there are no active hubs at all — in that case the
+    order keeps hub_id unset and a hub agent can still self-claim it once it arrives, same
+    as before this existed."""
+    from services.qa.models import AgentHub
+    from services.vendor.models import Vendor
+
+    v: Vendor | None = vendor  # type: ignore[assignment]
+
+    hubs_result = await db.execute(select(AgentHub).where(AgentHub.active.is_(True)))
+    hubs = list(hubs_result.scalars().all())
+    if not hubs:
+        return None
+
+    # Current load = orders already routed to this hub that haven't left it yet.
+    load_result = await db.execute(
+        select(Order.hub_id, func.count())
+        .where(
+            Order.hub_id.isnot(None),
+            Order.status.in_([
+                OrderStatus.IN_TRANSIT_TO_HUB,
+                OrderStatus.ARRIVED_AT_HUB,
+                OrderStatus.AT_HUB,
+                OrderStatus.QA_IN_PROGRESS,
+                OrderStatus.QA_FAILED,
+                OrderStatus.VENDOR_REMEDIATION,
+            ]),
+        )
+        .group_by(Order.hub_id)
+    )
+    load_by_hub = dict(load_result.all())
+
+    under_capacity = [h for h in hubs if load_by_hub.get(h.id, 0) < h.capacity]
+    pool = under_capacity or hubs  # every hub is at capacity — pick the least-loaded anyway
+
+    if v and v.lat is not None and v.lng is not None:
+        with_coords = [h for h in pool if h.lat is not None and h.lng is not None]
+        if with_coords:
+            return min(
+                with_coords,
+                key=lambda h: _haversine_km(
+                    float(v.lat), float(v.lng), float(h.lat), float(h.lng)  # type: ignore[arg-type]
+                ),
+            )
+
+    if v and v.zone_id:
+        in_zone = [h for h in pool if h.zone_id == v.zone_id]
+        if in_zone:
+            return min(in_zone, key=lambda h: load_by_hub.get(h.id, 0))
+
+    return min(pool, key=lambda h: load_by_hub.get(h.id, 0))
+
+
 class DispatchService:
     def __init__(self, db: AsyncSession, redis: aioredis.Redis) -> None:  # type: ignore[type-arg]
         self.db = db
@@ -146,7 +201,9 @@ class DispatchService:
         # not already assigned — an admin re-assigning the rider on an order that already has a
         # hub (e.g. after a rejected/failed match) shouldn't silently move the hub underneath it.
         if not order.hub_id:
-            hub = await self._pick_hub(vendor)
+            # Route through the hub the delivery fee was quoted against, so what the customer
+            # paid for (and what the rider is credited) matches the route actually driven.
+            hub = await self._quoted_hub(order) or await self.pick_hub(vendor)
             if hub:
                 order.hub_id = hub.id
 
@@ -187,59 +244,18 @@ class DispatchService:
             key=lambda r: _haversine_km(float(v.lat), float(v.lng), float(r.lat), float(r.lng)),  # type: ignore[arg-type]
         )
 
-    async def _pick_hub(self, vendor: object | None) -> AgentHub | None:
-        """Picks the active hub nearest to the vendor, preferring hubs under capacity. Falls
-        back to the vendor's zone, then to the least-loaded active hub, when coordinates are
-        unavailable. Returns None only when there are no active hubs at all — in that case the
-        order keeps hub_id unset and a hub agent can still self-claim it once it arrives, same
-        as before this existed."""
+    async def _quoted_hub(self, order: Order) -> AgentHub | None:
         from services.qa.models import AgentHub
-        from services.vendor.models import Vendor
 
-        v: Vendor | None = vendor  # type: ignore[assignment]
-
-        hubs_result = await self.db.execute(select(AgentHub).where(AgentHub.active.is_(True)))
-        hubs = list(hubs_result.scalars().all())
-        if not hubs:
+        hub_id = (order.delivery_quote or {}).get("hub_id")
+        if not hub_id:
             return None
+        return (await self.db.execute(
+            select(AgentHub).where(AgentHub.id == uuid.UUID(hub_id), AgentHub.active.is_(True))
+        )).scalar_one_or_none()
 
-        # Current load = orders already routed to this hub that haven't left it yet.
-        load_result = await self.db.execute(
-            select(Order.hub_id, func.count())
-            .where(
-                Order.hub_id.isnot(None),
-                Order.status.in_([
-                    OrderStatus.IN_TRANSIT_TO_HUB,
-                    OrderStatus.ARRIVED_AT_HUB,
-                    OrderStatus.AT_HUB,
-                    OrderStatus.QA_IN_PROGRESS,
-                    OrderStatus.QA_FAILED,
-                    OrderStatus.VENDOR_REMEDIATION,
-                ]),
-            )
-            .group_by(Order.hub_id)
-        )
-        load_by_hub = dict(load_result.all())
-
-        under_capacity = [h for h in hubs if load_by_hub.get(h.id, 0) < h.capacity]
-        pool = under_capacity or hubs  # every hub is at capacity — pick the least-loaded anyway
-
-        if v and v.lat is not None and v.lng is not None:
-            with_coords = [h for h in pool if h.lat is not None and h.lng is not None]
-            if with_coords:
-                return min(
-                    with_coords,
-                    key=lambda h: _haversine_km(
-                        float(v.lat), float(v.lng), float(h.lat), float(h.lng)  # type: ignore[arg-type]
-                    ),
-                )
-
-        if v and v.zone_id:
-            in_zone = [h for h in pool if h.zone_id == v.zone_id]
-            if in_zone:
-                return min(in_zone, key=lambda h: load_by_hub.get(h.id, 0))
-
-        return min(pool, key=lambda h: load_by_hub.get(h.id, 0))
+    async def pick_hub(self, vendor: object | None) -> AgentHub | None:
+        return await pick_hub(self.db, vendor)
 
     async def get_rider_orders(self, user_id: str) -> list[Order]:
         from sqlalchemy.orm import selectinload
@@ -339,6 +355,11 @@ class DispatchService:
         # QA_PASSED -> OUT_FOR_DELIVERY) closes the lifecycle: entering the state stamps
         # `updated_at`, which is the timestamp the 48h release cutoff is measured from.
         if to_state == OrderStatus.DELIVERED:
+            # The rider's job is done: credit their wallet now (not after the vendor's dispute
+            # window). It becomes withdrawable via a payout request an admin approves.
+            from services.wallet.service import WalletService
+
+            await WalletService(self.db).credit_rider_for_order(order)
             order = await order_svc.transition(
                 order_id=order_id,
                 to_state=OrderStatus.PAYMENT_RELEASE_PENDING,
@@ -389,63 +410,6 @@ class DispatchService:
 
     async def get_payout_account(self, user_id: str) -> Rider:
         return await self.get_or_create_rider(user_id)
-
-    # ── Earnings ──────────────────────────────────────────────────────────────
-    # Flagged earlier this session: the `RiderPayout` table has everything needed for an
-    # earnings view, but nothing exposed it via the API. Mirrors the vendor analytics pattern
-    # (a summary figure plus a plain paginated history) rather than anything fancier.
-
-    async def get_earnings_summary(self, user_id: str) -> dict:
-        from services.payment.models import RiderPayout, RiderPayoutStatus
-
-        rider = await self.get_or_create_rider(user_id)
-
-        total_earned = int((await self.db.execute(
-            select(func.coalesce(func.sum(RiderPayout.amount_kobo), 0)).where(
-                RiderPayout.rider_id == rider.id,
-                RiderPayout.status == RiderPayoutStatus.RELEASED,
-            )
-        )).scalar_one())
-
-        pending = int((await self.db.execute(
-            select(func.coalesce(func.sum(RiderPayout.amount_kobo), 0)).where(
-                RiderPayout.rider_id == rider.id,
-                RiderPayout.status.in_([RiderPayoutStatus.PENDING, RiderPayoutStatus.PAYOUT_PENDING]),
-            )
-        )).scalar_one())
-
-        deliveries_paid = (await self.db.execute(
-            select(func.count()).select_from(RiderPayout).where(
-                RiderPayout.rider_id == rider.id,
-                RiderPayout.status == RiderPayoutStatus.RELEASED,
-            )
-        )).scalar_one()
-
-        return {
-            "total_earned_kobo": total_earned,
-            "pending_kobo": pending,
-            "deliveries_paid": deliveries_paid,
-        }
-
-    async def list_payouts(
-        self, user_id: str, page: int = 1, page_size: int = 20
-    ) -> tuple[list, int]:
-        from services.payment.models import RiderPayout
-
-        rider = await self.get_or_create_rider(user_id)
-
-        total = (await self.db.execute(
-            select(func.count()).select_from(RiderPayout).where(RiderPayout.rider_id == rider.id)
-        )).scalar_one()
-
-        result = await self.db.execute(
-            select(RiderPayout)
-            .where(RiderPayout.rider_id == rider.id)
-            .order_by(RiderPayout.created_at.desc())
-            .offset((page - 1) * page_size)
-            .limit(page_size)
-        )
-        return list(result.scalars().all()), total
 
     # ── Private ───────────────────────────────────────────────────────────────
 

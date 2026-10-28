@@ -43,7 +43,7 @@ export function VendorPayoutNudge() {
 
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground">
-          Add your payout account to start receiving payments
+          Add your payout account so you can withdraw your earnings
         </p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Your earnings stay in escrow until a verified bank account is on file.

@@ -62,27 +62,6 @@ export interface PayoutAccount {
   account_name: string | null
 }
 
-export interface EarningsSummary {
-  total_earned_kobo: number
-  pending_kobo: number
-  deliveries_paid: number
-}
-
-export interface RiderPayout {
-  id: string
-  order_id: string
-  amount_kobo: number
-  status: 'PENDING' | 'PAYOUT_PENDING' | 'RELEASED' | 'FAILED'
-  created_at: string
-}
-
-export interface PaginatedRiderPayouts {
-  items: RiderPayout[]
-  total: number
-  page: number
-  page_size: number
-}
-
 export type RiderOrderAction = 'pickup' | 'transit' | 'arrived-at-hub' | 'confirm-pickup' | 'deliver' | 'fail'
 
 export const ORDER_ACTIONS: Record<

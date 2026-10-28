@@ -13,7 +13,11 @@ DEFAULT_PLATFORM_CONFIG: dict = {
     "delivery_fee_structure": {
         "base_fee_kobo": 50000,
         "per_km_kobo": 10000,
+        # Straight-line distance is multiplied by this to approximate real road distance.
+        "road_factor": 1.3,
     },
+    # Smallest amount a vendor/rider may request to withdraw (kobo) — keeps transfer fees sane.
+    "min_withdrawal_kobo": 100000,
     "escrow_release_hours": 48,
     "order_cancellation_window_minutes": 30,
 }

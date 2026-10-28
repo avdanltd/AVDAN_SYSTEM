@@ -21,9 +21,9 @@ import {
   Textarea,
   toast,
 } from '@avdan/ui'
-import { Loader2, ShoppingCart } from 'lucide-react'
+import { Loader2, MapPin, ShoppingCart } from 'lucide-react'
 import { checkoutSchema, type CheckoutInput } from '../schemas/checkout.schemas'
-import { useCreateOrder, useInitiatePayment } from '../hooks/use-checkout'
+import { useCreateOrder, useDeliveryQuote, useInitiatePayment } from '../hooks/use-checkout'
 import type { OrderCreated } from '../services/checkout.service'
 import { useCartStore } from '@/modules/cart/store/cart.store'
 import { useSession } from '@/modules/auth/hooks/use-session'
@@ -44,14 +44,39 @@ export function CheckoutPage() {
   const { mutateAsync: initiatePayment, isPending: isInitiating } = useInitiatePayment()
 
   const isLoading = isCreating || isInitiating
+  const [locating, setLocating] = useState(false)
 
   const form = useForm<CheckoutInput>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      delivery_address: { street: '', city: '', state: '', notes: '' },
+      delivery_address: { street: '', city: '', state: '', notes: '', lat: undefined, lng: undefined },
       contact_phone: user?.phone ?? '',
     },
   })
+
+  const lat = form.watch('delivery_address.lat')
+  const lng = form.watch('delivery_address.lng')
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(vendorId, lat, lng)
+
+  function captureLocation() {
+    if (!('geolocation' in navigator)) {
+      toast.error('Your browser cannot share location. Try another browser or device.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        form.setValue('delivery_address.lat', pos.coords.latitude, { shouldValidate: true })
+        form.setValue('delivery_address.lng', pos.coords.longitude, { shouldValidate: true })
+        setLocating(false)
+      },
+      () => {
+        setLocating(false)
+        toast.error('Could not get your location. Allow location access and try again.')
+      },
+      { enableHighAccuracy: true, timeout: 15_000 },
+    )
+  }
 
   // Prefill phone once session loads
   useEffect(() => {
@@ -102,7 +127,7 @@ export function CheckoutPage() {
     }
   }
 
-  const deliveryFeeKobo = placedOrder?.delivery_fee_kobo ?? null
+  const deliveryFeeKobo = placedOrder?.delivery_fee_kobo ?? quote?.fee_kobo ?? null
   const grandTotalKobo = totalKobo() + (deliveryFeeKobo ?? 0)
 
   return (
@@ -208,6 +233,33 @@ export function CheckoutPage() {
                     />
                   </div>
 
+                  <div className="space-y-2">
+                    <FormLabel>Delivery Location</FormLabel>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button type="button" variant="outline" onClick={captureLocation} disabled={locating}>
+                        {locating ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <MapPin className="mr-2 h-4 w-4" />
+                        )}
+                        {lat !== undefined ? 'Update my location' : 'Use my current location'}
+                      </Button>
+                      {lat !== undefined && lng !== undefined && (
+                        <span className="text-sm text-success">Location saved</span>
+                      )}
+                    </div>
+                    {quote && quote.total_km != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Delivery is priced on the route
+                        {quote.hub_name ? ` store → ${quote.hub_name} hub → you` : ' store → you'} (about{' '}
+                        {quote.total_km.toFixed(1)} km).
+                      </p>
+                    )}
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.delivery_address?.lat?.message}
+                    </p>
+                  </div>
+
                   <FormField
                     control={form.control}
                     name="delivery_address.notes"
@@ -286,7 +338,7 @@ export function CheckoutPage() {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Delivery fee</span>
                 <span>
-                  {deliveryFeeKobo === null ? 'Confirmed after order is placed' : formatPrice(deliveryFeeKobo)}
+                  {deliveryFeeKobo === null ? (quoting ? 'Calculating…' : 'Share your location to see it') : formatPrice(deliveryFeeKobo)}
                 </span>
               </div>
               <Separator />

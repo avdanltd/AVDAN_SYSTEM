@@ -1,3 +1,5 @@
+import type { DeliveryQuote } from '@avdan/types'
+
 import { apiClient } from '@/lib/api-client'
 
 export interface CreateOrderPayload {
@@ -8,6 +10,8 @@ export interface CreateOrderPayload {
     city: string
     state: string
     notes?: string
+    lat: number
+    lng: number
   }
   contact_phone: string
 }
@@ -31,6 +35,12 @@ export interface PaymentVerified {
 }
 
 export const checkoutService = {
+  getDeliveryQuote: (vendorId: string, lat: number, lng: number) =>
+    apiClient.get<DeliveryQuote>('/orders/delivery-quote', {
+      vendor_id: vendorId,
+      lat: String(lat),
+      lng: String(lng),
+    }),
   createOrder: (payload: CreateOrderPayload) =>
     apiClient.post<OrderCreated>('/orders', payload),
   initiatePayment: (order_id: string) =>

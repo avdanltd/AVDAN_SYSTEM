@@ -150,8 +150,8 @@ class AnalyticsService:
         commission_rate = config["commission_rate_percent"] / 100
 
         # `EscrowTransaction.amount_kobo` is the full customer charge (order.total_kobo +
-        # delivery_fee_kobo) — the delivery-fee portion is the rider's (paid out separately via
-        # RiderPayout, see services/payment/service.py's release_rider_payout) and commission is
+        # delivery_fee_kobo) — the delivery-fee portion is the rider's (credited to the rider's
+        # wallet separately, see services/wallet/service.py's credit_rider_for_order) and commission is
         # the platform's, so summing amount_kobo directly overstates vendor revenue by both. The
         # vendor's actual take per order is `order.total_kobo - commission` (release_escrow's own
         # formula) — sum `Order.total_kobo` for matching orders, then apply commission once here.

@@ -1,82 +1,52 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { TrendingUp, CheckCircle, Clock } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, WalletPanel } from '@avdan/ui'
 
-import { Card, CardContent, StatsCard, EmptyState } from '@avdan/ui'
-import { earningsService } from '../services/earnings.service'
-import { formatPrice } from '@/lib/format'
+import { ROUTES } from '@/config/routes'
+import { formatDateTime, formatPrice } from '@/lib/format'
+import { useRequestWithdrawal, useWallet } from '../hooks/use-wallet'
 
 export function EarningsPage() {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['vendor-earnings'],
-    queryFn: earningsService.getSummary,
-  })
-
-  if (error) {
-    return (
-      <EmptyState
-        icon={<TrendingUp className="h-6 w-6" />}
-        title="Failed to load earnings"
-        description="There was a problem loading your earnings data. Please try again."
-        action={{ label: 'Retry', onClick: () => refetch() }}
-      />
-    )
-  }
+  const router = useRouter()
+  const { summary, entries, requests, refetchAll } = useWallet()
+  const withdraw = useRequestWithdrawal()
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-display text-2xl font-bold text-foreground">Earnings</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Your revenue summary and payment status.
+          Your balances, withdrawals and payment history.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatsCard
-          title="Total Revenue"
-          value={data ? formatPrice(data.total_revenue_kobo) : '—'}
-          loading={isLoading}
-          icon={<TrendingUp className="h-5 w-5" />}
-        />
-        <StatsCard
-          title="Completed Orders"
-          value={data?.completed_orders ?? 0}
-          loading={isLoading}
-          icon={<CheckCircle className="h-5 w-5" />}
-        />
-        <StatsCard
-          title="Pending Release"
-          value={data ? formatPrice(data.pending_release_kobo) : '—'}
-          loading={isLoading}
-          icon={<Clock className="h-5 w-5" />}
-          subtitle="In escrow — released after delivery"
-        />
-      </div>
-
-      {data && (
-        <Card className="shadow-card">
-          <CardContent className="p-6">
-            <h2 className="text-sm font-semibold text-foreground">Commission Information</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              AVDAN charges a{' '}
-              <span className="font-semibold text-foreground">
-                {(data.commission_rate * 100).toFixed(1)}%
-              </span>{' '}
-              commission on each completed order. This is deducted before payment is released to
-              your account.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+      <WalletPanel
+        summary={summary.data}
+        entries={entries.data?.items}
+        requests={requests.data?.items}
+        loading={summary.isLoading}
+        error={summary.isError}
+        onRetry={refetchAll}
+        showClearing
+        onRequestWithdrawal={async (amountKobo) => {
+          await withdraw.mutateAsync(amountKobo)
+        }}
+        submitting={withdraw.isPending}
+        formatMoney={formatPrice}
+        formatDate={formatDateTime}
+        onSetupAccount={() => router.push(ROUTES.profile)}
+      />
 
       <Card className="shadow-card">
         <CardContent className="p-6">
-          <h2 className="font-display text-sm font-semibold text-foreground">Earnings History</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Detailed earnings history with per-order breakdowns is coming in a future update.
-          </p>
+          <h2 className="text-sm font-semibold text-foreground">How your money moves</h2>
+          <ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+            <li><span className="font-medium text-foreground">Ongoing</span> — a customer has paid; the order is being prepared or delivered.</li>
+            <li><span className="font-medium text-foreground">Delivered</span> — the customer has the goods; funds clear after the dispute window.</li>
+            <li><span className="font-medium text-foreground">Available</span> — AVDAN&apos;s commission has been deducted and the rest is yours to withdraw.</li>
+            <li><span className="font-medium text-foreground">Requested → Paid out</span> — you ask for an amount, an admin approves it, and it is sent to your bank.</li>
+          </ol>
         </CardContent>
       </Card>
     </div>

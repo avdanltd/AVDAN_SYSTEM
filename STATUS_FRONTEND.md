@@ -135,6 +135,13 @@ device pass on `app-rider` (Phase 8.9) confirms it live.
 **Standing constraint:** no paid Apple Developer account. iOS is Expo Go only — foreground location
 works, background location and APNs push do not. Do not mark 8.3 or 8.7 complete on iOS evidence.
 
+
+> **2026-10-28 — Wallet UI:** web-vendor/web-rider/app-vendor/app-rider earnings screens now show the
+> five money states with withdrawal requests (shared `WalletPanel` in `@avdan/ui` and `@avdan/mobile`);
+> web-admin gained a Payouts queue; web-customer/app-customer capture delivery location and show a live
+> delivery quote. Type-checked only — not yet run in a browser or on a device. See `WALLET_PAYOUTS.md`.
+
+
 ---
 
 ## Active Initiative — Design System Alignment (Stitch-driven)

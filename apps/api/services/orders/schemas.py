@@ -10,6 +10,10 @@ class DeliveryAddress(BaseModel):
     state: str = Field(min_length=1)
     country: str = "Nigeria"
     notes: str | None = None
+    # Where the customer actually is. Drives the delivery fee (distance = fuel). Optional here so
+    # older clients keep working, in which case the fee falls back to the flat base fee.
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 # ── Order items ───────────────────────────────────────────────────────────────
@@ -65,6 +69,7 @@ class OrderResponse(BaseModel):
     status: str
     total_kobo: int
     delivery_fee_kobo: int
+    delivery_quote: dict | None = None
     delivery_address: dict
     items: list[OrderItemResponse] = []
     created_at: str
@@ -95,3 +100,15 @@ class RejectOrderRequest(BaseModel):
 class AdminOverrideStatusRequest(BaseModel):
     status: str = Field(min_length=1)
     reason: str = Field(min_length=1)
+
+
+class DeliveryQuoteResponse(BaseModel):
+    fee_kobo: int
+    method: str  # "via_hub" | "direct" | "flat"
+    vendor_to_hub_km: float | None
+    hub_to_customer_km: float | None
+    total_km: float | None
+    base_fee_kobo: int
+    per_km_kobo: int
+    road_factor: float
+    hub_name: str | None = None

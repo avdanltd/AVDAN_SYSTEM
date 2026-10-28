@@ -1,7 +1,6 @@
+import type { PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
 import type {
   Bank,
-  EarningsSummary,
-  PaginatedRiderPayouts,
   PayoutAccount,
   RiderProfile,
   RiderOrder,
@@ -66,11 +65,14 @@ export const riderService = {
 
   getPayoutAccount: () => apiClient.get<PayoutAccount>('/dispatch/me/payout-account'),
 
-  getEarningsSummary: () => apiClient.get<EarningsSummary>('/dispatch/me/earnings'),
+  getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
 
-  getPayoutHistory: (page = 1, pageSize = 20) =>
-    apiClient.get<PaginatedRiderPayouts>('/dispatch/me/payouts', {
-      page: String(page),
-      page_size: String(pageSize),
-    }),
+  getWalletEntries: () =>
+    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', { page_size: '20' }),
+
+  getPayoutRequests: () =>
+    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', { page_size: '20' }),
+
+  requestWithdrawal: (amountKobo: number) =>
+    apiClient.post<PayoutRequest>('/wallet/me/payout-requests', { amount_kobo: amountKobo }),
 }

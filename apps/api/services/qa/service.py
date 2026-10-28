@@ -109,7 +109,7 @@ class QAService:
         hub = await self.get_hub_for_agent(agent_user_id)
         order = await self._get_order(order_id)
 
-        # Dispatch pre-assigns hub_id when the rider is assigned (see DispatchService._pick_hub).
+        # Dispatch pre-assigns hub_id when the rider is assigned (see DispatchService.pick_hub).
         # Reject the receive if this order was routed to a different hub — without this check any
         # agent could silently steal/misroute a pre-assigned order. A null hub_id is still
         # allowed to be claimed here: the safety-net path for when no active hub existed yet.

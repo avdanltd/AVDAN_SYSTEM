@@ -11,7 +11,7 @@ from core.exceptions import AppError, ForbiddenException, NotFoundException, Val
 from services.orders.models import Order
 from services.orders.service import OrderService
 from services.orders.state_machine import OrderStatus
-from services.payment.models import EscrowStatus, EscrowTransaction, RiderPayout, RiderPayoutStatus
+from services.payment.models import EscrowStatus, EscrowTransaction
 from services.payment.providers.registry import get_provider
 
 
@@ -157,94 +157,42 @@ class PaymentService:
 
     async def release_escrow(self, order_id: str) -> None:
         """
-        Queue the vendor payout and deduct commission. Idempotent — safe to call or retry at any
-        point, including while a transfer is already in flight.
+        Release an order's escrow into the vendor's wallet. Idempotent.
 
-        Paystack transfers are asynchronous: a "pending" result here only means the transfer was
-        queued, not that the vendor was paid. The order only advances to
-        PAYMENT_RELEASED -> COMPLETED once the `transfer.success` webhook confirms it (see
-        `handle_transfer_webhook` below) — a `transfer.failed`/`transfer.reversed` webhook instead
-        marks the escrow FAILED so it shows up for retry instead of silently paying nobody while
-        the order still says COMPLETED. A "success" result (Paystack can return this
-        synchronously for some transfer types) advances the order immediately, same as before.
+        No money leaves AVDAN here: the vendor's earnings (product total minus platform
+        commission) are credited to their wallet's Available balance, and the order completes.
+        The vendor then requests a withdrawal and an admin approves an amount — that, and only
+        that, triggers a bank transfer (see WalletService.approve). The rider's delivery fee is
+        credited separately when the parcel is delivered.
         """
         escrow = await self._get_escrow_for_order(order_id)
         if not escrow:
             raise NotFoundException("No escrow found for order")
 
+        # PAYOUT_PENDING only exists on rows created before wallets, when release meant an
+        # immediate Paystack transfer — treat it as already released.
         if escrow.status in (EscrowStatus.RELEASED, EscrowStatus.PAYOUT_PENDING):
-            return  # already released, or a transfer is already queued — idempotent
+            return
 
         if escrow.status != EscrowStatus.HELD:
             raise AppError(400, "INVALID_STATE", "Escrow must be HELD to release")
 
         order = await self._get_order(order_id)
 
-        from services.vendor.models import Vendor
-        vendor_result = await self.db.execute(
-            select(Vendor).where(Vendor.id == order.vendor_id)
-        )
-        vendor = vendor_result.scalar_one_or_none()
-        if not vendor or not vendor.paystack_recipient_code:
-            raise AppError(
-                422,
-                "VENDOR_PAYOUT_NOT_CONFIGURED",
-                "Vendor has not set up payout account",
-            )
+        from services.wallet.service import WalletService
 
-        # Commission applies to the product total only — the delivery fee portion of
-        # escrow.amount_kobo is the rider's, not vendor revenue subject to platform commission.
-        # Rate is admin-controlled (PlatformConfig), not a static env var — an admin changing it
-        # in Settings must actually affect real payouts, not just a display figure elsewhere.
-        from services.analytics.service import AnalyticsService
-
-        config = await AnalyticsService(self.db).get_config()
-        commission = int(order.total_kobo * config["commission_rate_percent"] / 100)
-        vendor_amount = order.total_kobo - commission
-
-        provider = get_provider(escrow.provider)
-        transfer_ref = f"payout-{order_id}"
-        result = await provider.transfer_to_vendor(
-            vendor.paystack_recipient_code, vendor_amount, transfer_ref
-        )
-
-        if result.status == "otp":
-            raise AppError(
-                502,
-                "TRANSFER_REQUIRES_OTP",
-                "Paystack requested OTP confirmation for this transfer — disable Transfer OTP "
-                "in Paystack Settings > Preferences before automated payouts can run.",
-            )
-        if result.status not in ("success", "pending"):
-            raise AppError(
-                502,
-                "TRANSFER_FAILED",
-                f"Transfer returned unexpected status '{result.status}'",
-            )
-
+        wallet = WalletService(self.db)
+        credited = await wallet.credit_vendor_for_order(order)
+        # Normally the rider was already credited at delivery; this is an idempotent safety net
+        # for orders that reached release some other way (admin override, dispute resolution).
+        await wallet.credit_rider_for_order(order)
         escrow.provider_metadata = {
             **(escrow.provider_metadata or {}),
-            "transfer_ref": result.transfer_ref,
-            "vendor_amount_kobo": vendor_amount,
-            "commission_kobo": commission,
+            "vendor_amount_kobo": credited,
+            "commission_kobo": order.total_kobo - credited,
         }
-
-        # The rider's delivery fee is independent of the vendor's payout — it must never block or
-        # be blocked by it. Any failure here (no payout account, transient error) is caught and
-        # left for a later retry; it never raises out of release_escrow.
-        try:
-            await self.release_rider_payout(order_id)
-        except Exception as exc:  # noqa: BLE001 — deliberately broad, see comment above
-            import logging
-            logging.getLogger(__name__).warning(
-                "Rider payout failed for order %s: %s", order_id, exc
-            )
-
-        if result.status == "pending":
-            escrow.status = EscrowStatus.PAYOUT_PENDING
-            return  # handle_transfer_webhook finishes this once Paystack confirms
-
         escrow.status = EscrowStatus.RELEASED
+
         order_svc = OrderService(self.db)
         await order_svc.transition(
             order_id=order_id,
@@ -259,98 +207,12 @@ class PaymentService:
             actor_role="system",
         )
 
-    async def release_rider_payout(self, order_id: str) -> None:
-        """The rider's side of an order's payout — a flat delivery fee, paid in full (no
-        commission taken from it; see release_escrow). Idempotent, same pending/webhook-confirms
-        pattern as the vendor's payout, tracked in its own RiderPayout row rather than a second
-        escrow_transactions row (see RiderPayout's docstring for why)."""
-        order = await self._get_order(order_id)
-        if order.delivery_fee_kobo <= 0 or not order.rider_id:
-            return  # nothing owed, or no rider was ever assigned
-
-        payout = await self._get_or_create_rider_payout(order)
-        if payout.status in (RiderPayoutStatus.RELEASED, RiderPayoutStatus.PAYOUT_PENDING):
-            return  # already paid, or a transfer is already queued — idempotent
-
-        from services.dispatch.models import Rider
-        rider_result = await self.db.execute(select(Rider).where(Rider.id == order.rider_id))
-        rider = rider_result.scalar_one_or_none()
-        if not rider or not rider.paystack_recipient_code:
-            payout.status = RiderPayoutStatus.FAILED
-            payout.provider_metadata = {
-                **(payout.provider_metadata or {}),
-                "error": "Rider has not set up a payout account",
-            }
-            return
-
-        provider = get_provider("paystack")
-        transfer_ref = f"rider-payout-{order_id}"
-        result = await provider.transfer_to_vendor(
-            rider.paystack_recipient_code, payout.amount_kobo, transfer_ref
-        )
-
-        payout.provider = "paystack"
-        payout.provider_ref = transfer_ref
-        payout.provider_metadata = {**(payout.provider_metadata or {}), "transfer_status": result.status}
-
-        if result.status == "pending":
-            payout.status = RiderPayoutStatus.PAYOUT_PENDING
-        elif result.status == "success":
-            payout.status = RiderPayoutStatus.RELEASED
-        else:  # "otp" or anything unexpected — same Transfer OTP setting as vendor transfers
-            payout.status = RiderPayoutStatus.FAILED
-            payout.provider_metadata["error"] = f"Transfer returned status '{result.status}'"
-
     async def handle_transfer_webhook(self, event_type: str, reference: str) -> None:
-        """
-        The other half of `release_escrow` / `release_rider_payout`: applies Paystack's eventual
-        confirmation of a queued transfer. `reference` is the `payout-{order_id}` or
-        `rider-payout-{order_id}` string AVDAN sent when creating the transfer, which Paystack
-        echoes back unchanged on every transfer webhook — that's enough to find the right record
-        without a separate lookup table. Checked in this order because "rider-payout-" also ends
-        with "payout-" but does not start with it, so the prefixes never collide.
-        """
-        if reference.startswith("rider-payout-"):
-            await self._handle_rider_payout_webhook(event_type, reference)
-            return
-        if not reference.startswith("payout-"):
-            return  # not a transfer AVDAN created
+        """Paystack's verdict on a transfer. The only transfers AVDAN creates are admin-approved
+        wallet withdrawals (`wd-{request_id}`); anything else is ignored."""
+        from services.wallet.service import WalletService
 
-        order_id = reference.removeprefix("payout-")
-        escrow = await self._get_escrow_for_order(order_id)
-        if not escrow or escrow.status != EscrowStatus.PAYOUT_PENDING:
-            return  # unknown order, or already resolved — idempotent no-op
-
-        if event_type == "transfer.success":
-            escrow.status = EscrowStatus.RELEASED
-            order_svc = OrderService(self.db)
-            await order_svc.transition(
-                order_id=order_id,
-                to_state=OrderStatus.PAYMENT_RELEASED,
-                actor_id=None,
-                actor_role="system",
-            )
-            await order_svc.transition(
-                order_id=order_id,
-                to_state=OrderStatus.COMPLETED,
-                actor_id=None,
-                actor_role="system",
-            )
-        else:  # transfer.failed, transfer.reversed
-            escrow.status = EscrowStatus.FAILED
-
-    async def _handle_rider_payout_webhook(self, event_type: str, reference: str) -> None:
-        result = await self.db.execute(
-            select(RiderPayout).where(RiderPayout.provider_ref == reference)
-        )
-        payout = result.scalar_one_or_none()
-        if not payout or payout.status != RiderPayoutStatus.PAYOUT_PENDING:
-            return  # unknown reference, or already resolved — idempotent no-op
-
-        if event_type == "transfer.success":
-            payout.status = RiderPayoutStatus.RELEASED
-        else:  # transfer.failed, transfer.reversed
-            payout.status = RiderPayoutStatus.FAILED
+        await WalletService(self.db).handle_transfer_webhook(event_type, reference)
 
     async def process_refund(
         self, order_id: str, amount_kobo: int, admin_id: str, reason: str
@@ -415,20 +277,3 @@ class PaymentService:
             )
         )
         return result.scalar_one_or_none()
-
-    async def _get_or_create_rider_payout(self, order: Order) -> RiderPayout:
-        result = await self.db.execute(
-            select(RiderPayout).where(RiderPayout.order_id == order.id)
-        )
-        payout = result.scalar_one_or_none()
-        if payout:
-            return payout
-        payout = RiderPayout(
-            order_id=order.id,
-            rider_id=order.rider_id,
-            amount_kobo=order.delivery_fee_kobo,
-            status=RiderPayoutStatus.PENDING,
-        )
-        self.db.add(payout)
-        await self.db.flush()
-        return payout

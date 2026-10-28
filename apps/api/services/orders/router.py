@@ -5,6 +5,7 @@ from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from services.orders.schemas import (
     CreateOrderRequest,
+    DeliveryQuoteResponse,
     OrderDetailResponse,
     OrderEventResponse,
     OrderItemResponse,
@@ -57,6 +58,7 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_fee_kobo=o.delivery_fee_kobo,
+        delivery_quote=o.delivery_quote,
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
@@ -75,6 +77,7 @@ def _order_detail_resp(order: object, vendor_name: str | None = None) -> OrderDe
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_fee_kobo=o.delivery_fee_kobo,
+        delivery_quote=o.delivery_quote,
         delivery_address=o.delivery_address,
         items=[_item_resp(i) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
@@ -110,6 +113,20 @@ async def create_order(
     order = await svc.create_order(current_user.user_id, data)
     vendor_names = await _vendor_names(db, [order])
     return _order_resp(order, vendor_name=vendor_names.get(order.vendor_id))
+
+
+@router.get("/delivery-quote", response_model=DeliveryQuoteResponse)
+async def delivery_quote(
+    vendor_id: str,
+    lat: float = Query(ge=-90, le=90),
+    lng: float = Query(ge=-180, le=180),
+    _current_user: CurrentUser = Depends(require_role("customer")),
+    db: AsyncSession = Depends(get_db),
+) -> DeliveryQuoteResponse:
+    """What delivering from this vendor to these coordinates would cost — shown at checkout
+    before the order exists, using the same calculation that prices the real order."""
+    svc = OrderService(db)
+    return DeliveryQuoteResponse(**await svc.quote_delivery_for_vendor(vendor_id, {"lat": lat, "lng": lng}))
 
 
 @router.get("", response_model=PaginatedOrdersResponse)

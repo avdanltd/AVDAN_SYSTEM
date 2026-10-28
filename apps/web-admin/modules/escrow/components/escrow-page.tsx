@@ -125,7 +125,7 @@ export function EscrowPage() {
       <div>
         <h1 className="font-display text-2xl font-semibold text-foreground">Escrow Overview</h1>
         <p className="text-sm text-muted-foreground">
-          Monitor held payments — releases are automated via Celery Beat
+          Held payments are released into vendor wallets automatically; paying out to banks is approved under Payouts
         </p>
       </div>
 

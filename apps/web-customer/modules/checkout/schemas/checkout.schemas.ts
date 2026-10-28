@@ -6,6 +6,9 @@ export const checkoutSchema = z.object({
     city: z.string().min(2, 'City is required'),
     state: z.string().min(2, 'State is required'),
     notes: z.string().optional(),
+    // Where to deliver — drives the distance-based delivery fee, so it is required.
+    lat: z.number({ message: 'Share your delivery location so we can price delivery by distance' }),
+    lng: z.number({ message: 'Share your delivery location so we can price delivery by distance' }),
   }),
   contact_phone: z
     .string()

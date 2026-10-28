@@ -105,7 +105,7 @@ export function Dashboard() {
           <Text style={[styles.statValue, { color: colors.accent }]} numberOfLines={1}>
             {analytics ? formatKobo(analytics.pending_release_kobo) : '—'}
           </Text>
-          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Awaiting payout</Text>
+          <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>In escrow</Text>
         </Card>
       </View>
 
