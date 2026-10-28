@@ -113,7 +113,7 @@ export function Profile() {
                 {analytics ? formatKobo(analytics.pending_release_kobo) : '—'}
               </Text>
               <Text style={[styles.earningsLabel, { color: colors.mutedForeground }]}>
-                Awaiting payout
+                In escrow
               </Text>
             </View>
           </View>
@@ -162,6 +162,12 @@ export function Profile() {
             icon={<CircleUser size={17} color={colors.primary} />}
             label="Edit your profile"
             onPress={() => router.push('/profile/edit')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<Wallet size={17} color={colors.primary} />}
+            label="Earnings & withdrawals"
+            onPress={() => router.push('/profile/wallet')}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow

@@ -32,6 +32,9 @@ class Order(BaseModel):
     # the fee structure or either party's address never alters what was already promised.
     delivery_fee_kobo: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     delivery_address: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # Breakdown behind delivery_fee_kobo: route legs (vendor -> hub -> customer), km, rates, and
+    # the hub the fee was quoted against (dispatch routes the order through that same hub).
+    delivery_quote: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"

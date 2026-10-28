@@ -43,7 +43,7 @@ export function PayoutNudge() {
         <Wallet size={18} color={colors.warning} style={styles.icon} />
         <View style={styles.body}>
           <Text style={[styles.title, { color: colors.foreground }]}>
-            Add your payout account to start receiving payments
+            Add your payout account so you can withdraw your earnings
           </Text>
           <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             Your earnings stay in escrow until a verified bank account is on file.

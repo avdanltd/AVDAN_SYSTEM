@@ -48,3 +48,13 @@ export interface HealthResponse {
   status: string
   environment: string
 }
+
+// Wallet / payouts — aliases over the generated schemas so apps never restate them.
+import type { components } from './generated'
+
+export type WalletSummary = components['schemas']['WalletSummaryResponse']
+export type WalletEntry = components['schemas']['WalletEntryResponse']
+export type PayoutRequest = components['schemas']['PayoutRequestResponse']
+export type PayoutEvent = components['schemas']['PayoutEventResponse']
+export type DeliveryQuote = components['schemas']['DeliveryQuoteResponse']
+export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'FAILED'

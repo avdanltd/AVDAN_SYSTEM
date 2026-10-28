@@ -29,28 +29,65 @@ class OrderService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def _calculate_delivery_fee(self, vendor: object, delivery_address: dict) -> int:
-        """base_fee_kobo + per_km_kobo * distance(vendor, customer), from platform_config's
-        delivery_fee_structure. Falls back to the flat base fee whenever either coordinate is
-        missing — which, today, is every order: checkout's DeliveryAddress schema has no lat/lng
-        field, so customer coordinates are never actually captured yet. This degrades gracefully
-        now and picks up real distance-based pricing automatically once that's wired up."""
+    async def quote_delivery(self, vendor: object, delivery_address: dict) -> dict:
+        """Delivery fee = base + per_km × road distance of the rider's real route.
+
+        The route is vendor → hub → customer: every parcel goes through a hub for QA, so the
+        rider covers both legs and fuel scales with their sum. Straight-line (haversine)
+        distances are multiplied by `road_factor` because roads are never straight. Degrades
+        gracefully: no hub coordinates → vendor → customer directly; any missing coordinate →
+        the flat base fee. The hub quoted here is the one dispatch later routes the order through.
+        """
         from services.analytics.service import AnalyticsService
+        from services.dispatch.service import pick_hub
 
         config = await AnalyticsService(self.db).get_config()
         fee_structure = config.get("delivery_fee_structure", {})
         base_fee_kobo = int(fee_structure.get("base_fee_kobo", 0))
         per_km_kobo = int(fee_structure.get("per_km_kobo", 0))
+        road_factor = float(fee_structure.get("road_factor", 1.0))
+
+        quote: dict = {
+            "fee_kobo": base_fee_kobo, "method": "flat",
+            "vendor_to_hub_km": None, "hub_to_customer_km": None, "total_km": None,
+            "base_fee_kobo": base_fee_kobo, "per_km_kobo": per_km_kobo, "road_factor": road_factor,
+            "hub_id": None, "hub_name": None,
+        }
 
         v_lat = getattr(vendor, "lat", None)
         v_lng = getattr(vendor, "lng", None)
         c_lat = delivery_address.get("lat")
         c_lng = delivery_address.get("lng")
         if v_lat is None or v_lng is None or c_lat is None or c_lng is None:
-            return base_fee_kobo
+            return quote
+        v_lat, v_lng, c_lat, c_lng = float(v_lat), float(v_lng), float(c_lat), float(c_lng)
 
-        distance_km = _haversine_km(float(v_lat), float(v_lng), float(c_lat), float(c_lng))
-        return base_fee_kobo + int(per_km_kobo * distance_km)
+        hub = await pick_hub(self.db, vendor)
+        if hub is not None and hub.lat is not None and hub.lng is not None:
+            h_lat, h_lng = float(hub.lat), float(hub.lng)
+            leg1 = _haversine_km(v_lat, v_lng, h_lat, h_lng) * road_factor
+            leg2 = _haversine_km(h_lat, h_lng, c_lat, c_lng) * road_factor
+            quote.update(
+                method="via_hub", hub_id=str(hub.id), hub_name=hub.name,
+                vendor_to_hub_km=round(leg1, 2), hub_to_customer_km=round(leg2, 2),
+                total_km=round(leg1 + leg2, 2),
+            )
+        else:
+            direct = _haversine_km(v_lat, v_lng, c_lat, c_lng) * road_factor
+            quote.update(method="direct", total_km=round(direct, 2))
+
+        quote["fee_kobo"] = base_fee_kobo + int(per_km_kobo * quote["total_km"])
+        return quote
+
+    async def quote_delivery_for_vendor(self, vendor_id: str, delivery_address: dict) -> dict:
+        from services.vendor.models import Vendor
+
+        vendor = (await self.db.execute(
+            select(Vendor).where(Vendor.id == uuid.UUID(vendor_id), Vendor.status == "active")
+        )).scalar_one_or_none()
+        if not vendor:
+            raise NotFoundException("Vendor not found or not active")
+        return await self.quote_delivery(vendor, delivery_address)
 
     # ── Customer ──────────────────────────────────────────────────────────────
 
@@ -112,7 +149,8 @@ class OrderService:
             )
 
         delivery_address = data.delivery_address.model_dump()
-        delivery_fee_kobo = await self._calculate_delivery_fee(vendor, delivery_address)
+        delivery_quote = await self.quote_delivery(vendor, delivery_address)
+        delivery_fee_kobo = delivery_quote["fee_kobo"]
 
         # Create order
         order = Order(
@@ -121,6 +159,7 @@ class OrderService:
             status=OrderStatus.PENDING,
             total_kobo=total_kobo,
             delivery_fee_kobo=delivery_fee_kobo,
+            delivery_quote=delivery_quote,
             delivery_address=delivery_address,
         )
         self.db.add(order)
@@ -249,23 +288,6 @@ class OrderService:
         """PAID → VENDOR_ACCEPTED → PREPARING (two events, one request)."""
         order = await self._get_order(order_id)
         await self._assert_vendor_owns_order(vendor_user_id, order)
-
-        # Escrow release fails silently deep in a Celery retry loop if the vendor never set up
-        # a payout account (see PaymentService.release_escrow's VENDOR_PAYOUT_NOT_CONFIGURED).
-        # Catching it here, before the vendor can even commit to fulfilling, means that failure
-        # mode can't happen — better than the money getting stuck after the customer already
-        # paid and the order is already in flight.
-        from services.vendor.models import Vendor
-        vendor_result = await self.db.execute(
-            select(Vendor).where(Vendor.id == order.vendor_id)
-        )
-        vendor = vendor_result.scalar_one_or_none()
-        if not vendor or not vendor.paystack_recipient_code:
-            raise AppError(
-                422,
-                "PAYOUT_ACCOUNT_REQUIRED",
-                "Add a payout bank account in Settings before accepting orders.",
-            )
 
         validate_transition(order.status, OrderStatus.VENDOR_ACCEPTED, "vendor")
         await self._record_event(order, OrderStatus.VENDOR_ACCEPTED, vendor_user_id, "vendor")

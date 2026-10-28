@@ -44,7 +44,10 @@ class RiderPayoutStatus:
 
 
 class RiderPayout(BaseModel):
-    """The rider's side of an order's money movement — kept as its own table rather than a
+    """LEGACY — no longer written to. Riders are now paid through the wallet ledger
+    (services/wallet); this table is kept only so pre-wallet test rows are not lost.
+
+    The rider's side of an order's money movement — kept as its own table rather than a
     second row on escrow_transactions, since every existing PaymentService query assumes exactly
     one escrow row per order (`_get_escrow_for_order` uses `.scalar_one_or_none()`). Mirrors
     EscrowTransaction's status lifecycle so release_escrow's pending/webhook-confirms pattern

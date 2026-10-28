@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as WebBrowser from 'expo-web-browser'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@avdan/mobile'
 
 import { shopService } from '../services/shop.service'
@@ -100,4 +100,13 @@ export function useCheckout() {
   }
 
   return { placeOrder, payExistingOrder, stage, isBusy: stage !== 'idle' }
+}
+
+export function useDeliveryQuote(vendorId: string | undefined, coords: { lat: number; lng: number } | null) {
+  return useQuery({
+    queryKey: ['delivery-quote', vendorId, coords?.lat, coords?.lng],
+    queryFn: () => shopService.getDeliveryQuote(vendorId as string, coords!.lat, coords!.lng),
+    enabled: vendorId !== undefined && coords !== null,
+    staleTime: 60_000,
+  })
 }

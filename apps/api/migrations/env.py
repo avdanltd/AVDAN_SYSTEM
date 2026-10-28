@@ -15,6 +15,7 @@ import services.orders.models  # noqa: F401 — registers models with Base.metad
 import services.payment.models  # noqa: F401 — registers models with Base.metadata
 import services.qa.models  # noqa: F401 — registers models with Base.metadata
 import services.vendor.models  # noqa: F401 — registers models with Base.metadata
+import services.wallet.models  # noqa: F401 — registers models with Base.metadata
 from core.config import settings
 from models.base import Base
 

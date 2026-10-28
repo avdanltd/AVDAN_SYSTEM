@@ -56,6 +56,10 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-font',
     'expo-secure-store',
+    [
+      'expo-location',
+      { locationWhenInUsePermission: 'AVDAN uses your location to price delivery by distance.' },
+    ],
     ['expo-notifications', { color: '#0A2480' }],
     // expo-web-browser ships no config plugin — it's a pure JS API (openAuthSessionAsync),
     // nothing to configure natively. Listing it here would break `expo prebuild`/EAS builds

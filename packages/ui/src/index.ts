@@ -94,6 +94,8 @@ export {
 // ─── Custom components (built on top of Shadcn) ───────────────────────────────
 export { OrderStatusBadge, UserStatusBadge } from './components/custom/status-badge'
 export { StatsCard } from './components/custom/stats-card'
+export { WalletPanel } from './components/custom/wallet-panel'
+export type { WalletPanelProps } from './components/custom/wallet-panel'
 export { ConfirmDialog } from './components/custom/confirm-dialog'
 export { DataTable } from './components/custom/data-table'
 export type { Column } from './components/custom/data-table'

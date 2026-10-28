@@ -39,7 +39,10 @@ from services.qa.router import router as hub_router
 from services.search.router import router as search_router
 from services.storage.router import router as uploads_router
 from services.tracking.router import ws_router
-from services.vendor.router import products_router, router as vendor_router
+from services.vendor.router import products_router
+from services.vendor.router import router as vendor_router
+from services.wallet.router import admin_router as admin_payouts_router
+from services.wallet.router import router as wallet_router
 
 configure_logging(level="DEBUG" if settings.environment == "development" else "INFO")
 
@@ -112,6 +115,8 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    app.include_router(admin_payouts_router, prefix="/admin/payouts", tags=["admin-payouts"])
+    app.include_router(wallet_router, prefix="/wallet", tags=["wallet"])
     app.include_router(categories_router, prefix="/categories", tags=["categories"])
     app.include_router(products_router, prefix="/products", tags=["products"])
     app.include_router(search_router, prefix="/search", tags=["search"])

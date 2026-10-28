@@ -44,6 +44,7 @@ export {
 export { AvdanLogo, AvdanMark } from './components/brand-logo'
 export { AuthSplitShell } from './components/auth-split-shell'
 export { ConfirmDialog } from './components/confirm-dialog'
+export { WalletPanel, type WalletPanelProps } from './components/wallet-panel'
 
 /* ── Lib ──────────────────────────────────────────────────────────────────── */
 export { ApiClientError, apiClient, configureApiClient, getApiUrl, getWsUrl } from './lib/api-client'

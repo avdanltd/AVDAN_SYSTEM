@@ -9,7 +9,9 @@ export interface PlatformConfig {
   delivery_fee_structure: {
     base_fee_kobo: number
     per_km_kobo: number
+    road_factor: number
   }
+  min_withdrawal_kobo: number
   escrow_release_hours: number
   order_cancellation_window_minutes: number
 }

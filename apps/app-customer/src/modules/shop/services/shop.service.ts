@@ -1,3 +1,4 @@
+import type { DeliveryQuote } from '@avdan/types'
 import { apiClient } from '@avdan/mobile'
 
 import type {
@@ -74,6 +75,13 @@ export const shopService = {
     items: { product_id: string; quantity: number }[]
     delivery_address: DeliveryAddress
   }) => apiClient.post<CustomerOrder>('/orders', payload),
+
+  getDeliveryQuote: (vendorId: string, lat: number, lng: number) =>
+    apiClient.get<DeliveryQuote>('/orders/delivery-quote', {
+      vendor_id: vendorId,
+      lat: String(lat),
+      lng: String(lng),
+    }),
 
   cancelOrder: (id: string) => apiClient.post<CustomerOrder>(`/orders/${id}/cancel`, {}),
 

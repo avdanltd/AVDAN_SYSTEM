@@ -20,6 +20,10 @@ milestone above is "code exists", not "feature works". Phase 14 exists specifica
 > migrations 0012–0014, both seed scripts). The security/OTP/pgvector pass tracked in
 > `fixes-tasks.md` was also complete and unreflected here. Ticked to match the codebase.
 
+> **2026-10-28 — Wallet payouts (post-Phase 13 addition):** vendor/rider wallets, payout requests and
+> admin approval replace automatic escrow-release transfers. See `WALLET_PAYOUTS.md`. Code-complete and
+> unit-tested (`tests/services/test_wallet.py`); not yet run against live Paystack.
+
 ---
 
 ## Phase 1 — Foundation & Scaffold
