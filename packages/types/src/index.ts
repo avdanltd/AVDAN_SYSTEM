@@ -58,3 +58,5 @@ export type PayoutRequest = components['schemas']['PayoutRequestResponse']
 export type PayoutEvent = components['schemas']['PayoutEventResponse']
 export type DeliveryQuote = components['schemas']['DeliveryQuoteResponse']
 export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'FAILED'
+export type IncomingDelivery = components['schemas']['IncomingDeliveryResponse']
+export type TrackingStage = 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'

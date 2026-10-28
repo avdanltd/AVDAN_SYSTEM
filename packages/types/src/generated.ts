@@ -1555,6 +1555,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hub/incoming": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Incoming Deliveries
+         * @description Riders on their way to this hub, soonest first, with live ETA and a phone number to call.
+         */
+        get: operations["list_incoming_deliveries_hub_incoming_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hub/orders/inbound": {
         parameters: {
             query?: never;
@@ -2039,6 +2059,34 @@ export interface components {
             lat: number | null;
             /** Lng */
             lng: number | null;
+        };
+        /**
+         * IncomingDeliveryResponse
+         * @description A rider on the way to (or just arrived at) this hub with an order.
+         */
+        IncomingDeliveryResponse: {
+            /** Order Id */
+            order_id: string;
+            /** Status */
+            status: string;
+            /** Stage */
+            stage: string;
+            /** Vendor Name */
+            vendor_name: string | null;
+            /** Item Count */
+            item_count: number;
+            /** Rider Name */
+            rider_name: string | null;
+            /** Rider Phone */
+            rider_phone: string | null;
+            /** Eta Seconds */
+            eta_seconds: number | null;
+            /** Rider Lat */
+            rider_lat: number | null;
+            /** Rider Lng */
+            rider_lng: number | null;
+            /** Location Updated At */
+            location_updated_at: string | null;
         };
         /** InitiatePaymentResponse */
         InitiatePaymentResponse: {
@@ -6591,6 +6639,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_incoming_deliveries_hub_incoming_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncomingDeliveryResponse"][];
                 };
             };
             /** @description Validation Error */

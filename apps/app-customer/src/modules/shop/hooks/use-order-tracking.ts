@@ -10,7 +10,14 @@ export interface TrackingLocation {
 // web-customer's use-order-tracking.ts.
 export type TrackingMessage =
   | { type: 'status'; status: string }
-  | { type: 'location'; lat: number; lng: number; eta_seconds: number | null }
+  | {
+      type: 'location'
+      lat: number
+      lng: number
+      eta_seconds: number | null
+      stage?: 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'
+      updated_at?: string | null
+    }
   | { type: 'rider_info'; name: string | null; phone: string | null }
   | { type: 'error'; message: string }
 
@@ -18,6 +25,7 @@ export interface TrackingState {
   location: TrackingLocation | null
   status: string | null
   etaSeconds: number | null
+  stage: 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub' | null
   rider: { name: string | null; phone: string | null } | null
   connected: boolean
 }
@@ -27,6 +35,7 @@ export function useOrderTracking(orderId: string, enabled: boolean) {
     location: null,
     status: null,
     etaSeconds: null,
+    stage: null,
     rider: null,
     connected: false,
   })
@@ -45,6 +54,7 @@ export function useOrderTracking(orderId: string, enabled: boolean) {
           case 'location':
             next.location = { lat: message.lat, lng: message.lng }
             next.etaSeconds = message.eta_seconds
+            next.stage = message.stage ?? null
             break
           case 'status':
             next.status = message.status

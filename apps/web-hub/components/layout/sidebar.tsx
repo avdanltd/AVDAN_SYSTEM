@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Truck, BarChart2, User } from 'lucide-react'
+import { LayoutDashboard, Truck, BarChart2, User, Navigation } from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -10,6 +10,7 @@ import { useSession } from '@/modules/auth/hooks/use-session'
 
 export const navItems = [
   { label: 'Dashboard', href: ROUTES.home, icon: LayoutDashboard },
+  { label: 'Incoming', href: ROUTES.incoming, icon: Navigation },
   { label: 'Orders', href: ROUTES.orders, icon: Truck },
   { label: 'Analytics', href: ROUTES.analytics, icon: BarChart2 },
   { label: 'Profile', href: ROUTES.profile, icon: User },

@@ -35,10 +35,75 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def calculate_eta_seconds(
-    rider_lat: float, rider_lng: float, dest_lat: float, dest_lng: float
+    rider_lat: float, rider_lng: float, dest_lat: float, dest_lng: float,
+    *, speed_kmh: float = 30.0, road_factor: float = 1.0,
 ) -> int:
-    distance_km = _haversine_km(rider_lat, rider_lng, dest_lat, dest_lng)
-    return int((distance_km / 30.0) * 3600)  # 30 km/h average speed
+    """Straight-line distance, scaled to road distance by `road_factor`, over an average speed."""
+    distance_km = _haversine_km(rider_lat, rider_lng, dest_lat, dest_lng) * road_factor
+    return int((distance_km / speed_kmh) * 3600)
+
+
+# Order states in which the rider is on the move and their position is shared. Once an order is
+# delivered (or otherwise leaves this set) the rider's location stops being published or sent.
+TRACKED_STATUSES = [
+    OrderStatus.READY_FOR_PICKUP,
+    OrderStatus.PICKED_UP,
+    OrderStatus.IN_TRANSIT_TO_HUB,
+    OrderStatus.ARRIVED_AT_HUB,
+    OrderStatus.AT_HUB,
+    OrderStatus.QA_PASSED,
+    OrderStatus.OUT_FOR_DELIVERY,
+]
+
+# Where the rider is heading in each state. States not listed (waiting at the hub for QA, etc.)
+# have no ETA — the rider isn't travelling.
+_ROUTE_STAGE = {
+    OrderStatus.READY_FOR_PICKUP: "to_vendor",
+    OrderStatus.PICKED_UP: "to_hub",
+    OrderStatus.IN_TRANSIT_TO_HUB: "to_hub",
+    OrderStatus.OUT_FOR_DELIVERY: "to_customer",
+}
+
+
+async def load_eta_context(db: AsyncSession, order: Order) -> dict:
+    """Everything needed to turn a rider position into an ETA for this order, loaded once so a
+    stream of location pushes doesn't re-query the database each time. Refresh when status changes."""
+    from services.analytics.service import AnalyticsService
+    from services.qa.models import AgentHub
+    from services.vendor.models import Vendor
+
+    config = await AnalyticsService(db).get_config()
+    vendor = (await db.execute(select(Vendor).where(Vendor.id == order.vendor_id))).scalar_one_or_none()
+    hub = None
+    if order.hub_id:
+        hub = (await db.execute(select(AgentHub).where(AgentHub.id == order.hub_id))).scalar_one_or_none()
+    addr = order.delivery_address or {}
+
+    def point(lat: object, lng: object) -> tuple[float, float] | None:
+        return (float(lat), float(lng)) if lat is not None and lng is not None else None  # type: ignore[arg-type]
+
+    return {
+        "status": order.status,
+        "speed_kmh": float(config.get("eta_avg_speed_kmh", 25)),
+        "road_factor": float(config.get("delivery_fee_structure", {}).get("road_factor", 1.0)),
+        "destinations": {
+            "to_vendor": point(vendor.lat, vendor.lng) if vendor else None,
+            "to_hub": point(hub.lat, hub.lng) if hub else None,
+            "to_customer": point(addr.get("lat"), addr.get("lng")),
+        },
+    }
+
+
+def eta_for(ctx: dict, lat: float, lng: float) -> tuple[str, int | None]:
+    """(stage, eta_seconds) for a rider at (lat, lng). stage is "to_vendor" | "to_hub" |
+    "to_customer", or "at_hub" when the rider isn't travelling; eta is None when unknown."""
+    stage = _ROUTE_STAGE.get(ctx["status"], "at_hub")
+    dest = ctx["destinations"].get(stage)
+    if dest is None:
+        return stage, None
+    return stage, calculate_eta_seconds(
+        lat, lng, dest[0], dest[1], speed_kmh=ctx["speed_kmh"], road_factor=ctx["road_factor"]
+    )
 
 
 async def pick_hub(db: AsyncSession, vendor: object | None) -> AgentHub | None:
@@ -429,20 +494,7 @@ class DispatchService:
         result = await self.db.execute(
             select(Order).where(
                 Order.rider_id == rider.id,
-                Order.status.in_([
-                    # READY_FOR_PICKUP, ARRIVED_AT_HUB and QA_PASSED must be included: they are
-                    # the states where the rider is the actor for the next transition
-                    # (READY_FOR_PICKUP → PICKED_UP, IN_TRANSIT_TO_HUB → ARRIVED_AT_HUB,
-                    # QA_PASSED → OUT_FOR_DELIVERY). Omitting them made an assigned order
-                    # invisible to the rider who alone could advance it — a deadlock.
-                    OrderStatus.READY_FOR_PICKUP,
-                    OrderStatus.PICKED_UP,
-                    OrderStatus.IN_TRANSIT_TO_HUB,
-                    OrderStatus.ARRIVED_AT_HUB,
-                    OrderStatus.AT_HUB,
-                    OrderStatus.QA_PASSED,
-                    OrderStatus.OUT_FOR_DELIVERY,
-                ]),
+                Order.status.in_(TRACKED_STATUSES),
             )
         )
         active_orders = result.scalars().all()

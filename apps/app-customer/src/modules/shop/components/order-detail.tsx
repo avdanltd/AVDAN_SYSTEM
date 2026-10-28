@@ -125,6 +125,13 @@ function Journey({ status }: { status: string }) {
   )
 }
 
+const STAGE_TEXT = {
+  to_vendor: 'Heading to the store',
+  to_hub: 'On the way to our hub for a quality check',
+  at_hub: 'At our hub for a quality check',
+  to_customer: 'On the way to you',
+} as const
+
 export function OrderDetail({ orderId }: { orderId: string }) {
   const router = useRouter()
   const { colors } = useTheme()
@@ -222,11 +229,13 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               <Text style={[styles.riderName, { color: colors.foreground }]}>
                 {tracking.rider.name ?? 'Assigned rider'}
               </Text>
-              {tracking.etaSeconds != null && (
+              {tracking.stage ? (
                 <Text style={[styles.riderEta, { color: colors.mutedForeground }]}>
-                  Arriving in ~{formatEta(tracking.etaSeconds)}
+                  {tracking.stage === 'to_customer' && tracking.etaSeconds != null
+                    ? `Arriving in ~${formatEta(tracking.etaSeconds)}`
+                    : STAGE_TEXT[tracking.stage]}
                 </Text>
-              )}
+              ) : null}
             </View>
             {tracking.rider.phone && (
               <Button

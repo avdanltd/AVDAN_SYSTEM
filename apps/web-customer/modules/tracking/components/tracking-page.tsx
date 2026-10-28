@@ -33,6 +33,13 @@ const TrackingMap = dynamic(
   },
 )
 
+const STAGE_TEXT: Record<string, string> = {
+  to_vendor: 'Rider is heading to the store',
+  to_hub: 'On the way to our hub for a quality check',
+  at_hub: 'At our hub for a quality check',
+  to_customer: 'Arriving in',
+}
+
 export function TrackingPage({ id }: { id: string }) {
   const { data: order, isLoading: orderLoading } = useOrder(id)
   const tracking = useOrderTracking(id)
@@ -85,13 +92,15 @@ export function TrackingPage({ id }: { id: string }) {
             )}
           </div>
         </div>
-        {tracking.etaSeconds != null && (
+        {tracking.stage && (
           <div className="flex items-center gap-2 text-sm">
             <Clock className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">ETA:</span>
-            <span className="font-semibold text-foreground">
-              {Math.max(1, Math.round(tracking.etaSeconds / 60))} min
-            </span>
+            <span className="text-muted-foreground">{STAGE_TEXT[tracking.stage]}</span>
+            {tracking.etaSeconds != null && tracking.stage !== 'at_hub' && (
+              <span className="font-semibold text-foreground">
+                ~{Math.max(1, Math.round(tracking.etaSeconds / 60))} min
+              </span>
+            )}
           </div>
         )}
       </div>

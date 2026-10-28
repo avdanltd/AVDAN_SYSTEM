@@ -4,10 +4,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
+from core.redis import get_redis
 from services.orders.schemas import OrderItemResponse, OrderResponse, PaginatedOrdersResponse
 from services.qa.schemas import (
     EvidenceUploadResponse,
     HubAnalyticsResponse,
+    IncomingDeliveryResponse,
     QAFailRequest,
 )
 from services.qa.service import QAService
@@ -43,6 +45,17 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )
+
+
+@router.get("/incoming", response_model=list[IncomingDeliveryResponse])
+async def list_incoming_deliveries(
+    current_user: CurrentUser = Depends(require_role("agent")),
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),  # noqa: ANN001
+) -> list[IncomingDeliveryResponse]:
+    """Riders on their way to this hub, soonest first, with live ETA and a phone number to call."""
+    rows = await QAService(db).list_incoming(current_user.user_id, redis)
+    return [IncomingDeliveryResponse(**r) for r in rows]
 
 
 @router.get("/orders/inbound", response_model=PaginatedOrdersResponse)
