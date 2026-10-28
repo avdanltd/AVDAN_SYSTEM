@@ -387,6 +387,23 @@ captured at checkout in web-customer and app-customer.
 
 ---
 
+## 11. Live tracking + ETA — stage-aware ETA and hub Incoming board DONE 2026-10-28
+
+Rider GPS (app-rider, every ~5s / 25 m, background-capable in installed builds) → Redis → customer
+websocket already existed. Added: ETA now follows the stage (to vendor → to hub → to customer, none while
+the parcel waits at the hub), uses road-adjusted distance ÷ `eta_avg_speed_kmh` (admin Config, default
+25), and is only shared while the order is in transit. web-hub has an **Incoming** page (riders heading to
+the hub, soonest first, tap-to-call). Customer web + app show the stage line.
+
+- [ ] **LATER — paid routing API** (Google Directions / Mapbox / HERE) for traffic-aware ETA and route
+      distance. Current ETA is straight-line × road factor ÷ fixed speed, so it will usually be optimistic
+      in heavy traffic. Needs a key + monthly cost; swap in behind `calculate_eta_seconds`.
+- [ ] Live map animation in app-customer (web-customer has a Leaflet map; mobile shows text + Call only).
+- [ ] Learn real average speed per rider from completed deliveries instead of one global speed.
+- [ ] Reduce GPS send rate while the rider is stationary (battery).
+
+---
+
 ## 8. Smaller items
 
 - [ ] `rider_profiles` is dead schema (0 rows) next to the real `riders` table, and

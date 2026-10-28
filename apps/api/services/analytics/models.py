@@ -18,6 +18,8 @@ DEFAULT_PLATFORM_CONFIG: dict = {
     },
     # Smallest amount a vendor/rider may request to withdraw (kobo) — keeps transfer fees sane.
     "min_withdrawal_kobo": 100000,
+    # Average rider speed used for ETAs (km/h) — city traffic, not highway.
+    "eta_avg_speed_kmh": 25,
     "escrow_release_hours": 48,
     "order_cancellation_window_minutes": 30,
 }

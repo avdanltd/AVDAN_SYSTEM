@@ -313,3 +313,70 @@ class QAService:
                 evidence_urls=evidence_urls or [],
             ))
         await self.db.flush()
+
+    async def list_incoming(self, agent_user_id: str, redis: object) -> list[dict]:
+        """Riders heading to this hub, soonest first. Position and ETA come from the rider's live
+        location in Redis (the same feed customers see); a rider with no recent position still
+        appears, just without an ETA."""
+        import json
+
+        from services.auth.models import User
+        from services.dispatch.models import Rider
+        from services.dispatch.service import eta_for, load_eta_context
+        from services.vendor.models import Vendor
+
+        hub = await self.get_hub_for_agent(agent_user_id)
+        orders = list((await self.db.execute(
+            select(Order).where(
+                Order.hub_id == hub.id,
+                Order.rider_id.isnot(None),
+                Order.status.in_([
+                    OrderStatus.READY_FOR_PICKUP,
+                    OrderStatus.PICKED_UP,
+                    OrderStatus.IN_TRANSIT_TO_HUB,
+                    OrderStatus.ARRIVED_AT_HUB,
+                ]),
+            ).options(selectinload(Order.items))
+        )).scalars().all())
+
+        riders = {
+            r.id: (r, u) for r, u in (await self.db.execute(
+                select(Rider, User).join(User, User.id == Rider.user_id)
+                .where(Rider.id.in_({o.rider_id for o in orders}))
+            )).all()
+        } if orders else {}
+        vendors = {
+            v.id: v.name for v in (await self.db.execute(
+                select(Vendor).where(Vendor.id.in_({o.vendor_id for o in orders}))
+            )).scalars().all()
+        } if orders else {}
+
+        rows: list[dict] = []
+        for order in orders:
+            rider, user = riders.get(order.rider_id, (None, None))
+            loc = None
+            raw = await redis.get(f"rider:location:{order.rider_id}")  # type: ignore[attr-defined]
+            if raw:
+                loc = json.loads(raw)
+            stage, eta = ("to_hub", None)
+            if loc:
+                stage, eta = eta_for(await load_eta_context(self.db, order), loc["lat"], loc["lng"])
+            else:
+                stage = "at_hub" if order.status == OrderStatus.ARRIVED_AT_HUB else (
+                    "to_vendor" if order.status == OrderStatus.READY_FOR_PICKUP else "to_hub"
+                )
+            rows.append({
+                "order_id": str(order.id),
+                "status": order.status,
+                "stage": stage,
+                "vendor_name": vendors.get(order.vendor_id),
+                "item_count": sum(i.quantity for i in (order.items or [])),
+                "rider_name": user.name if user else None,
+                "rider_phone": user.phone if user else None,
+                "eta_seconds": eta,
+                "rider_lat": loc["lat"] if loc else None,
+                "rider_lng": loc["lng"] if loc else None,
+                "location_updated_at": loc.get("updated_at") if loc else None,
+            })
+        rows.sort(key=lambda r: (r["eta_seconds"] is None, r["eta_seconds"] or 0))
+        return rows

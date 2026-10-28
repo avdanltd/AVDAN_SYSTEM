@@ -1,8 +1,10 @@
 import { apiClient } from '@/lib/api-client'
-import type { PaginatedResponse } from '@avdan/types'
+import type { IncomingDelivery, PaginatedResponse } from '@avdan/types'
 import type { HubOrder, HubStats } from '../types'
 
 export const hubService = {
+  getIncoming: () => apiClient.get<IncomingDelivery[]>('/hub/incoming'),
+
   getStats: () => apiClient.get<HubStats>('/hub/analytics'),
 
   getInboundOrders: (params?: Record<string, string>) =>

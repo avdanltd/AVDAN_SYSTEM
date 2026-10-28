@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { WsClient } from '@/lib/ws-client'
-import type { OrderStatus } from '@avdan/types'
+import type { OrderStatus, TrackingStage } from '@avdan/types'
 
 export interface TrackingLocation {
   lat: number
@@ -13,7 +13,14 @@ export interface TrackingLocation {
 // burst on connect and every live pub/sub push use these same three shapes.
 export type TrackingMessage =
   | { type: 'status'; status: OrderStatus }
-  | { type: 'location'; lat: number; lng: number; eta_seconds: number | null }
+  | {
+      type: 'location'
+      lat: number
+      lng: number
+      eta_seconds: number | null
+      stage?: TrackingStage
+      updated_at?: string | null
+    }
   | { type: 'rider_info'; name: string | null; phone: string | null }
   | { type: 'error'; message: string }
 
@@ -21,6 +28,8 @@ export interface TrackingState {
   location: TrackingLocation | null
   status: OrderStatus | null
   etaSeconds: number | null
+  stage: TrackingStage | null
+  locationUpdatedAt: string | null
   rider: { name: string | null; phone: string | null } | null
   connected: boolean
 }
@@ -30,6 +39,8 @@ export function useOrderTracking(orderId: string) {
     location: null,
     status: null,
     etaSeconds: null,
+    stage: null,
+    locationUpdatedAt: null,
     rider: null,
     connected: false,
   })
@@ -48,6 +59,8 @@ export function useOrderTracking(orderId: string) {
           case 'location':
             next.location = { lat: message.lat, lng: message.lng }
             next.etaSeconds = message.eta_seconds
+            next.stage = message.stage ?? null
+            next.locationUpdatedAt = message.updated_at ?? null
             break
           case 'status':
             next.status = message.status

@@ -60,3 +60,19 @@ class AssignHubRequest(BaseModel):
 class UpdateHubRequest(BaseModel):
     name: str
     capacity: int = 100
+
+
+class IncomingDeliveryResponse(BaseModel):
+    """A rider on the way to (or just arrived at) this hub with an order."""
+
+    order_id: str
+    status: str
+    stage: str  # "to_vendor" | "to_hub" | "at_hub"
+    vendor_name: str | None
+    item_count: int
+    rider_name: str | None
+    rider_phone: str | None
+    eta_seconds: int | None
+    rider_lat: float | None
+    rider_lng: float | None
+    location_updated_at: str | None

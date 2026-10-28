@@ -3,7 +3,8 @@
 Message contract (both the initial-state burst on connect and every live pub/sub push use the
 same shapes, so the frontend has one handler per type):
   {"type": "status", "status": "<OrderStatus>"}
-  {"type": "location", "lat": <float>, "lng": <float>, "eta_seconds": <int|null>}
+  {"type": "location", "lat": <float>, "lng": <float>, "eta_seconds": <int|null>,
+   "stage": "to_vendor"|"to_hub"|"to_customer"|"at_hub", "updated_at": <iso8601|null>}
   {"type": "rider_info", "name": <str|null>, "phone": <str|null>}
 """
 from __future__ import annotations
@@ -16,7 +17,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from core.redis import redis_pool
 from core.security import decode_token
-from services.dispatch.service import calculate_eta_seconds
+from services.dispatch.service import TRACKED_STATUSES, eta_for, load_eta_context
 
 ws_router = APIRouter()
 
@@ -52,24 +53,24 @@ async def _send_initial_state(websocket: WebSocket, order_id: str, redis) -> obj
 
     await websocket.send_text(json.dumps({"type": "status", "status": order.status}))
 
-    if order.rider_id:
+    # The rider's position is only shared while the parcel is in transit — never for an order
+    # that is delivered, cancelled or otherwise finished.
+    if order.rider_id and order.status in TRACKED_STATUSES:
         raw = await redis.get(f"rider:location:{order.rider_id}")
         if raw:
             loc = json.loads(raw)
-            eta_seconds = None
-            addr = order.delivery_address or {}
-            dest_lat, dest_lng = addr.get("lat"), addr.get("lng")
-            if dest_lat and dest_lng:
-                eta_seconds = calculate_eta_seconds(loc["lat"], loc["lng"], dest_lat, dest_lng)
+            ctx = await _eta_context(order_id)
+            stage, eta_seconds = eta_for(ctx, loc["lat"], loc["lng"]) if ctx else ("at_hub", None)
             await websocket.send_text(json.dumps({
-                "type": "location", "lat": loc["lat"], "lng": loc["lng"], "eta_seconds": eta_seconds,
+                "type": "location", "lat": loc["lat"], "lng": loc["lng"],
+                "eta_seconds": eta_seconds, "stage": stage, "updated_at": loc.get("updated_at"),
             }))
 
-        if rider_row:
-            _rider, user = rider_row
-            await websocket.send_text(json.dumps({
-                "type": "rider_info", "name": user.name, "phone": user.phone,
-            }))
+    if order.rider_id and rider_row:
+        _rider, user = rider_row
+        await websocket.send_text(json.dumps({
+            "type": "rider_info", "name": user.name, "phone": user.phone,
+        }))
 
     return order
 
@@ -111,7 +112,10 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
     pubsub = redis.pubsub()
     await pubsub.subscribe(f"order:{order_id}")
 
+    ctx = await _eta_context(order_id)
+
     async def _listen_pubsub() -> None:
+        nonlocal ctx
         async for message in pubsub.listen():
             if message["type"] != "message":
                 continue
@@ -120,14 +124,12 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
             except (json.JSONDecodeError, TypeError):
                 continue
 
-            # Enrich location pushes with ETA
-            if data.get("type") == "location":
-                addr = await _get_delivery_address(order_id)
-                dest_lat, dest_lng = addr.get("lat"), addr.get("lng")
-                if dest_lat and dest_lng:
-                    data["eta_seconds"] = calculate_eta_seconds(
-                        data["lat"], data["lng"], dest_lat, dest_lng
-                    )
+            if data.get("type") == "status":
+                ctx = await _eta_context(order_id)  # the destination changes with the stage
+            elif data.get("type") == "location":
+                if ctx is None or ctx["status"] not in TRACKED_STATUSES:
+                    continue  # not in transit — nothing to share
+                data["stage"], data["eta_seconds"] = eta_for(ctx, data["lat"], data["lng"])
 
             try:
                 await websocket.send_text(json.dumps(data))
@@ -154,14 +156,12 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
         await pubsub.close()
 
 
-async def _get_delivery_address(order_id: str) -> dict:
+async def _eta_context(order_id: str) -> dict | None:
     from sqlalchemy import select
 
     from core.database import AsyncSessionLocal
     from services.orders.models import Order
+
     async with AsyncSessionLocal() as db:
-        result = await db.execute(
-            select(Order.delivery_address).where(Order.id == uuid.UUID(order_id))
-        )
-        row = result.scalar_one_or_none()
-        return row or {}
+        order = (await db.execute(select(Order).where(Order.id == uuid.UUID(order_id)))).scalar_one_or_none()
+        return await load_eta_context(db, order) if order else None
