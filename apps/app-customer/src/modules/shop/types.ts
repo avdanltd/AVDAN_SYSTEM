@@ -18,6 +18,8 @@ export interface Product {
   name: string
   description: string | null
   price_kobo: number
+  // Pre-discount price, shown struck through, when the platform has discounted this product.
+  compare_at_price_kobo?: number | null
   available: boolean
   stock_qty: number
   image_urls: string[]

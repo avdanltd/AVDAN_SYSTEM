@@ -1821,6 +1821,12 @@ export interface components {
             vendor_price_kobo: number;
             /** Price Kobo */
             price_kobo: number;
+            /** Compare At Price Kobo */
+            compare_at_price_kobo: number | null;
+            /** Discount Type */
+            discount_type: string | null;
+            /** Discount Value */
+            discount_value: number | null;
             /** Markup Kobo */
             markup_kobo: number;
             /** Created At */
@@ -1866,9 +1872,16 @@ export interface components {
         ApproveProductRequest: {
             /**
              * Price Kobo
-             * @description Price customers will see and pay, in kobo
+             * @description Shown (marked-up) price in kobo, before any discount
              */
             price_kobo: number;
+            /** Discount Type */
+            discount_type?: ("FIXED" | "PERCENT") | null;
+            /**
+             * Discount Value
+             * @description Kobo if FIXED, whole percent if PERCENT
+             */
+            discount_value?: number | null;
         };
         /** AssignHubRequest */
         AssignHubRequest: {
@@ -2675,6 +2688,8 @@ export interface components {
             description: string | null;
             /** Price Kobo */
             price_kobo: number;
+            /** Compare At Price Kobo */
+            compare_at_price_kobo?: number | null;
             /**
              * Approval Status
              * @default APPROVED
@@ -2712,6 +2727,8 @@ export interface components {
             description: string | null;
             /** Price Kobo */
             price_kobo: number;
+            /** Compare At Price Kobo */
+            compare_at_price_kobo?: number | null;
             /** Available */
             available: boolean;
             /** Stock Qty */

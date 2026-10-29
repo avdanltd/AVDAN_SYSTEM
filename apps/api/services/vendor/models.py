@@ -85,6 +85,12 @@ class Product(BaseModel):
     vendor_price_kobo: Mapped[int] = mapped_column(
         Integer, nullable=False, default=lambda ctx: ctx.get_current_parameters()["price_kobo"]
     )
+    # Platform-funded discount: price_kobo is already the discounted price customers pay,
+    # compare_at_price_kobo the original shown price (null = no discount). discount_type is
+    # FIXED (value in kobo) or PERCENT (value is a whole percent), kept so admin can edit it.
+    compare_at_price_kobo: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discount_type: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    discount_value: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # PENDING (awaiting admin) | APPROVED (live) | REJECTED. Only APPROVED products are public.
     approval_status: Mapped[str] = mapped_column(
         String(16), nullable=False, default="APPROVED", server_default="APPROVED", index=True

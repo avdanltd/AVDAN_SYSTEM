@@ -132,9 +132,14 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
 
             {/* Price + Add to Cart */}
             <div className="mt-auto flex items-center justify-between gap-2">
-              <span className="text-lg font-bold text-primary">
-                {formatPrice(product.price_kobo)}
-              </span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-lg font-bold text-primary">{formatPrice(product.price_kobo)}</span>
+                {product.compare_at_price_kobo ? (
+                  <span className="text-sm text-muted-foreground line-through">
+                    {formatPrice(product.compare_at_price_kobo)}
+                  </span>
+                ) : null}
+              </div>
               <Button
                 size="sm"
                 variant={product.available && product.stock_qty > 0 ? 'default' : 'secondary'}

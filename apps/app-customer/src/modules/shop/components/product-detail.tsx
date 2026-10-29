@@ -117,6 +117,14 @@ export function ProductDetail({ productId }: { productId: string }) {
 
           <Text style={[styles.price, { color: colors.foreground }]}>
             {formatKobo(product.price_kobo)}
+            {product.compare_at_price_kobo ? (
+              <Text
+                style={{ fontSize: 16, color: colors.mutedForeground, textDecorationLine: 'line-through' }}
+              >
+                {' '}
+                {formatKobo(product.compare_at_price_kobo)}
+              </Text>
+            ) : null}
           </Text>
 
           <Text

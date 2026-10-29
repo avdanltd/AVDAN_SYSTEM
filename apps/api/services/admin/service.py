@@ -115,15 +115,46 @@ class AdminService:
             raise NotFoundException("Product not found")
         return product
 
-    async def approve_product(self, product_id: str, price_kobo: int) -> Product:
-        """Approve (or re-price) a product: `price_kobo` is what customers will see and pay. It
-        can't be below the vendor's price — the difference is the platform's gain."""
+    async def approve_product(
+        self,
+        product_id: str,
+        price_kobo: int,
+        discount_type: str | None = None,
+        discount_value: int | None = None,
+    ) -> Product:
+        """Approve (or re-price) a product. `price_kobo` is the shown price; an optional discount
+        (fixed kobo or whole percent) comes off it, and the result is what customers pay. The
+        vendor is always paid their own price, so the discounted price can never fall below it:
+        a discount only eats into the platform's markup."""
         product = await self._get_product(product_id)
         if price_kobo < product.vendor_price_kobo:
             raise ValidationException(
                 f"The shown price can't be below the vendor's price of ₦{product.vendor_price_kobo / 100:,.2f}."
             )
-        product.price_kobo = price_kobo
+
+        final = price_kobo
+        if discount_type:
+            if not discount_value:
+                raise ValidationException("Enter the discount amount.")
+            if discount_type == "PERCENT":
+                if discount_value >= 100:
+                    raise ValidationException("A percentage discount must be below 100%.")
+                final = price_kobo - price_kobo * discount_value // 100
+            else:
+                final = price_kobo - discount_value
+            if final < product.vendor_price_kobo:
+                raise ValidationException(
+                    f"This discount takes the price to ₦{max(final, 0) / 100:,.2f}, below the vendor's price of "
+                    f"₦{product.vendor_price_kobo / 100:,.2f}. The vendor must still be paid in full, so the "
+                    f"largest discount here is ₦{(price_kobo - product.vendor_price_kobo) / 100:,.2f}."
+                )
+        elif discount_value:
+            raise ValidationException("Choose a discount type (fixed or percentage).")
+
+        product.price_kobo = final
+        product.compare_at_price_kobo = price_kobo if discount_type else None
+        product.discount_type = discount_type or None
+        product.discount_value = discount_value if discount_type else None
         product.approval_status = "APPROVED"
         product.rejection_reason = None
         return product

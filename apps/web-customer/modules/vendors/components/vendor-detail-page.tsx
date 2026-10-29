@@ -107,9 +107,14 @@ function StoreProductCard({ product, vendorId, vendorName }: StoreProductCardPro
             {product.name}
           </p>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-base font-bold text-foreground">
-              {formatPrice(product.price_kobo)}
-            </span>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base font-bold text-foreground">{formatPrice(product.price_kobo)}</span>
+              {product.compare_at_price_kobo ? (
+                <span className="text-xs text-muted-foreground line-through">
+                  {formatPrice(product.compare_at_price_kobo)}
+                </span>
+              ) : null}
+            </div>
             <Button
               size="sm"
               disabled={!inStock}

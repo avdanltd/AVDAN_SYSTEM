@@ -55,6 +55,9 @@ export function ProductsPage() {
   const [pricing, setPricing] = useState<AdminProduct | null>(null)
   const [rejecting, setRejecting] = useState<AdminProduct | null>(null)
   const [priceInput, setPriceInput] = useState('')
+  const [discountOn, setDiscountOn] = useState(false)
+  const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENT'>('PERCENT')
+  const [discountInput, setDiscountInput] = useState('')
   const [reason, setReason] = useState('')
 
   const params: Record<string, string> = { page: String(page), page_size: '20' }
@@ -69,16 +72,51 @@ export function ProductsPage() {
 
   function openPricing(product: AdminProduct) {
     setPricing(product)
-    // Start from the price already shown (the vendor's own, for a new product).
-    setPriceInput(String(product.price_kobo / 100))
+    // Start from the price before any discount (the vendor's own, for a new product), and keep
+    // an existing discount ticked and filled in so it can be edited or removed.
+    setPriceInput(String((product.compare_at_price_kobo ?? product.price_kobo) / 100))
+    setDiscountOn(product.discount_type !== null)
+    setDiscountType(product.discount_type ?? 'PERCENT')
+    setDiscountInput(
+      product.discount_value === null
+        ? ''
+        : String(product.discount_type === 'FIXED' ? product.discount_value / 100 : product.discount_value),
+    )
   }
 
   const shownKobo = Math.round(Number(priceInput) * 100)
   const priceValid = pricing !== null && Number.isFinite(shownKobo) && shownKobo >= pricing.vendor_price_kobo
 
+  // Discount: fixed is entered in naira, percentage as a whole number.
+  const discountValue =
+    discountType === 'FIXED' ? Math.round(Number(discountInput) * 100) : Math.floor(Number(discountInput))
+  const discountEntered = discountOn && Number.isFinite(discountValue) && discountValue > 0
+  const discountedKobo = !priceValid
+    ? shownKobo
+    : !discountEntered
+      ? shownKobo
+      : discountType === 'PERCENT'
+        ? shownKobo - Math.floor((shownKobo * discountValue) / 100)
+        : shownKobo - discountValue
+  // The vendor is paid in full whatever the discount, so the customer's price can't go below it.
+  const maxDiscountKobo = pricing ? shownKobo - pricing.vendor_price_kobo : 0
+  const discountValid =
+    !discountOn ||
+    (discountEntered && (discountType !== 'PERCENT' || discountValue < 100) && pricing !== null && discountedKobo >= pricing.vendor_price_kobo)
+  const canSubmit = priceValid && discountValid
+
   function submitApprove() {
-    if (!pricing || !priceValid) return
-    approve.mutate({ id: pricing.id, priceKobo: shownKobo }, { onSuccess: () => setPricing(null) })
+    if (!pricing || !canSubmit) return
+    approve.mutate(
+      {
+        id: pricing.id,
+        body: {
+          price_kobo: shownKobo,
+          ...(discountOn ? { discount_type: discountType, discount_value: discountValue } : {}),
+        },
+      },
+      { onSuccess: () => setPricing(null) },
+    )
   }
 
   function submitReject() {
@@ -112,7 +150,12 @@ export function ProductsPage() {
       header: 'Shown price',
       cell: (row) =>
         row.approval_status === 'APPROVED' ? (
-          <span className="text-sm font-medium">{naira(row.price_kobo)}</span>
+          <span className="text-sm font-medium">
+            {naira(row.price_kobo)}
+            {row.compare_at_price_kobo ? (
+              <span className="ml-1 text-xs text-muted-foreground line-through">{naira(row.compare_at_price_kobo)}</span>
+            ) : null}
+          </span>
         ) : (
           <span className="text-sm text-muted-foreground">Not set</span>
         ),
@@ -231,17 +274,86 @@ export function ProductsPage() {
                   onChange={(e) => setPriceInput(e.target.value)}
                 />
               </div>
-              <p className={`text-sm ${priceValid ? 'text-success' : 'text-destructive'}`}>
-                {priceValid
-                  ? `Platform gain: ${naira(shownKobo - pricing.vendor_price_kobo)} per unit`
-                  : `Must be at least ${naira(pricing.vendor_price_kobo)}`}
-              </p>
+              {!priceValid && (
+                <p className="text-sm text-destructive">Must be at least {naira(pricing.vendor_price_kobo)}</p>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input
+                  id="add-discount"
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={discountOn}
+                  onChange={(e) => setDiscountOn(e.target.checked)}
+                />
+                <Label htmlFor="add-discount">Add a discount (paid for by the platform)</Label>
+              </div>
+
+              {discountOn && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label>Type</Label>
+                    <Select
+                      value={discountType}
+                      onValueChange={(v) => {
+                        setDiscountType(v as 'FIXED' | 'PERCENT')
+                        setDiscountInput('')
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PERCENT">Percentage (%)</SelectItem>
+                        <SelectItem value="FIXED">Fixed amount (₦)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="discount-value">{discountType === 'PERCENT' ? 'Percent off' : 'Naira off'}</Label>
+                    <Input
+                      id="discount-value"
+                      type="number"
+                      inputMode="decimal"
+                      min={0}
+                      step={discountType === 'PERCENT' ? '1' : '0.01'}
+                      value={discountInput}
+                      onChange={(e) => setDiscountInput(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {priceValid && (
+                <div className="rounded-md bg-muted p-3 text-sm">
+                  {discountOn && discountEntered && discountValid ? (
+                    <p>
+                      Customers pay <span className="font-medium">{naira(discountedKobo)}</span>{' '}
+                      <span className="text-muted-foreground line-through">{naira(shownKobo)}</span>
+                    </p>
+                  ) : (
+                    <p>
+                      Customers pay <span className="font-medium">{naira(shownKobo)}</span>
+                    </p>
+                  )}
+                  <p className="text-success">
+                    Platform gain: {naira((discountOn && discountEntered && discountValid ? discountedKobo : shownKobo) - pricing.vendor_price_kobo)} per unit
+                  </p>
+                </div>
+              )}
+              {discountOn && discountEntered && !discountValid && (
+                <p className="text-sm text-destructive">
+                  {discountType === 'PERCENT' && discountValue >= 100
+                    ? 'A percentage discount must be below 100%.'
+                    : `Too large: the vendor must still be paid ${naira(pricing.vendor_price_kobo)}. The biggest discount here is ${naira(maxDiscountKobo)}.`}
+                </p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setPricing(null)} disabled={approve.isPending}>
                 Cancel
               </Button>
-              <Button disabled={!priceValid || approve.isPending} onClick={submitApprove}>
+              <Button disabled={!canSubmit || approve.isPending} onClick={submitApprove}>
                 {approve.isPending ? 'Saving…' : pricing.approval_status === 'APPROVED' ? 'Save price' : 'Approve & go live'}
               </Button>
             </DialogFooter>
