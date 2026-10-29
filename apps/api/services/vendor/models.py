@@ -79,7 +79,17 @@ class Product(BaseModel):
     )
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The price customers see and pay (admin-set once approved). `vendor_price_kobo` is what the
+    # vendor asked for and is paid; the difference is the platform's gain.
     price_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
+    vendor_price_kobo: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=lambda ctx: ctx.get_current_parameters()["price_kobo"]
+    )
+    # PENDING (awaiting admin) | APPROVED (live) | REJECTED. Only APPROVED products are public.
+    approval_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="APPROVED", server_default="APPROVED", index=True
+    )
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     image_urls: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)

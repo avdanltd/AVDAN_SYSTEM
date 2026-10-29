@@ -128,7 +128,13 @@ class WalletService:
         for an admin-decided dispute split, where no commission is taken. Returns the amount."""
         from services.analytics.service import AnalyticsService
 
-        if amount_kobo is None:
+        if amount_kobo is None and order.vendor_total_kobo is not None:
+            # Marked-up pricing: the vendor is paid their own price; the markup the customer paid
+            # on top is the platform's gain, so no further commission is taken.
+            net = order.vendor_total_kobo
+            meta = {"reason": reason, "gross_kobo": order.total_kobo,
+                    "commission_kobo": order.total_kobo - net, "pricing": "markup"}
+        elif amount_kobo is None:
             config = await AnalyticsService(self.db).get_config()
             commission = int(order.total_kobo * config["commission_rate_percent"] / 100)
             net = order.total_kobo - commission
@@ -167,6 +173,8 @@ class WalletService:
         rate = config["commission_rate_percent"]
 
         def vendor_net(o: Order) -> int:
+            if o.vendor_total_kobo is not None:
+                return o.vendor_total_kobo
             return o.total_kobo - int(o.total_kobo * rate / 100)
 
         def amount(o: Order) -> int:

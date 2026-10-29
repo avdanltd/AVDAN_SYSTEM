@@ -26,6 +26,9 @@ class Order(BaseModel):
     hub_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
     total_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Sum of the vendor's own prices for the items: the vendor's payout. total_kobo minus this
+    # is the platform's gain. Null on orders placed before product approval existed.
+    vendor_total_kobo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Rider's flat delivery fee for this order, computed once at checkout from platform_config's
     # delivery_fee_structure (base_fee_kobo + per_km_kobo * distance) — see
     # OrderService._calculate_delivery_fee. Stored rather than recomputed so a later change to
@@ -68,6 +71,9 @@ class OrderItem(BaseModel):
     price_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     subtotal_kobo: Mapped[int] = mapped_column(Integer, nullable=False)
+    # What the vendor is paid per unit (price_kobo is the marked-up customer price). Null on
+    # orders placed before product approval existed.
+    vendor_price_kobo: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     order: Mapped["Order"] = relationship("Order", back_populates="items")
 

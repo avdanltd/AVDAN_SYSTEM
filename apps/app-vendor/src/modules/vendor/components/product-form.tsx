@@ -216,7 +216,7 @@ export function ProductForm({ productId }: Props) {
 
           <View style={styles.pairRow}>
             <View style={styles.flex1}>
-              <Field label="Price (₦)" error={errors.priceNaira}>
+              <Field label="Your price (₦) — AVDAN sets the customer price" error={errors.priceNaira}>
                 <View style={fieldStyle('priceNaira')}>
                   <TextInput
                     style={[styles.input, { color: colors.foreground }]}

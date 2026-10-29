@@ -231,6 +231,60 @@ export interface paths {
         patch: operations["update_vendor_status_admin_vendors__vendor_id__status_patch"];
         trace?: never;
     };
+    "/admin/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Products */
+        get: operations["list_products_admin_products_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{product_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve Product
+         * @description Approve a product and set the price customers will see. Also re-prices a live product.
+         */
+        post: operations["approve_product_admin_products__product_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/products/{product_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Product */
+        post: operations["reject_product_admin_products__product_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/orders": {
         parameters: {
             query?: never;
@@ -1741,6 +1795,37 @@ export interface components {
             /** Reason */
             reason: string;
         };
+        /** AdminProductResponse */
+        AdminProductResponse: {
+            /** Id */
+            id: string;
+            /** Vendor Id */
+            vendor_id: string;
+            /** Vendor Name */
+            vendor_name: string;
+            /** Category Name */
+            category_name: string | null;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string | null;
+            /** Image Urls */
+            image_urls: string[];
+            /** Stock Qty */
+            stock_qty: number;
+            /** Approval Status */
+            approval_status: string;
+            /** Rejection Reason */
+            rejection_reason: string | null;
+            /** Vendor Price Kobo */
+            vendor_price_kobo: number;
+            /** Price Kobo */
+            price_kobo: number;
+            /** Markup Kobo */
+            markup_kobo: number;
+            /** Created At */
+            created_at: string;
+        };
         /** AdminVendorResponse */
         AdminVendorResponse: {
             /** Id */
@@ -1776,6 +1861,14 @@ export interface components {
             approved_kobo: number;
             /** Note */
             note?: string | null;
+        };
+        /** ApproveProductRequest */
+        ApproveProductRequest: {
+            /**
+             * Price Kobo
+             * @description Price customers will see and pay, in kobo
+             */
+            price_kobo: number;
         };
         /** AssignHubRequest */
         AssignHubRequest: {
@@ -2328,6 +2421,17 @@ export interface components {
             /** Pending Disputes */
             pending_disputes: number;
         };
+        /** PaginatedAdminProductsResponse */
+        PaginatedAdminProductsResponse: {
+            /** Items */
+            items: components["schemas"]["AdminProductResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
         /** PaginatedAuditLogResponse */
         PaginatedAuditLogResponse: {
             /** Items */
@@ -2571,6 +2675,13 @@ export interface components {
             description: string | null;
             /** Price Kobo */
             price_kobo: number;
+            /**
+             * Approval Status
+             * @default APPROVED
+             */
+            approval_status: string;
+            /** Rejection Reason */
+            rejection_reason?: string | null;
             /** Available */
             available: boolean;
             /** Stock Qty */
@@ -2691,6 +2802,11 @@ export interface components {
         RejectPayoutRequest: {
             /** Note */
             note: string;
+        };
+        /** RejectProductRequest */
+        RejectProductRequest: {
+            /** Reason */
+            reason: string;
         };
         /** ResolveDisputeRequest */
         ResolveDisputeRequest: {
@@ -3599,6 +3715,122 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminVendorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_products_admin_products_get: {
+        parameters: {
+            query?: {
+                approval_status?: string | null;
+                vendor_id?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAdminProductsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_product_admin_products__product_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_product_admin_products__product_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductResponse"];
                 };
             };
             /** @description Validation Error */

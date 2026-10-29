@@ -183,7 +183,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
             name="price_kobo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Price (kobo)</FormLabel>
+                <FormLabel>Your price (kobo)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
@@ -195,7 +195,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                 <FormMessage />
                 {field.value > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    = ₦{(field.value / 100).toLocaleString('en-NG')}
+                    = ₦{(field.value / 100).toLocaleString('en-NG')}. You are paid this price; AVDAN reviews
+                    it and sets the price customers see. Changing it later needs approval again.
                   </p>
                 )}
               </FormItem>
