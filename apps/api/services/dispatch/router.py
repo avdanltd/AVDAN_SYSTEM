@@ -10,6 +10,7 @@ from services.dispatch.schemas import (
     AssignRiderRequest,
     AssignRiderResponse,
     AvailabilityUpdate,
+    DeliverRequest,
     LocationUpdate,
     RiderResponse,
 )
@@ -292,13 +293,16 @@ async def confirm_pickup_from_hub(
 @router.post("/me/orders/{order_id}/deliver", response_model=dict)
 async def mark_delivered(
     order_id: str,
+    data: DeliverRequest | None = None,
     current_user: CurrentUser = Depends(require_role("rider")),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
     from services.orders.state_machine import OrderStatus
     svc = DispatchService(db, redis)
-    order = await svc.rider_transition(current_user.user_id, order_id, OrderStatus.DELIVERED)
+    order = await svc.rider_transition(
+        current_user.user_id, order_id, OrderStatus.DELIVERED, delivery_code=data.code if data else None
+    )
     return {"order_id": order_id, "status": order.status}
 
 

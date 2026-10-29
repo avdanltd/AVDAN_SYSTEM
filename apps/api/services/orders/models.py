@@ -35,6 +35,9 @@ class Order(BaseModel):
     # Breakdown behind delivery_fee_kobo: route legs (vendor -> hub -> customer), km, rates, and
     # the hub the fee was quoted against (dispatch routes the order through that same hub).
     delivery_quote: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # 4-digit handover code. Shown only to the customer; the rider must enter it to mark the order
+    # delivered, so the wallet credit that follows delivery is tied to a confirmed handover.
+    delivery_code: Mapped[str | None] = mapped_column(String(6), nullable=True)
 
     items: Mapped[list["OrderItem"]] = relationship(
         "OrderItem", back_populates="order", cascade="all, delete-orphan"

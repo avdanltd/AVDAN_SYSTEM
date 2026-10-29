@@ -32,6 +32,8 @@ export interface RiderOrder {
     street?: string
     city?: string
     state?: string
+    /** Customer's contact number, for calling on arrival. */
+    phone?: string | null
     [key: string]: unknown
   }
   hub_id: string | null

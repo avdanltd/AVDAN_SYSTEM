@@ -1931,6 +1931,14 @@ export interface components {
             /** Category Id */
             category_id?: string | null;
         };
+        /**
+         * DeliverRequest
+         * @description The code the customer reads out at handover (see Order.delivery_code).
+         */
+        DeliverRequest: {
+            /** Code */
+            code?: string | null;
+        };
         /** DeliveryAddress */
         DeliveryAddress: {
             /** Street */
@@ -1946,6 +1954,8 @@ export interface components {
             country: string;
             /** Notes */
             notes?: string | null;
+            /** Phone */
+            phone?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
@@ -1971,6 +1981,11 @@ export interface components {
             road_factor: number;
             /** Hub Name */
             hub_name?: string | null;
+            /**
+             * Min Order Kobo
+             * @default 0
+             */
+            min_order_kobo: number;
         };
         /** DisputeResponse */
         DisputeResponse: {
@@ -2170,6 +2185,8 @@ export interface components {
             delivery_address: {
                 [key: string]: unknown;
             };
+            /** Delivery Code */
+            delivery_code?: string | null;
             /**
              * Items
              * @default []
@@ -2260,6 +2277,8 @@ export interface components {
             delivery_address: {
                 [key: string]: unknown;
             };
+            /** Delivery Code */
+            delivery_code?: string | null;
             /**
              * Items
              * @default []
@@ -6171,7 +6190,11 @@ export interface operations {
                 avdan_token?: string | null;
             };
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["DeliverRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

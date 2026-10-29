@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { AlertCircle, Building2, CheckCircle2, MapPin, Navigation, Package, Receipt } from 'lucide-react-native'
+import { AlertCircle, Building2, CheckCircle2, MapPin, Navigation, Package, Phone, Receipt } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useRiderOrder } from '../hooks/use-rider-orders'
@@ -81,6 +81,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const { colors } = useTheme()
   const { data: order, isLoading, isError, refetch } = useRiderOrder(orderId)
   const { execute, isPending } = useOrderAction(orderId)
+  const [code, setCode] = useState('')
   const [pendingAction, setPendingAction] = useState<{ action: RiderOrderAction; label: string } | null>(null)
 
   // Only the to-hub leg has coordinates to plot (see the note by `mapDestination` below) — the
@@ -151,7 +152,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   // should not mark a delivery failed.
   const run = (action: RiderOrderAction, label: string, destructive: boolean) => {
     if (!destructive) {
-      execute(action)
+      execute(action, code)
       return
     }
     setPendingAction({ action, label })
@@ -196,6 +197,14 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             icon={<Navigation size={16} color={colors.foreground} />}
             onPress={() => openInMaps(order.delivery_address)}
           />
+          {order.delivery_address.phone ? (
+            <Button
+              label={`Call customer · ${order.delivery_address.phone}`}
+              variant="outline"
+              icon={<Phone size={16} color={colors.foreground} />}
+              onPress={() => Linking.openURL(`tel:${order.delivery_address.phone}`)}
+            />
+          ) : null}
         </Card>
       ) : showHub ? (
         <Card style={styles.block}>
@@ -299,6 +308,23 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       {/* Actions */}
       {actions.length > 0 ? (
         <View style={styles.actions}>
+          {order.status === 'OUT_FOR_DELIVERY' ? (
+            <Card style={styles.block}>
+              <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery code</Text>
+              <TextInput
+                style={[styles.codeInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+                value={code}
+                onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 4))}
+                keyboardType="number-pad"
+                maxLength={4}
+                placeholder="• • • •"
+                placeholderTextColor={colors.subtleForeground}
+              />
+              <Text style={[styles.noActions, { color: colors.mutedForeground }]}>
+                Ask the customer for the code they received. You can only complete the delivery with it.
+              </Text>
+            </Card>
+          ) : null}
           {actions.map((a) => (
             <Button
               key={a.action}
@@ -306,6 +332,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               variant={a.variant}
               size="lg"
               loading={isPending && pendingAction === null}
+              disabled={a.action === 'deliver' && code.length !== 4}
               onPress={() => run(a.action, a.label, a.variant === 'destructive')}
             />
           ))}
@@ -350,6 +377,7 @@ const styles = StyleSheet.create({
   block: { gap: spacing.md },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   blockTitle: { fontFamily: fonts.sansSemiBold, fontSize: 14.5 },
+  codeInput: { borderWidth: 1, borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 16, fontFamily: fonts.sansBold, fontSize: 26, letterSpacing: 10, textAlign: 'center' },
   addressText: { fontFamily: fonts.sans, fontSize: 15, lineHeight: 22 },
   journey: { gap: 0 },
   journeyRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },

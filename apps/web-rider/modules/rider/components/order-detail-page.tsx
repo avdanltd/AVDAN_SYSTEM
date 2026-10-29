@@ -2,8 +2,9 @@
 
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Building2, MapPin, Package, AlertCircle } from 'lucide-react'
-import { Button, Card, CardContent, CardHeader, CardTitle, Separator, Skeleton, OrderStatusBadge, EmptyState } from '@avdan/ui'
+import { useState } from 'react'
+import { ArrowLeft, Building2, MapPin, Package, AlertCircle, Phone } from 'lucide-react'
+import { Button, Card, CardContent, CardHeader, CardTitle, Separator, Skeleton, OrderStatusBadge, EmptyState, Input } from '@avdan/ui'
 
 import { useRiderOrders } from '../hooks/use-rider-orders'
 import { useOrderAction } from '../hooks/use-order-actions'
@@ -30,6 +31,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
   const router = useRouter()
   const { data: orders, isLoading, isError, refetch } = useRiderOrders()
   const { execute, isPending } = useOrderAction(orderId)
+  const [code, setCode] = useState('')
 
   const order = orders?.find((o) => o.id === orderId)
 
@@ -107,6 +109,15 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
               <p>{order.delivery_address.street}</p>
               {order.delivery_address.city && <p>{order.delivery_address.city}</p>}
               {order.delivery_address.state && <p>{order.delivery_address.state}</p>}
+              {order.delivery_address.phone && (
+                <a
+                  href={`tel:${order.delivery_address.phone}`}
+                  className="mt-3 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 font-medium text-foreground"
+                >
+                  <Phone className="h-4 w-4" />
+                  Call customer · {order.delivery_address.phone}
+                </a>
+              )}
             </>
           ) : (
             <p>Revealed once you've picked this order up from the hub.</p>
@@ -190,14 +201,32 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       {/* Action buttons */}
       {actions.length > 0 && (
         <div className="space-y-2 pt-2">
+          {order.status === 'OUT_FOR_DELIVERY' && (
+            <div className="space-y-1.5 rounded-xl border border-border p-4">
+              <label htmlFor="delivery-code" className="text-sm font-medium">
+                Delivery code
+              </label>
+              <Input
+                id="delivery-code"
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4-digit code"
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+              />
+              <p className="text-xs text-muted-foreground">
+                Ask the customer for the code they received. You can only complete the delivery with it.
+              </p>
+            </div>
+          )}
           {actions.map(({ action, label, variant }) => (
             <Button
               key={action}
               variant={variant}
               size="lg"
               className="w-full"
-              disabled={isPending}
-              onClick={() => execute(action)}
+              disabled={isPending || (action === 'deliver' && code.length !== 4)}
+              onClick={() => execute(action, code)}
             >
               {isPending ? 'Processing…' : label}
             </Button>

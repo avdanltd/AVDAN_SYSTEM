@@ -27,7 +27,8 @@ export interface Order {
   total_kobo: number
   delivery_fee_kobo: number
   delivery_address: Record<string, unknown>
-  contact_phone?: string
+  // Handover code; the API sends it only to the customer, only while out for delivery.
+  delivery_code?: string | null
   created_at: string
   updated_at: string
   items?: OrderItem[]

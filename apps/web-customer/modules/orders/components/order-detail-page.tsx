@@ -100,6 +100,18 @@ export function OrderDetailPage({ id }: { id: string }) {
           Back to orders
         </Link>
 
+        {order.delivery_code && (
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4">
+            <p className="text-sm font-medium text-foreground">Your delivery code</p>
+            <p className="mt-1 font-display text-3xl font-bold tracking-[0.3em] text-primary">
+              {order.delivery_code}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Give this to the rider only when you have received your order. They need it to complete the delivery.
+            </p>
+          </div>
+        )}
+
         {/* Order header */}
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -232,8 +244,8 @@ export function OrderDetailPage({ id }: { id: string }) {
                 {address.notes && (
                   <p className="mt-2 text-xs italic text-muted-foreground">Note: {address.notes}</p>
                 )}
-                {order.contact_phone && (
-                  <p className="mt-2 text-muted-foreground">📞 {order.contact_phone}</p>
+                {address.phone && (
+                  <p className="mt-2 text-muted-foreground">📞 {address.phone}</p>
                 )}
               </CardContent>
             </Card>

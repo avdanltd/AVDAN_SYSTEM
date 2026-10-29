@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+import secrets
 import uuid
 
 from sqlalchemy import func, select
@@ -148,7 +149,22 @@ class OrderService:
                 }
             )
 
+        from services.analytics.service import AnalyticsService
+
+        min_order_kobo = int((await AnalyticsService(self.db).get_config()).get("min_order_kobo", 0) or 0)
+        if total_kobo < min_order_kobo:
+            raise ValidationException(
+                f"The minimum order is ₦{min_order_kobo / 100:,.0f}. Add ₦{(min_order_kobo - total_kobo) / 100:,.0f} more to checkout."
+            )
+
         delivery_address = data.delivery_address.model_dump()
+        if not delivery_address.get("phone"):
+            from services.auth.models import User
+
+            customer = (await self.db.execute(
+                select(User).where(User.id == uuid.UUID(customer_id))
+            )).scalar_one_or_none()
+            delivery_address["phone"] = customer.phone if customer else None
         delivery_quote = await self.quote_delivery(vendor, delivery_address)
         delivery_fee_kobo = delivery_quote["fee_kobo"]
 
@@ -161,6 +177,7 @@ class OrderService:
             delivery_fee_kobo=delivery_fee_kobo,
             delivery_quote=delivery_quote,
             delivery_address=delivery_address,
+            delivery_code=f"{secrets.randbelow(10000):04d}",
         )
         self.db.add(order)
         await self.db.flush()

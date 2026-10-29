@@ -21,6 +21,7 @@ import {
   toast,
   radius,
   spacing,
+  useAuthStore,
   useTheme,
 } from '@avdan/mobile'
 
@@ -34,6 +35,8 @@ const addressSchema = z.object({
   city: z.string().trim().min(2, 'Enter the city'),
   state: z.string().trim().min(2, 'Enter the state'),
   notes: z.string().trim().max(300, 'Notes are too long').optional(),
+  // Who the rider calls on arrival.
+  phone: z.string().trim().regex(/^\+?[0-9]{7,15}$/, 'Enter a valid phone number, e.g. +2348012345678'),
 })
 
 export function Checkout() {
@@ -48,6 +51,8 @@ export function Checkout() {
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
   const [notes, setNotes] = useState('')
+  const accountPhone = useAuthStore((s) => s.user?.phone)
+  const [phone, setPhone] = useState(accountPhone ?? '')
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [placedOrder, setPlacedOrder] = useState<CustomerOrder | null>(null)
@@ -93,7 +98,7 @@ export function Checkout() {
   }
 
   const handlePlaceOrder = async () => {
-    const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined })
+    const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined, phone })
     if (!parsed.success) {
       const next: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
@@ -115,6 +120,7 @@ export function Checkout() {
       state: parsed.data.state,
       country: 'Nigeria',
       notes: parsed.data.notes ?? null,
+      phone: parsed.data.phone,
       lat: coords.lat,
       lng: coords.lng,
     })
@@ -146,6 +152,10 @@ export function Checkout() {
     : quote
       ? current.subtotalKobo + quote.fee_kobo
       : null
+
+  // Admin-set floor on the item subtotal (known once the quote loads; the API enforces it too).
+  const minOrderKobo = quote?.min_order_kobo ?? 0
+  const belowMinimum = !placedOrder && minOrderKobo > 0 && current.subtotalKobo < minOrderKobo
 
   const label = !placedOrder
     ? stage === 'creating'
@@ -329,6 +339,25 @@ export function Checkout() {
           </View>
 
           <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Phone number</Text>
+            <View style={field('phone')}>
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={phone}
+                onChangeText={setPhone}
+                onFocus={() => setFocused('phone')}
+                onBlur={() => setFocused(null)}
+                placeholder="+2348012345678"
+                placeholderTextColor={colors.subtleForeground}
+                keyboardType="phone-pad"
+              />
+            </View>
+            {errors.phone ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.phone}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.foreground }]}>
               Delivery notes (optional)
             </Text>
@@ -358,8 +387,16 @@ export function Checkout() {
           </Text>
         </Card>
 
+        {belowMinimum ? (
+          <Text style={[styles.error, { color: colors.destructive }]}>
+            The minimum order is {formatKobo(minOrderKobo)}. Add{' '}
+            {formatKobo(minOrderKobo - current.subtotalKobo)} more to continue.
+          </Text>
+        ) : null}
+
         <Button
           label={label}
+          disabled={belowMinimum}
           onPress={placedOrder ? handleConfirmPay : handlePlaceOrder}
           loading={isBusy}
           size="lg"

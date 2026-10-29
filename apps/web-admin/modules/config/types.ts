@@ -12,6 +12,8 @@ export interface PlatformConfig {
     road_factor: number
   }
   min_withdrawal_kobo: number
+  /** Smallest order subtotal customers can place; 0 = no minimum. */
+  min_order_kobo: number
   eta_avg_speed_kmh: number
   escrow_release_hours: number
   order_cancellation_window_minutes: number

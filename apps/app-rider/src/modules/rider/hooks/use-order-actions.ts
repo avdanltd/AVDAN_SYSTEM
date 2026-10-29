@@ -52,7 +52,7 @@ export function useOrderAction(orderId: string) {
   })
 
   const deliver = useMutation({
-    mutationFn: () => riderService.deliverOrder(orderId),
+    mutationFn: (code: string) => riderService.deliverOrder(orderId, code),
     onSuccess: () => {
       invalidate()
       toast.success('Delivery confirmed', 'This order has moved to your history.')
@@ -69,12 +69,12 @@ export function useOrderAction(orderId: string) {
     onError: (e: Error) => toast.error('Could not report failure', e.message),
   })
 
-  const execute = (action: RiderOrderAction) => {
+  const execute = (action: RiderOrderAction, code = '') => {
     if (action === 'pickup') pickup.mutate()
     else if (action === 'transit') transit.mutate()
     else if (action === 'arrived-at-hub') arrivedAtHub.mutate()
     else if (action === 'confirm-pickup') confirmPickup.mutate()
-    else if (action === 'deliver') deliver.mutate()
+    else if (action === 'deliver') deliver.mutate(code)
     else if (action === 'fail') fail.mutate()
   }
 
