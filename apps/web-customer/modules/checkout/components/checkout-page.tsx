@@ -86,12 +86,17 @@ export function CheckoutPage() {
     }
   }, [user?.phone, form])
 
+  // The persisted cart is empty on the server-rendered first pass and only fills in once the
+  // browser has hydrated, so an empty cart only means "empty" after mount.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   // If cart is empty, redirect home
   useEffect(() => {
-    if (items.length === 0) {
+    if (mounted && items.length === 0) {
       router.replace(ROUTES.home)
     }
-  }, [items.length, router])
+  }, [mounted, items.length, router])
 
   if (items.length === 0 || !vendorId) {
     return null
