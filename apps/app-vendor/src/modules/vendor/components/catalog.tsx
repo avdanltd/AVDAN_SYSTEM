@@ -65,7 +65,13 @@ function ProductRow({ product, onPress }: { product: Product; onPress: () => voi
 
       <View style={[styles.availabilityRow, { borderTopColor: colors.border }]}>
         <Text style={[styles.availabilityLabel, { color: colors.mutedForeground }]}>
-          {product.available ? 'Visible to customers' : 'Hidden from customers'}
+          {product.approval_status === 'PENDING'
+            ? 'Awaiting AVDAN approval — not visible yet'
+            : product.approval_status === 'REJECTED'
+              ? `Rejected${product.rejection_reason ? `: ${product.rejection_reason}` : ''}. Edit to resubmit.`
+              : product.available
+                ? 'Visible to customers'
+                : 'Hidden from customers'}
         </Text>
         <Switch
           value={product.available}

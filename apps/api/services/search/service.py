@@ -39,6 +39,7 @@ class SearchService:
                 FROM products p
                 JOIN vendors v ON p.vendor_id = v.id
                 WHERE p.available = true
+                  AND p.approval_status = 'APPROVED'
                   AND v.status = 'active'
                   AND p.embedding IS NOT NULL
                   AND (p.embedding <=> CAST(:embedding AS vector)) < 0.65
@@ -108,6 +109,7 @@ class SearchService:
             .join(Vendor, Product.vendor_id == Vendor.id)
             .where(
                 Product.available.is_(True),
+                Product.approval_status == "APPROVED",
                 Vendor.status == "active",
                 or_(Product.name.ilike(pattern), Product.description.ilike(pattern)),
             )

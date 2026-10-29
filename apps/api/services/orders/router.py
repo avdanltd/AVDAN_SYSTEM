@@ -20,17 +20,19 @@ router = APIRouter()
 
 # ── Serialisers ───────────────────────────────────────────────────────────────
 
-def _item_resp(item: object) -> OrderItemResponse:
+def _item_resp(item: object, vendor_view: bool = False) -> OrderItemResponse:
     from services.orders.models import OrderItem
     i: OrderItem = item  # type: ignore[assignment]
+    # The vendor sees their own price, never the marked-up one the customer paid.
+    price = i.vendor_price_kobo if vendor_view and i.vendor_price_kobo is not None else i.price_kobo
     return OrderItemResponse(
         id=str(i.id),
         product_id=str(i.product_id),
         product_name=i.product_name,
         product_image_url=i.product_image_url,
-        price_kobo=i.price_kobo,
+        price_kobo=price,
         quantity=i.quantity,
-        subtotal_kobo=i.subtotal_kobo,
+        subtotal_kobo=price * i.quantity,
     )
 
 
@@ -47,7 +49,15 @@ def _event_resp(event: object) -> OrderEventResponse:
     )
 
 
-def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
+def _total_for(o: object, vendor_view: bool) -> int:
+    from services.orders.models import Order
+    order: Order = o  # type: ignore[assignment]
+    if vendor_view and order.vendor_total_kobo is not None:
+        return order.vendor_total_kobo
+    return order.total_kobo
+
+
+def _order_resp(order: object, vendor_name: str | None = None, vendor_view: bool = False) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
@@ -56,17 +66,19 @@ def _order_resp(order: object, vendor_name: str | None = None) -> OrderResponse:
         vendor_id=str(o.vendor_id),
         vendor_name=vendor_name,
         status=o.status,
-        total_kobo=o.total_kobo,
+        total_kobo=_total_for(o, vendor_view),
         delivery_fee_kobo=o.delivery_fee_kobo,
         delivery_quote=o.delivery_quote,
         delivery_address=o.delivery_address,
-        items=[_item_resp(i) for i in (o.items or [])],
+        items=[_item_resp(i, vendor_view) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )
 
 
-def _order_detail_resp(order: object, vendor_name: str | None = None) -> OrderDetailResponse:
+def _order_detail_resp(
+    order: object, vendor_name: str | None = None, vendor_view: bool = False
+) -> OrderDetailResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderDetailResponse(
@@ -75,11 +87,11 @@ def _order_detail_resp(order: object, vendor_name: str | None = None) -> OrderDe
         vendor_id=str(o.vendor_id),
         vendor_name=vendor_name,
         status=o.status,
-        total_kobo=o.total_kobo,
+        total_kobo=_total_for(o, vendor_view),
         delivery_fee_kobo=o.delivery_fee_kobo,
         delivery_quote=o.delivery_quote,
         delivery_address=o.delivery_address,
-        items=[_item_resp(i) for i in (o.items or [])],
+        items=[_item_resp(i, vendor_view) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
@@ -200,7 +212,7 @@ async def list_vendor_orders(
         current_user.user_id, status, page, page_size
     )
     return PaginatedOrdersResponse(
-        items=[_order_resp(o) for o in orders],
+        items=[_order_resp(o, vendor_view=True) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -215,7 +227,7 @@ async def get_vendor_order(
 ) -> OrderDetailResponse:
     svc = OrderService(db)
     order = await svc.get_vendor_order(current_user.user_id, order_id)
-    return _order_detail_resp(order)
+    return _order_detail_resp(order, vendor_view=True)
 
 
 @router.post("/vendor/{order_id}/accept", response_model=OrderResponse)
@@ -226,7 +238,7 @@ async def accept_order(
 ) -> OrderResponse:
     svc = OrderService(db)
     order = await svc.accept_order(current_user.user_id, order_id)
-    return _order_resp(order)
+    return _order_resp(order, vendor_view=True)
 
 
 @router.post("/vendor/{order_id}/reject", response_model=OrderResponse)
@@ -238,7 +250,7 @@ async def reject_order(
 ) -> OrderResponse:
     svc = OrderService(db)
     order = await svc.reject_order(current_user.user_id, order_id, data)
-    return _order_resp(order)
+    return _order_resp(order, vendor_view=True)
 
 
 @router.post("/vendor/{order_id}/ready", response_model=OrderResponse)
@@ -249,4 +261,4 @@ async def mark_order_ready(
 ) -> OrderResponse:
     svc = OrderService(db)
     order = await svc.mark_ready(current_user.user_id, order_id)
-    return _order_resp(order)
+    return _order_resp(order, vendor_view=True)

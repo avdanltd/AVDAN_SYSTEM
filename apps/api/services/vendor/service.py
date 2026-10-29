@@ -41,14 +41,14 @@ class VendorService:
             select(Product)
             .join(Vendor, Product.vendor_id == Vendor.id)
             .outerjoin(Category, Product.category_id == Category.id)
-            .where(Product.available.is_(True), Vendor.status == "active")
+            .where(Product.available.is_(True), Product.approval_status == "APPROVED", Vendor.status == "active")
             .options(selectinload(Product.vendor), selectinload(Product.category))
         )
         cq = (
             select(func.count())
             .select_from(Product)
             .join(Vendor, Product.vendor_id == Vendor.id)
-            .where(Product.available.is_(True), Vendor.status == "active")
+            .where(Product.available.is_(True), Product.approval_status == "APPROVED", Vendor.status == "active")
         )
 
         if category_id:
@@ -94,7 +94,11 @@ class VendorService:
     async def get_product_by_id(self, product_id: str) -> tuple[Product, list[Product]]:
         result = await self.db.execute(
             select(Product)
-            .where(Product.id == uuid.UUID(product_id), Product.available.is_(True))
+            .where(
+                Product.id == uuid.UUID(product_id),
+                Product.available.is_(True),
+                Product.approval_status == "APPROVED",
+            )
             .options(selectinload(Product.vendor), selectinload(Product.category))
         )
         product = result.scalar_one_or_none()
@@ -108,6 +112,7 @@ class VendorService:
                 Product.vendor_id == product.vendor_id,
                 Product.id != product.id,
                 Product.available.is_(True),
+                Product.approval_status == "APPROVED",
             )
             .options(selectinload(Product.vendor), selectinload(Product.category))
             .limit(4)
@@ -232,7 +237,11 @@ class VendorService:
             category_id=category_id,
             name=data.name,
             description=data.description,
+            # Not public until an admin approves it and sets the price customers will see; until
+            # then price_kobo just mirrors the vendor's own price.
             price_kobo=data.price_kobo,
+            vendor_price_kobo=data.price_kobo,
+            approval_status="PENDING",
             stock_qty=data.stock_qty,
             image_urls=data.image_urls,
         )
@@ -257,8 +266,15 @@ class VendorService:
             product.name = data.name
         if data.description is not None:
             product.description = data.description
-        if data.price_kobo is not None:
-            product.price_kobo = data.price_kobo
+        if data.price_kobo is not None and data.price_kobo != product.vendor_price_kobo:
+            # A new vendor price means a new markup decision: the product leaves the site until
+            # an admin approves it again, so customers never see a price nobody signed off.
+            product.vendor_price_kobo = data.price_kobo
+            product.approval_status = "PENDING"
+            product.rejection_reason = None
+        elif product.approval_status == "REJECTED":
+            product.approval_status = "PENDING"  # the vendor edited it: resubmit for review
+            product.rejection_reason = None
         if data.stock_qty is not None:
             product.stock_qty = data.stock_qty
         if data.image_urls is not None:

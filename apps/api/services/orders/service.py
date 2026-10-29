@@ -113,6 +113,7 @@ class OrderService:
                 Product.id.in_(product_ids),
                 Product.vendor_id == vendor.id,
                 Product.available.is_(True),
+                Product.approval_status == "APPROVED",
             )
         )
         products_by_id = {str(p.id): p for p in products_result.scalars().all()}
@@ -130,11 +131,13 @@ class OrderService:
 
         # Build order items and compute total
         total_kobo = 0
+        vendor_total_kobo = 0
         order_items: list[dict] = []
         for item in data.items:
             product = products_by_id[item.product_id]
             subtotal = product.price_kobo * item.quantity
             total_kobo += subtotal
+            vendor_total_kobo += product.vendor_price_kobo * item.quantity
             order_items.append(
                 {
                     "product": product,
@@ -144,6 +147,7 @@ class OrderService:
                     # edit cannot change what an existing order shows.
                     "product_image_url": (product.image_urls or [None])[0],
                     "price_kobo": product.price_kobo,
+                    "vendor_price_kobo": product.vendor_price_kobo,
                     "quantity": item.quantity,
                     "subtotal_kobo": subtotal,
                 }
@@ -174,6 +178,7 @@ class OrderService:
             vendor_id=vendor.id,
             status=OrderStatus.PENDING,
             total_kobo=total_kobo,
+            vendor_total_kobo=vendor_total_kobo,
             delivery_fee_kobo=delivery_fee_kobo,
             delivery_quote=delivery_quote,
             delivery_address=delivery_address,
@@ -191,6 +196,7 @@ class OrderService:
                     product_name=item_data["product_name"],
                     product_image_url=item_data["product_image_url"],
                     price_kobo=item_data["price_kobo"],
+                    vendor_price_kobo=item_data["vendor_price_kobo"],
                     quantity=item_data["quantity"],
                     subtotal_kobo=item_data["subtotal_kobo"],
                 )

@@ -31,6 +31,9 @@ export interface Product {
   name: string
   description: string | null
   price_kobo: number
+  // PENDING until an admin approves it and sets the price customers see.
+  approval_status?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  rejection_reason?: string | null
   available: boolean
   stock_qty: number
   image_urls: string[]

@@ -44,7 +44,9 @@ def _vendor_response(vendor: object) -> VendorResponse:
     )
 
 
-def _product_response(product: object) -> ProductResponse:
+def _product_response(product: object, public: bool = False) -> ProductResponse:
+    """The vendor's view of a product, with their own price. `public=True` is the storefront
+    view: the approved, marked-up price customers pay."""
     from services.vendor.models import Product
     p: Product = product  # type: ignore[assignment]
     cat = getattr(p, "category", None)
@@ -55,7 +57,9 @@ def _product_response(product: object) -> ProductResponse:
         category_name=cat.name if cat else None,
         name=p.name,
         description=p.description,
-        price_kobo=p.price_kobo,
+        price_kobo=p.price_kobo if public else p.vendor_price_kobo,
+        approval_status=p.approval_status,
+        rejection_reason=None if public else p.rejection_reason,
         available=p.available,
         stock_qty=p.stock_qty,
         image_urls=p.image_urls or [],
@@ -84,7 +88,7 @@ def _public_product_response(product: object) -> PublicProductResponse:
     )
 
 
-def _vendor_detail_response(vendor: object) -> VendorDetailResponse:
+def _vendor_detail_response(vendor: object, public: bool = False) -> VendorDetailResponse:
     from services.vendor.models import Vendor
     v: Vendor = vendor  # type: ignore[assignment]
     return VendorDetailResponse(
@@ -100,7 +104,11 @@ def _vendor_detail_response(vendor: object) -> VendorDetailResponse:
         lng=float(v.lng) if v.lng is not None else None,
         rating=float(v.rating),
         created_at=v.created_at.isoformat(),
-        products=[_product_response(p) for p in v.products],
+        products=[
+            _product_response(p, public=True) for p in v.products if p.approval_status == "APPROVED"
+        ]
+        if public
+        else [_product_response(p) for p in v.products],
         has_payout_account=bool(v.paystack_recipient_code),
         payout_bank_name=v.payout_bank_name,
         payout_account_name=v.payout_account_name,
@@ -314,4 +322,4 @@ async def get_vendor_by_slug(
 ) -> VendorDetailResponse:
     svc = VendorService(db)
     vendor = await svc.get_vendor_by_slug(slug)
-    return _vendor_detail_response(vendor)
+    return _vendor_detail_response(vendor, public=True)

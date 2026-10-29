@@ -45,13 +45,29 @@ function ProductCard({ product }: { product: Product }) {
                 </p>
               )}
             </div>
-            <Badge
-              variant={product.available ? 'default' : 'secondary'}
-              className={product.available ? 'bg-success-muted text-success hover:bg-success-muted' : ''}
-            >
-              {product.available ? 'Available' : 'Unavailable'}
-            </Badge>
+            {product.approval_status === 'PENDING' ? (
+              <Badge variant="outline">Awaiting approval</Badge>
+            ) : product.approval_status === 'REJECTED' ? (
+              <Badge variant="destructive">Rejected</Badge>
+            ) : (
+              <Badge
+                variant={product.available ? 'default' : 'secondary'}
+                className={product.available ? 'bg-success-muted text-success hover:bg-success-muted' : ''}
+              >
+                {product.available ? 'Available' : 'Unavailable'}
+              </Badge>
+            )}
           </div>
+          {product.approval_status === 'PENDING' && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              AVDAN is reviewing this product and its price. It goes live for customers once approved.
+            </p>
+          )}
+          {product.approval_status === 'REJECTED' && (
+            <p className="mt-2 text-xs text-destructive">
+              Rejected{product.rejection_reason ? `: ${product.rejection_reason}` : '.'} Edit it to resubmit.
+            </p>
+          )}
 
           <div className="mt-3 flex items-center justify-between">
             <span className="text-lg font-bold text-foreground">

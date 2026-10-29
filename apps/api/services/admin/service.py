@@ -7,10 +7,10 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import NotFoundException
+from core.exceptions import NotFoundException, ValidationException
 from services.auth.models import User
 from services.orders.models import Order, OrderEvent
-from services.vendor.models import Vendor
+from services.vendor.models import Product, Vendor
 
 
 class AdminService:
@@ -86,6 +86,53 @@ class AdminService:
 
         vendor.status = new_status
         return vendor
+
+    # ── Product approval ──────────────────────────────────────────────────────
+
+    async def list_products(
+        self, approval_status: str | None, vendor_id: str | None, page: int, page_size: int
+    ) -> tuple[list[Product], int]:
+        query = select(Product).options(selectinload(Product.vendor), selectinload(Product.category))
+        count_query = select(func.count()).select_from(Product)
+        if approval_status:
+            query = query.where(Product.approval_status == approval_status)
+            count_query = count_query.where(Product.approval_status == approval_status)
+        if vendor_id:
+            query = query.where(Product.vendor_id == uuid.UUID(vendor_id))
+            count_query = count_query.where(Product.vendor_id == uuid.UUID(vendor_id))
+        total = (await self.db.execute(count_query)).scalar_one()
+        # Oldest first, so the review queue is worked in the order vendors submitted.
+        query = query.order_by(Product.created_at.asc()).offset((page - 1) * page_size).limit(page_size)
+        return list((await self.db.execute(query)).scalars().all()), total
+
+    async def _get_product(self, product_id: str) -> Product:
+        product = (await self.db.execute(
+            select(Product)
+            .where(Product.id == uuid.UUID(product_id))
+            .options(selectinload(Product.vendor), selectinload(Product.category))
+        )).scalar_one_or_none()
+        if not product:
+            raise NotFoundException("Product not found")
+        return product
+
+    async def approve_product(self, product_id: str, price_kobo: int) -> Product:
+        """Approve (or re-price) a product: `price_kobo` is what customers will see and pay. It
+        can't be below the vendor's price — the difference is the platform's gain."""
+        product = await self._get_product(product_id)
+        if price_kobo < product.vendor_price_kobo:
+            raise ValidationException(
+                f"The shown price can't be below the vendor's price of ₦{product.vendor_price_kobo / 100:,.2f}."
+            )
+        product.price_kobo = price_kobo
+        product.approval_status = "APPROVED"
+        product.rejection_reason = None
+        return product
+
+    async def reject_product(self, product_id: str, reason: str) -> Product:
+        product = await self._get_product(product_id)
+        product.approval_status = "REJECTED"
+        product.rejection_reason = reason
+        return product
 
     # ── Order management ──────────────────────────────────────────────────────
 

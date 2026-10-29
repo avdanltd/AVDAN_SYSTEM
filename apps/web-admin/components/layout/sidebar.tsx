@@ -16,6 +16,7 @@ import {
   Building2,
   Tag,
   Siren,
+  PackageCheck,
 } from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn, Logo, Button } from '@avdan/ui'
@@ -27,6 +28,7 @@ export const navItems = [
   { label: 'Users', href: ROUTES.users, icon: Users },
   { label: 'Orders', href: ROUTES.orders, icon: ShoppingBag },
   { label: 'Vendors', href: ROUTES.vendors, icon: Store },
+  { label: 'Products', href: ROUTES.products, icon: PackageCheck },
   { label: 'Categories', href: ROUTES.categories, icon: Tag },
   { label: 'Disputes', href: ROUTES.disputes, icon: AlertTriangle },
   { label: 'Escrow', href: ROUTES.escrow, icon: DollarSign },

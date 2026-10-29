@@ -12,6 +12,7 @@ export const ROUTES = {
   categories: '/categories',
 
   vendors: '/vendors',
+  products: '/products',
   vendor: (id: string) => `/vendors/${id}`,
 
   disputes: '/disputes',

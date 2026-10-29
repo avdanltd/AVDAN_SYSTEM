@@ -13,7 +13,11 @@ class ProductResponse(BaseModel):
     category_name: str | None
     name: str
     description: str | None
+    # In the vendor's own view this is the vendor's price; the marked-up price customers pay
+    # is never exposed to the vendor.
     price_kobo: int
+    approval_status: str = "APPROVED"
+    rejection_reason: str | None = None
     available: bool
     stock_qty: int
     image_urls: list[str]

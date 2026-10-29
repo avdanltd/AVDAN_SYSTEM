@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.analytics.models import DEFAULT_PLATFORM_CONFIG, AuditLog, PlatformConfig
@@ -21,6 +21,17 @@ _TERMINAL_STATES = {
     OrderStatus.CANCELLED,
     OrderStatus.VENDOR_REJECTED,
 }
+
+
+def _split_sums() -> tuple:
+    """(markup gain on vendor-priced orders, gross total of older orders) as SUM columns. Older
+    orders have no vendor-price snapshot and earn the commission rate instead of a markup."""
+    return (
+        func.coalesce(func.sum(case(
+            (Order.vendor_total_kobo.is_not(None), Order.total_kobo - Order.vendor_total_kobo), else_=0
+        )), 0),
+        func.coalesce(func.sum(case((Order.vendor_total_kobo.is_(None), Order.total_kobo), else_=0)), 0),
+    )
 
 
 class AnalyticsService:
@@ -52,16 +63,18 @@ class AnalyticsService:
         # old code here) overstated "revenue" by the vendor payout + rider fee on every released
         # order. Fixed the same way as `get_vendor_analytics`: sum `Order.total_kobo` for released
         # orders, then apply commission once.
-        revenue_gross_today = int((await self.db.execute(
-            select(func.coalesce(func.sum(Order.total_kobo), 0))
+        # Orders priced with a vendor price: the platform's revenue is the markup (customer total
+        # minus the vendor's total). Older orders: commission rate on the total.
+        markup_today, legacy_gross_today = (await self.db.execute(
+            select(*_split_sums())
             .select_from(Order)
             .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
             .where(
                 EscrowTransaction.status == EscrowStatus.RELEASED,
                 EscrowTransaction.created_at >= today_start,
             )
-        )).scalar_one())
-        revenue_today = int(revenue_gross_today * commission_rate)
+        )).one()
+        revenue_today = int(markup_today) + int(int(legacy_gross_today) * commission_rate)
 
         gmv_today = int((await self.db.execute(
             select(func.coalesce(func.sum(Order.total_kobo), 0)).where(
@@ -155,23 +168,29 @@ class AnalyticsService:
         # the platform's, so summing amount_kobo directly overstates vendor revenue by both. The
         # vendor's actual take per order is `order.total_kobo - commission` (release_escrow's own
         # formula) — sum `Order.total_kobo` for matching orders, then apply commission once here.
-        revenue_gross = int((await self.db.execute(
-            select(func.coalesce(func.sum(Order.total_kobo), 0))
+        vendor_priced, legacy_gross = (await self.db.execute(
+            select(
+                func.coalesce(func.sum(Order.vendor_total_kobo), 0),
+                func.coalesce(func.sum(case((Order.vendor_total_kobo.is_(None), Order.total_kobo), else_=0)), 0),
+            )
             .select_from(Order)
             .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
             .where(
                 Order.vendor_id == v_uuid,
                 EscrowTransaction.status == EscrowStatus.RELEASED,
             )
-        )).scalar_one())
-        revenue = revenue_gross - int(revenue_gross * commission_rate)
+        )).one()
+        revenue = int(vendor_priced) + int(legacy_gross) - int(int(legacy_gross) * commission_rate)
 
         # Escrow goes HELD the instant payment is confirmed — before the vendor has even
         # accepted. Counting it as "pending" from that moment shows the vendor money that can
         # still vanish (a still-possible VENDOR_REJECTED auto-refunds the customer), so this
         # only counts orders the vendor has actually committed to fulfil.
-        pending_gross = int((await self.db.execute(
-            select(func.coalesce(func.sum(Order.total_kobo), 0))
+        pending_priced, pending_legacy = (await self.db.execute(
+            select(
+                func.coalesce(func.sum(Order.vendor_total_kobo), 0),
+                func.coalesce(func.sum(case((Order.vendor_total_kobo.is_(None), Order.total_kobo), else_=0)), 0),
+            )
             .select_from(Order)
             .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
             .where(
@@ -179,8 +198,8 @@ class AnalyticsService:
                 EscrowTransaction.status == EscrowStatus.HELD,
                 Order.status != OrderStatus.PAID,
             )
-        )).scalar_one())
-        pending_release = pending_gross - int(pending_gross * commission_rate)
+        )).one()
+        pending_release = int(pending_priced) + int(pending_legacy) - int(int(pending_legacy) * commission_rate)
 
         return {
             "vendor_id": vendor_id,

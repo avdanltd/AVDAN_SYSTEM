@@ -5,6 +5,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
+from services.admin.schemas import (
+    AdminProductResponse,
+    ApproveProductRequest,
+    PaginatedAdminProductsResponse,
+    RejectProductRequest,
+)
 from services.admin.service import AdminService
 from services.analytics.schemas import (
     OrderVolumeResponse,
@@ -149,6 +155,66 @@ async def update_vendor_status(
     svc = AdminService(db)
     vendor = await svc.update_vendor_status(vendor_id, data.status)
     return _admin_vendor_response(vendor)
+
+
+# ── Product approval ──────────────────────────────────────────────────────────
+
+def _admin_product_response(p: object) -> AdminProductResponse:
+    from services.vendor.models import Product
+    product: Product = p  # type: ignore[assignment]
+    cat = getattr(product, "category", None)
+    return AdminProductResponse(
+        id=str(product.id),
+        vendor_id=str(product.vendor_id),
+        vendor_name=product.vendor.name,
+        category_name=cat.name if cat else None,
+        name=product.name,
+        description=product.description,
+        image_urls=product.image_urls or [],
+        stock_qty=product.stock_qty,
+        approval_status=product.approval_status,
+        rejection_reason=product.rejection_reason,
+        vendor_price_kobo=product.vendor_price_kobo,
+        price_kobo=product.price_kobo,
+        markup_kobo=product.price_kobo - product.vendor_price_kobo,
+        created_at=product.created_at.isoformat(),
+    )
+
+
+@router.get("/products", response_model=PaginatedAdminProductsResponse)
+async def list_products(
+    approval_status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED)$"),
+    vendor_id: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedAdminProductsResponse:
+    products, total = await AdminService(db).list_products(approval_status, vendor_id, page, page_size)
+    return PaginatedAdminProductsResponse(
+        items=[_admin_product_response(p) for p in products], total=total, page=page, page_size=page_size
+    )
+
+
+@router.post("/products/{product_id}/approve", response_model=AdminProductResponse)
+async def approve_product(
+    product_id: str,
+    data: ApproveProductRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminProductResponse:
+    """Approve a product and set the price customers will see. Also re-prices a live product."""
+    return _admin_product_response(await AdminService(db).approve_product(product_id, data.price_kobo))
+
+
+@router.post("/products/{product_id}/reject", response_model=AdminProductResponse)
+async def reject_product(
+    product_id: str,
+    data: RejectProductRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminProductResponse:
+    return _admin_product_response(await AdminService(db).reject_product(product_id, data.reason))
 
 
 # ── Order management ──────────────────────────────────────────────────────────
