@@ -40,8 +40,9 @@ export const riderService = {
   confirmPickupFromHub: (orderId: string) =>
     apiClient.post<{ order_id: string; status: string }>(`/dispatch/me/orders/${orderId}/confirm-pickup`),
 
-  deliverOrder: (orderId: string) =>
-    apiClient.post<{ order_id: string; status: string }>(`/dispatch/me/orders/${orderId}/deliver`),
+  // `code` is the delivery code the customer reads out at handover.
+  deliverOrder: (orderId: string, code: string) =>
+    apiClient.post<{ order_id: string; status: string }>(`/dispatch/me/orders/${orderId}/deliver`, { code }),
 
   failOrder: (orderId: string) =>
     apiClient.post<{ order_id: string; status: string }>(`/dispatch/me/orders/${orderId}/fail`),

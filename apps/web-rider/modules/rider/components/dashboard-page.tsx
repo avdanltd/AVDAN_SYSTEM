@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { MapPin, Package, ChevronRight, Wifi, WifiOff, AlertCircle } from 'lucide-react'
+import { MapPin, Package, ChevronRight, Wifi, WifiOff, AlertCircle, Phone } from 'lucide-react'
 import { Button, Card, CardContent, CardHeader, CardTitle, Switch, Spinner, EmptyState, OrderStatusBadge } from '@avdan/ui'
 
 import { useAvailability, useRiderProfile } from '../hooks/use-availability'
@@ -149,6 +149,15 @@ export function DashboardPage() {
                 <span className="block text-xs font-normal text-muted-foreground">you earn</span>
               </span>
             </div>
+            {activeOrder.delivery_address.phone && (
+              <a
+                href={`tel:${activeOrder.delivery_address.phone}`}
+                className="flex items-center gap-2 text-sm font-medium text-primary"
+              >
+                <Phone className="h-4 w-4" />
+                Call customer · {activeOrder.delivery_address.phone}
+              </a>
+            )}
             {ORDER_ACTIONS[activeOrder.status] && (
               <Link href={ROUTES.order(activeOrder.id)}>
                 <Button className="w-full" size="lg">

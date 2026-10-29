@@ -12,6 +12,12 @@ class AvailabilityUpdate(BaseModel):
     online: bool
 
 
+class DeliverRequest(BaseModel):
+    """The code the customer reads out at handover (see Order.delivery_code)."""
+
+    code: str | None = Field(default=None, max_length=6)
+
+
 class RiderResponse(BaseModel):
     id: str
     user_id: str

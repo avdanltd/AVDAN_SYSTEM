@@ -11,7 +11,7 @@ import redis.asyncio as aioredis
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import AppError, NotFoundException
+from core.exceptions import AppError, NotFoundException, ValidationException
 from services.dispatch.models import Rider, RiderLocation
 from services.orders.models import Order
 from services.orders.service import OrderService
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 
 # Redis TTL for live rider location (seconds)
 _LOCATION_TTL = 60
+_MAX_CODE_ATTEMPTS = 5
 
 
 def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -393,7 +394,9 @@ class DispatchService:
             raise NotFoundException("Order not found or not assigned to this rider")
         return order
 
-    async def rider_transition(self, user_id: str, order_id: str, to_state: str) -> Order:
+    async def rider_transition(
+        self, user_id: str, order_id: str, to_state: str, delivery_code: str | None = None
+    ) -> Order:
         rider = await self.get_or_create_rider(user_id)
         result = await self.db.execute(
             select(Order).where(
@@ -404,6 +407,8 @@ class DispatchService:
         order = result.scalar_one_or_none()
         if not order:
             raise NotFoundException("Order not found or not assigned to this rider")
+        if to_state == OrderStatus.DELIVERED:
+            await self._check_delivery_code(order, delivery_code)
         order_svc = OrderService(self.db)
         order = await order_svc.transition(
             order_id=order_id,
@@ -434,6 +439,29 @@ class DispatchService:
             )
 
         return order
+
+    async def _check_delivery_code(self, order: Order, supplied: str | None) -> None:
+        """The customer reads their code to the rider at the door; delivery only counts if it
+        matches. Orders placed before codes existed have none and are let through. Wrong guesses
+        are capped per order so a rider cannot walk the 10,000 possibilities."""
+        import hmac
+
+        if not order.delivery_code:
+            return
+        key = f"delivery_code_attempts:{order.id}"
+        attempts = int(await self.redis.get(key) or 0)
+        if attempts >= _MAX_CODE_ATTEMPTS:
+            raise ValidationException(
+                "Too many wrong codes. Contact AVDAN support to complete this delivery."
+            )
+        if not supplied or not hmac.compare_digest(supplied.strip(), order.delivery_code):
+            await self.redis.incr(key)
+            await self.redis.expire(key, 24 * 3600)
+            raise ValidationException(
+                "Enter the 4-digit delivery code the customer received."
+                if not supplied else "That delivery code is not correct."
+            )
+        await self.redis.delete(key)
 
     async def get_available_riders(self, zone_id: str | None) -> list[Rider]:
         query = select(Rider).where(Rider.online.is_(True))

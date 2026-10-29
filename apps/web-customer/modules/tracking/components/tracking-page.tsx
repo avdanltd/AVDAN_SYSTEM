@@ -78,6 +78,18 @@ export function TrackingPage({ id }: { id: string }) {
         Back to order
       </Link>
 
+      {order.delivery_code && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+          <p className="text-sm font-medium text-foreground">Your delivery code</p>
+          <p className="mt-1 font-display text-3xl font-bold tracking-[0.3em] text-primary">
+            {order.delivery_code}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Give this to the rider only when you have received your order.
+          </p>
+        </div>
+      )}
+
       {/* Status banner */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card p-5">
         <div>

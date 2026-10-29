@@ -10,6 +10,8 @@ class DeliveryAddress(BaseModel):
     state: str = Field(min_length=1)
     country: str = "Nigeria"
     notes: str | None = None
+    # Who the rider should call on arrival. Falls back to the customer's account phone.
+    phone: str | None = Field(default=None, max_length=20)
     # Where the customer actually is. Drives the delivery fee (distance = fuel). Optional here so
     # older clients keep working, in which case the fee falls back to the flat base fee.
     lat: float | None = Field(default=None, ge=-90, le=90)
@@ -71,6 +73,8 @@ class OrderResponse(BaseModel):
     delivery_fee_kobo: int
     delivery_quote: dict | None = None
     delivery_address: dict
+    # Only populated for the customer, and only while the order is out for delivery.
+    delivery_code: str | None = None
     items: list[OrderItemResponse] = []
     created_at: str
     updated_at: str
@@ -112,3 +116,5 @@ class DeliveryQuoteResponse(BaseModel):
     per_km_kobo: int
     road_factor: float
     hub_name: str | None = None
+    # Smallest order subtotal (kobo) the platform accepts; 0 = no minimum.
+    min_order_kobo: int = 0

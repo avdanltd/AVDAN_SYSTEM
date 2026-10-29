@@ -10,10 +10,11 @@ export interface CreateOrderPayload {
     city: string
     state: string
     notes?: string
+    // Who the rider calls on arrival.
+    phone: string
     lat: number
     lng: number
   }
-  contact_phone: string
 }
 
 export interface OrderCreated {

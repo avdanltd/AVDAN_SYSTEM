@@ -143,9 +143,16 @@ async def _dispatch_async(
                 email = recipient_info.get("email")
                 name = recipient_info["name"]
 
+                body = trigger["body"]
+                if to_state == "OUT_FOR_DELIVERY" and role == "customer" and order.delivery_code:
+                    body = (
+                        f"{body} Your delivery code is {order.delivery_code} — give it to the "
+                        "rider only when you have received your order."
+                    )
+                trigger = {**trigger, "body": body}
                 content = {
                     "title": trigger["title"],
-                    "body": trigger["body"],
+                    "body": body,
                     "order_id": order_id,
                     "from_state": from_state,
                     "to_state": to_state,

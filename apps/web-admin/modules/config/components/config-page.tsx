@@ -34,6 +34,7 @@ const configSchema = z.object({
   per_km_kobo: z.coerce.number().min(0),
   road_factor: z.coerce.number().min(1).max(3),
   min_withdrawal_kobo: z.coerce.number().min(0),
+  min_order_kobo: z.coerce.number().min(0),
   eta_avg_speed_kmh: z.coerce.number().min(5).max(80),
   escrow_release_hours: z.coerce.number().min(1),
   order_cancellation_window_minutes: z.coerce.number().min(0),
@@ -59,6 +60,7 @@ export function ConfigPage() {
       per_km_kobo: 0,
       road_factor: 1.3,
       min_withdrawal_kobo: 100000,
+      min_order_kobo: 0,
       escrow_release_hours: 48,
       order_cancellation_window_minutes: 30,
     },
@@ -72,6 +74,7 @@ export function ConfigPage() {
         per_km_kobo: config.delivery_fee_structure.per_km_kobo,
         road_factor: config.delivery_fee_structure.road_factor ?? 1.3,
         min_withdrawal_kobo: config.min_withdrawal_kobo ?? 100000,
+        min_order_kobo: config.min_order_kobo ?? 0,
         eta_avg_speed_kmh: config.eta_avg_speed_kmh ?? 25,
         escrow_release_hours: config.escrow_release_hours,
         order_cancellation_window_minutes: config.order_cancellation_window_minutes,
@@ -94,6 +97,7 @@ export function ConfigPage() {
           road_factor: pendingValues.road_factor,
         },
         min_withdrawal_kobo: pendingValues.min_withdrawal_kobo,
+        min_order_kobo: pendingValues.min_order_kobo,
         eta_avg_speed_kmh: pendingValues.eta_avg_speed_kmh,
         escrow_release_hours: pendingValues.escrow_release_hours,
         order_cancellation_window_minutes: pendingValues.order_cancellation_window_minutes,
@@ -213,6 +217,22 @@ export function ConfigPage() {
                       <FormControl>
                         <Input type="number" min="0" step="1000" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="min_order_kobo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Order Value (kobo)</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" step="1000" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        Smallest item subtotal a customer can check out with. 0 means no minimum.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

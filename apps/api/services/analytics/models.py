@@ -20,6 +20,8 @@ DEFAULT_PLATFORM_CONFIG: dict = {
     "min_withdrawal_kobo": 100000,
     # Average rider speed used for ETAs (km/h) — city traffic, not highway.
     "eta_avg_speed_kmh": 25,
+    # Smallest order subtotal (kobo, before delivery) a customer may place. 0 = no minimum.
+    "min_order_kobo": 0,
     "escrow_release_hours": 48,
     "order_cancellation_window_minutes": 30,
 }

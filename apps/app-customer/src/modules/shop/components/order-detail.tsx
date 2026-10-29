@@ -189,6 +189,16 @@ export function OrderDetail({ orderId }: { orderId: string }) {
         </Text>
       </Card>
 
+      {order.delivery_code ? (
+        <Card style={[styles.payCard, { backgroundColor: colors.primaryMuted }]}>
+          <Text style={[styles.payTitle, { color: colors.foreground }]}>Your delivery code</Text>
+          <Text style={[styles.codeText, { color: colors.primary }]}>{order.delivery_code}</Text>
+          <Text style={[styles.payBody, { color: colors.mutedForeground }]}>
+            Give this to the rider only when you have received your order. They need it to complete the delivery.
+          </Text>
+        </Card>
+      ) : null}
+
       {order.status === 'PENDING' ? (
         <Card style={[styles.payCard, { backgroundColor: colors.warningMuted }]}>
           <Text style={[styles.payTitle, { color: colors.foreground }]}>Payment not completed</Text>
@@ -343,6 +353,7 @@ const styles = StyleSheet.create({
   updated: { fontFamily: fonts.sans, fontSize: 12 },
   payCard: { gap: spacing.md },
   payTitle: { fontFamily: fonts.sansSemiBold, fontSize: 15 },
+  codeText: { fontFamily: fonts.sansBold, fontSize: 34, letterSpacing: 10 },
   payBody: { fontFamily: fonts.sans, fontSize: 13.5, lineHeight: 19 },
   block: { gap: spacing.md },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },

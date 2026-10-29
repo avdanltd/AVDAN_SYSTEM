@@ -86,6 +86,16 @@ def _order_detail_resp(order: object, vendor_name: str | None = None) -> OrderDe
     )
 
 
+def _with_code(resp, order: object):  # type: ignore[no-untyped-def]
+    """Attach the handover code for the customer's own view, only once the parcel is on the
+    road — it is the customer's secret, so no other role's response ever carries it."""
+    from services.orders.models import Order
+    o: Order = order  # type: ignore[assignment]
+    if o.status == "OUT_FOR_DELIVERY":
+        resp.delivery_code = o.delivery_code
+    return resp
+
+
 async def _vendor_names(db: AsyncSession, order_list: list) -> dict:
     """Batch-fetch {vendor_id: vendor_name} for a list of orders — Order has no
     `vendor` relationship (see services/orders/models.py), so this mirrors the
@@ -126,7 +136,11 @@ async def delivery_quote(
     """What delivering from this vendor to these coordinates would cost — shown at checkout
     before the order exists, using the same calculation that prices the real order."""
     svc = OrderService(db)
-    return DeliveryQuoteResponse(**await svc.quote_delivery_for_vendor(vendor_id, {"lat": lat, "lng": lng}))
+    from services.analytics.service import AnalyticsService
+
+    quote = await svc.quote_delivery_for_vendor(vendor_id, {"lat": lat, "lng": lng})
+    min_order = int((await AnalyticsService(db).get_config()).get("min_order_kobo", 0) or 0)
+    return DeliveryQuoteResponse(**quote, min_order_kobo=min_order)
 
 
 @router.get("", response_model=PaginatedOrdersResponse)
@@ -156,7 +170,7 @@ async def get_my_order(
     svc = OrderService(db)
     order = await svc.get_customer_order(current_user.user_id, order_id)
     vendor_names = await _vendor_names(db, [order])
-    return _order_detail_resp(order, vendor_name=vendor_names.get(order.vendor_id))
+    return _with_code(_order_detail_resp(order, vendor_name=vendor_names.get(order.vendor_id)), order)
 
 
 @router.post("/{order_id}/cancel", response_model=OrderResponse)

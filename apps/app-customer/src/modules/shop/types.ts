@@ -78,6 +78,8 @@ export interface DeliveryAddress {
   state: string
   country?: string
   notes?: string | null
+  // Who the rider calls on arrival.
+  phone?: string | null
   // Where to deliver — drives the distance-based delivery fee.
   lat: number
   lng: number
@@ -92,6 +94,8 @@ export interface CustomerOrder {
   total_kobo: number
   delivery_fee_kobo: number
   delivery_address: DeliveryAddress
+  // Handover code; the API sends it only to the customer, only while out for delivery.
+  delivery_code?: string | null
   items: OrderItem[]
   created_at: string
   updated_at: string

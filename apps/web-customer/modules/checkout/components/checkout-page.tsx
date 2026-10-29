@@ -101,8 +101,7 @@ export function CheckoutPage() {
       const order = await createOrder({
         vendor_id: vendorId!,
         items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
-        delivery_address: data.delivery_address,
-        contact_phone: data.contact_phone,
+        delivery_address: { ...data.delivery_address, phone: data.contact_phone },
       })
       // Order is placed but not yet paid — show the real, confirmed delivery
       // fee before sending the customer to pay, rather than charging a total
@@ -129,6 +128,10 @@ export function CheckoutPage() {
 
   const deliveryFeeKobo = placedOrder?.delivery_fee_kobo ?? quote?.fee_kobo ?? null
   const grandTotalKobo = totalKobo() + (deliveryFeeKobo ?? 0)
+  // Admin-set floor on the item subtotal. Only known once the quote has loaded; the API
+  // enforces it regardless, this just explains it before the customer hits an error.
+  const minOrderKobo = quote?.min_order_kobo ?? 0
+  const belowMinimum = minOrderKobo > 0 && totalKobo() < minOrderKobo
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -280,8 +283,15 @@ export function CheckoutPage() {
                   />
                 </fieldset>
 
+                {!placedOrder && belowMinimum && (
+                  <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    The minimum order is {formatPrice(minOrderKobo)}. Add {formatPrice(minOrderKobo - totalKobo())}{' '}
+                    more to continue.
+                  </p>
+                )}
+
                 {!placedOrder ? (
-                  <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading || belowMinimum}>
                     {isCreating ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

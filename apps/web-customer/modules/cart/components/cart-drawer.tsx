@@ -37,7 +37,10 @@ export function CartDrawer({ open, onOpenChange }: CartDrawerProps) {
 
   function handleCheckout() {
     onOpenChange(false)
-    router.push(ROUTES.checkout)
+    // Full page load, not router.push: checkout is behind the auth gate, and a guest's
+    // client-side RSC navigation hit a proxy redirect to the (auth) layout and rendered
+    // a 404. A document request lets the browser follow the redirect to /login natively.
+    window.location.assign(ROUTES.checkout)
   }
 
   function handleStartShopping() {
