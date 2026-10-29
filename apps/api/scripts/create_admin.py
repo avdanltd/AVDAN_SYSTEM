@@ -26,8 +26,8 @@ async def main() -> int:
     email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
     name = os.environ.get("ADMIN_NAME", "").strip()
     password = os.environ.get("ADMIN_PASSWORD", "")
-    if not email or not name or len(password) < 12:
-        print("ADMIN_EMAIL, ADMIN_NAME and an ADMIN_PASSWORD of at least 12 characters are required.")
+    if not email or not name or len(password) < 8:
+        print("ADMIN_EMAIL, ADMIN_NAME and an ADMIN_PASSWORD of at least 8 characters are required.")
         return 1
 
     async with AsyncSessionLocal() as db:
