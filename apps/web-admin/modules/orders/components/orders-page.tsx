@@ -96,6 +96,16 @@ export function OrdersPage() {
       ),
     },
     {
+      key: "rider",
+      header: "Rider",
+      cell: (row) =>
+        row.rider_id ? (
+          <span className="text-sm">{row.rider_name ?? `${row.rider_id.slice(0, 8)}…`}</span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
+    },
+    {
       key: "status",
       header: "Status",
       cell: (row) => <OrderStatusBadge status={row.status} />,

@@ -5,6 +5,8 @@ export interface DispatchOrder {
   customer_id: string
   vendor_id: string
   rider_id: string | null
+  rider_name?: string | null
+  rider_phone?: string | null
   status: OrderStatus
   total_kobo: number
   delivery_fee_kobo: number

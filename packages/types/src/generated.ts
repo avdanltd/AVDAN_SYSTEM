@@ -2163,6 +2163,10 @@ export interface components {
             vendor_name?: string | null;
             /** Rider Id */
             rider_id?: string | null;
+            /** Rider Name */
+            rider_name?: string | null;
+            /** Rider Phone */
+            rider_phone?: string | null;
             /** Hub Id */
             hub_id?: string | null;
             /** Hub Name */
@@ -2255,6 +2259,10 @@ export interface components {
             vendor_name?: string | null;
             /** Rider Id */
             rider_id?: string | null;
+            /** Rider Name */
+            rider_name?: string | null;
+            /** Rider Phone */
+            rider_phone?: string | null;
             /** Hub Id */
             hub_id?: string | null;
             /** Hub Name */

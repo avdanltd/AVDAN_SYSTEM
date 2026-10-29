@@ -180,7 +180,25 @@ def _event_resp(event: object) -> OrderEventResponse:
     )
 
 
-def _order_resp(order: object) -> OrderResponse:
+async def _rider_info(db: AsyncSession, orders: list) -> dict:
+    """{rider_id: (name, phone)} for the riders on these orders, in one query."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+    from services.dispatch.models import Rider
+
+    rider_ids = list({o.rider_id for o in orders if o.rider_id})
+    if not rider_ids:
+        return {}
+    rows = await db.execute(
+        select(Rider.id, User.name, User.phone)
+        .join(User, User.id == Rider.user_id)
+        .where(Rider.id.in_(rider_ids))
+    )
+    return {rid: (name, phone) for rid, name, phone in rows.all()}
+
+
+def _order_resp(order: object, riders: dict | None = None) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
@@ -188,6 +206,8 @@ def _order_resp(order: object) -> OrderResponse:
         customer_id=str(o.customer_id),
         vendor_id=str(o.vendor_id),
         rider_id=str(o.rider_id) if o.rider_id else None,
+        rider_name=(riders or {}).get(o.rider_id, (None, None))[0],
+        rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
         hub_id=str(o.hub_id) if o.hub_id else None,
         status=o.status,
         total_kobo=o.total_kobo,
@@ -199,7 +219,7 @@ def _order_resp(order: object) -> OrderResponse:
     )
 
 
-def _order_detail_resp(order: object) -> OrderDetailResponse:
+def _order_detail_resp(order: object, riders: dict | None = None) -> OrderDetailResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderDetailResponse(
@@ -207,6 +227,8 @@ def _order_detail_resp(order: object) -> OrderDetailResponse:
         customer_id=str(o.customer_id),
         vendor_id=str(o.vendor_id),
         rider_id=str(o.rider_id) if o.rider_id else None,
+        rider_name=(riders or {}).get(o.rider_id, (None, None))[0],
+        rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
         hub_id=str(o.hub_id) if o.hub_id else None,
         status=o.status,
         total_kobo=o.total_kobo,
@@ -237,8 +259,9 @@ async def list_all_orders(
         page=page,
         page_size=page_size,
     )
+    riders = await _rider_info(db, orders)
     return PaginatedOrdersResponse(
-        items=[_order_resp(o) for o in orders],
+        items=[_order_resp(o, riders) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -253,7 +276,7 @@ async def get_order_detail(
 ) -> OrderDetailResponse:
     svc = AdminService(db)
     order = await svc.get_order_detail(order_id)
-    return _order_detail_resp(order)
+    return _order_detail_resp(order, await _rider_info(db, [order]))
 
 
 @router.patch("/orders/{order_id}/status", response_model=OrderResponse)
@@ -267,7 +290,7 @@ async def override_order_status(
     order = await svc.override_order_status(
         order_id, data.status, data.reason, current_user.user_id
     )
-    return _order_resp(order)
+    return _order_resp(order, await _rider_info(db, [order]))
 
 
 # ── Payment / refund management ───────────────────────────────────────────────
