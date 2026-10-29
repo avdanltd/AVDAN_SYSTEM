@@ -146,7 +146,14 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Rider</p>
             {order.rider_id ? (
-              <p className="mt-1 font-mono text-sm font-medium">{order.rider_id.slice(0, 12)}…</p>
+              <div className="mt-1">
+                <p className="text-sm font-medium">{order.rider_name ?? `${order.rider_id.slice(0, 12)}…`}</p>
+                {order.rider_phone && (
+                  <a href={`tel:${order.rider_phone}`} className="text-xs text-primary hover:underline">
+                    {order.rider_phone}
+                  </a>
+                )}
+              </div>
             ) : order.status === 'READY_FOR_PICKUP' ? (
               <Button size="sm" variant="outline" className="mt-1.5 h-7" onClick={() => setAssignOpen(true)}>
                 <Bike className="mr-1.5 h-3.5 w-3.5" />

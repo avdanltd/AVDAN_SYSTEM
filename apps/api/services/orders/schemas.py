@@ -64,6 +64,9 @@ class OrderResponse(BaseModel):
     vendor_id: str
     vendor_name: str | None = None
     rider_id: str | None = None
+    # Filled in by the admin endpoints so staff can see who is fulfilling an order.
+    rider_name: str | None = None
+    rider_phone: str | None = None
     hub_id: str | None = None
     hub_name: str | None = None
     hub_lat: float | None = None

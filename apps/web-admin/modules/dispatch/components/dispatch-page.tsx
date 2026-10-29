@@ -79,8 +79,15 @@ function OrderRow({ order, showAssign }: { order: DispatchOrder; showAssign: boo
         {showAssign && (
           order.rider_id ? (
             <span className="ml-4 flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-              <CheckCircle2 className="h-4 w-4 text-success" />
-              Rider assigned
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
+              <span className="flex flex-col leading-tight">
+                <span className="font-medium text-foreground">{order.rider_name ?? 'Rider assigned'}</span>
+                {order.rider_phone && (
+                  <a href={`tel:${order.rider_phone}`} className="text-xs text-primary hover:underline">
+                    {order.rider_phone}
+                  </a>
+                )}
+              </span>
             </span>
           ) : (
             <Button
