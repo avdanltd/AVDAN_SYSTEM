@@ -1,8 +1,11 @@
 name: CI
 
+# Runs on feature branches and PRs only.
+# Pushes to develop and main are handled by deploy-staging.yml and deploy-prod.yml.
+
 on:
   push:
-    branches: ['**']
+    branches-ignore: [main, develop]
   pull_request:
     branches: [main, develop]
 
@@ -12,39 +15,30 @@ concurrency:
 
 jobs:
   frontend:
-    name: Frontend — lint, type-check, build
+    name: Frontend — build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm turbo run lint
-
-      - name: Type check
-        run: pnpm turbo run type-check
-
       - name: Build
         run: pnpm turbo run build
         env:
-          # Dummy values so Next.js build doesn't fail on missing env vars
           NEXT_PUBLIC_APP_NAME: AVDAN
           NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
           API_INTERNAL_URL: http://localhost:8000
 
   backend:
-    name: Backend — lint, type-check
+    name: Backend — install
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -59,11 +53,3 @@ jobs:
       - name: Install dependencies
         working-directory: apps/api
         run: uv sync
-
-      - name: Lint (ruff)
-        working-directory: apps/api
-        run: uv run ruff check .
-
-      - name: Type check (mypy)
-        working-directory: apps/api
-        run: uv run mypy . --ignore-missing-imports

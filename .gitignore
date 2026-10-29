@@ -13,6 +13,8 @@ build/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+celerybeat-schedule*
+celerybeat.pid
 
 # Environment
 .env
@@ -49,6 +51,10 @@ Thumbs.db
 infra/k8s/secrets/
 *.kubeconfig
 
+# Certbot / Cloudflare credentials — NEVER commit
+infra/certbot/cloudflare.ini
+/opt/avdan/secrets/
+
 # Logs
 *.log
 logs/
@@ -62,5 +68,12 @@ coverage.xml
 # versions/ — committed
 
 docs/*
+# Explicit, so a future change to the docs/* rule cannot expose it
+docs/DEPLOY_SECRETS.local.md
 !docs/AVDAN_System_Architecture_v3.docx
 !docs/AVDAN_System_Design.docx
+
+apps/api/create_admin.py
+quickfix.md
+PROJECT_DESIGN_BRIEF.md
+styles/

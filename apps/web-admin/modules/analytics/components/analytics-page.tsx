@@ -1,0 +1,223 @@
+'use client'
+
+import { useState } from 'react'
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from 'recharts'
+
+import {
+  StatsCard,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Button,
+  Skeleton,
+} from '@avdan/ui'
+import {
+  ShoppingBag,
+  Bike,
+  TrendingUp,
+  DollarSign,
+  AlertTriangle,
+  Package,
+} from 'lucide-react'
+import { formatKobo } from '@/lib/format'
+import { usePlatformOverview } from '../hooks/use-platform-overview'
+import { useOrderVolume } from '../hooks/use-order-volume'
+
+// CSS custom properties, not literal hex — resolved from tokens.css at paint time, so these
+// charts stay correct in dark mode instead of freezing to a light-mode-only palette.
+const BRAND_PRIMARY = 'hsl(var(--primary))'
+const BORDER_COLOR = 'hsl(var(--border))'
+const POPOVER_COLOR = 'hsl(var(--popover))'
+
+type Period = 'day' | 'week' | 'month'
+
+const PERIOD_DAYS: Record<Period, string> = {
+  day: '24 hours',
+  week: '7 days',
+  month: '30 days',
+}
+
+export function AnalyticsPage() {
+  const [period, setPeriod] = useState<Period>('month')
+
+  const { data: overview, isLoading: overviewLoading } = usePlatformOverview()
+  const { data: volumeData, isLoading: volumeLoading } = useOrderVolume(period)
+
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-foreground">Analytics</h1>
+          <p className="text-sm text-muted-foreground">Platform-wide metrics and trends</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {(['day', 'week', 'month'] as Period[]).map((p) => (
+            <Button
+              key={p}
+              variant={period === p ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setPeriod(p)}
+            >
+              {PERIOD_DAYS[p]}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Overview Stats */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <StatsCard
+          title="Active Orders"
+          value={overview?.active_orders ?? 0}
+          icon={<ShoppingBag className="h-5 w-5" />}
+          loading={overviewLoading}
+        />
+        <StatsCard
+          title="Orders Today"
+          value={overview?.orders_today ?? 0}
+          icon={<Package className="h-5 w-5" />}
+          loading={overviewLoading}
+        />
+        <StatsCard
+          title="Riders Online"
+          value={overview?.riders_online ?? 0}
+          icon={<Bike className="h-5 w-5" />}
+          loading={overviewLoading}
+        />
+        <StatsCard
+          title="Revenue Today"
+          value={overview ? formatKobo(overview.revenue_today_kobo) : '—'}
+          icon={<TrendingUp className="h-5 w-5" />}
+          loading={overviewLoading}
+        />
+        <StatsCard
+          title="Total GMV"
+          value={overview ? formatKobo(overview.gmv_today_kobo) : '—'}
+          icon={<DollarSign className="h-5 w-5" />}
+          loading={overviewLoading}
+          tone="accent"
+        />
+        <StatsCard
+          title="Pending Disputes"
+          value={overview?.pending_disputes ?? 0}
+          icon={<AlertTriangle className="h-5 w-5" />}
+          loading={overviewLoading}
+          valueClassName={
+            (overview?.pending_disputes ?? 0) > 0 ? 'text-destructive' : 'text-foreground'
+          }
+        />
+      </div>
+
+      {/* Order Volume Chart */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="font-display">Order Volume — {PERIOD_DAYS[period]}</CardTitle>
+          <CardDescription>Number of orders placed in the selected period</CardDescription>
+        </CardHeader>
+        <CardContent className="h-72">
+          {volumeLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={volumeData?.data ?? []}
+                margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+              >
+                <defs>
+                  <linearGradient id="colorOrdersAnalytics" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={BRAND_PRIMARY} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={BRAND_PRIMARY} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER_COLOR} />
+                <XAxis
+                  dataKey="period"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: string) => v.slice(5, 10)}
+                />
+                <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{
+                    background: POPOVER_COLOR,
+                    border: `1px solid ${BORDER_COLOR}`,
+                    borderRadius: 8,
+                  }}
+                />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="order_count"
+                  name="Orders"
+                  stroke={BRAND_PRIMARY}
+                  fillOpacity={1}
+                  fill="url(#colorOrdersAnalytics)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Revenue Chart */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="font-display">Revenue — {PERIOD_DAYS[period]}</CardTitle>
+          <CardDescription>Daily revenue in ₦ for the selected period</CardDescription>
+        </CardHeader>
+        <CardContent className="h-72">
+          {volumeLoading ? (
+            <Skeleton className="h-full w-full" />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={volumeData?.data ?? []}
+                margin={{ top: 5, right: 20, bottom: 5, left: 0 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke={BORDER_COLOR} />
+                <XAxis
+                  dataKey="period"
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: string) => v.slice(5, 10)}
+                />
+                <YAxis
+                  tick={{ fontSize: 12 }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(v: number) => `₦${(v / 100000).toFixed(0)}k`}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: POPOVER_COLOR,
+                    border: `1px solid ${BORDER_COLOR}`,
+                    borderRadius: 8,
+                  }}
+                  formatter={(value: unknown) => [formatKobo(Number(value)), 'Revenue']}
+                />
+                <Legend />
+                <Bar dataKey="volume_kobo" name="Revenue" fill={BRAND_PRIMARY} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

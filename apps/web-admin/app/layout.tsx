@@ -44,7 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await getSessionUser()
 
   return (
-    <html lang="en" className={`${bricolage.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${bricolage.variable} ${playfair.variable}`} suppressHydrationWarning>
       <body>
         <Providers user={user}>{children}</Providers>
       </body>

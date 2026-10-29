@@ -10,10 +10,10 @@ import { toast } from '@avdan/ui'
 
 import {
   Button, Card, CardHeader, CardContent, CardTitle, CardDescription,
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
+  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input, PasswordInput, Logo,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
-import { authService } from '../services/auth.service'
+import { apiClient } from '@/lib/api-client'
 import { OtpForm } from './otp-form'
 
 const vendorRegisterSchema = z.object({
@@ -31,41 +31,54 @@ type VendorRegisterInput = z.infer<typeof vendorRegisterSchema>
 export function RegisterVendorForm() {
   const [step, setStep] = useState<'register' | 'otp'>('register')
   const [userId, setUserId] = useState<string | null>(null)
+  const [email, setEmail] = useState<string>('')
+
+  const form = useForm<VendorRegisterInput>({
+    resolver: zodResolver(vendorRegisterSchema),
+    defaultValues: {
+      name: '',
+      email: '',
+      phone: '',
+      password: '',
+      business_name: '',
+      business_type: '',
+      description: '',
+    },
+  })
 
   const registerMutation = useMutation({
     mutationFn: (data: VendorRegisterInput) =>
       apiClient.post<{ user_id: string; message: string }>('/auth/register/vendor', data),
-    onSuccess: (data) => {
+    onSuccess: (data: { user_id: string; message: string }) => {
       setUserId(data.user_id)
+      setEmail(form.getValues('email'))
       setStep('otp')
-      toast.success('Check your phone for the OTP')
+      toast.success('Check your email for the OTP')
     },
     onError: (error: Error) => toast.error(error.message),
   })
 
-  const form = useForm<VendorRegisterInput>({ resolver: zodResolver(vendorRegisterSchema) })
-
   if (step === 'otp' && userId) {
-    return <OtpForm userId={userId} onBack={() => setStep('register')} />
+    return <OtpForm userId={userId} email={email} onBack={() => setStep('register')} />
   }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <div className="mb-2 text-3xl font-bold text-primary">AVDAN</div>
+          <Logo size="lg" className="mb-2" />
           <CardTitle>Register as Vendor</CardTitle>
           <CardDescription>Create your vendor account to start selling</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
+            <form onSubmit={form.handleSubmit((data) => registerMutation.mutate(data))} className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Your name</FormLabel>
+                    <FormLabel>Full name</FormLabel>
                     <FormControl><Input placeholder="Ada Obi" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -77,7 +90,7 @@ export function RegisterVendorForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email address</FormLabel>
-                    <FormControl><Input placeholder="you@business.com" type="email" {...field} /></FormControl>
+                    <FormControl><Input placeholder="you@example.com" type="email" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -99,7 +112,7 @@ export function RegisterVendorForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl><Input placeholder="••••••••" type="password" {...field} /></FormControl>
+                    <FormControl><PasswordInput placeholder="••••••••" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

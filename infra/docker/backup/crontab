@@ -1,0 +1,6 @@
+# infra/docker/backup/crontab — busybox crond table, mounted at /etc/crontabs/root
+# in the db-backup service (see docker-compose.prod.yml). Daily at 02:00 UTC —
+# low-traffic hour for a Lagos-serving product (03:00 WAT).
+#
+# min hour dom month dow  command
+0    2    *   *     *    /usr/local/bin/backup-db.sh >> /backups/backup.log 2>&1

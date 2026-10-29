@@ -1,6 +1,7 @@
 // ─── Shadcn primitives (from src/components/ui/) ─────────────────────────────
 export { Button, buttonVariants } from './components/ui/button'
 export { Input } from './components/ui/input'
+export { PasswordInput } from './components/ui/password-input'
 export { Label } from './components/ui/label'
 export {
   Card,
@@ -79,13 +80,32 @@ export {
 } from './components/ui/select'
 export { Textarea } from './components/ui/textarea'
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs'
+export { Switch } from './components/ui/switch'
+export { Progress } from './components/ui/progress'
+export {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+  type CarouselApi,
+} from './components/ui/carousel'
 
 // ─── Custom components (built on top of Shadcn) ───────────────────────────────
 export { OrderStatusBadge, UserStatusBadge } from './components/custom/status-badge'
+export { StatsCard } from './components/custom/stats-card'
+export { WalletPanel } from './components/custom/wallet-panel'
+export type { WalletPanelProps } from './components/custom/wallet-panel'
 export { ConfirmDialog } from './components/custom/confirm-dialog'
 export { DataTable } from './components/custom/data-table'
 export type { Column } from './components/custom/data-table'
 export { PageLoader } from './components/custom/page-loader'
+export { CategoryIcon } from './components/custom/category-icon'
+export { Logo } from './components/custom/logo'
+export { AuthSplitShell } from './components/custom/auth-split-shell'
+export { ThemeProvider } from './components/custom/theme-provider'
+export { ThemeToggle } from './components/custom/theme-toggle'
+export { Spinner } from './components/primitives/spinner'
 export { EmptyState } from './components/custom/empty-state'
 
 // ─── Feedback ─────────────────────────────────────────────────────────────────

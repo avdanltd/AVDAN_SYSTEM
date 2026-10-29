@@ -3,6 +3,7 @@
 import * as React from 'react'
 
 import { Skeleton } from '../ui/skeleton'
+import { Button } from '../ui/button'
 import { cn } from '../../lib/utils'
 
 export interface Column<T> {
@@ -21,6 +22,12 @@ interface DataTableProps<T> {
   emptyMessage?: string
   className?: string
   onRowClick?: (row: T) => void
+  /** The fetch that populated `data` failed — renders a distinct "couldn't load" state with a
+   * retry action instead of silently falling back to the empty-data message, so a real outage
+   * never looks identical to "there's genuinely nothing here." */
+  error?: boolean
+  errorMessage?: string
+  onRetry?: () => void
 }
 
 export function DataTable<T>({
@@ -32,6 +39,9 @@ export function DataTable<T>({
   emptyMessage = 'No results.',
   className,
   onRowClick,
+  error = false,
+  errorMessage = "Couldn't load this data.",
+  onRetry,
 }: DataTableProps<T>) {
   return (
     <div className={cn('w-full overflow-auto rounded-lg border border-border', className)}>
@@ -62,6 +72,17 @@ export function DataTable<T>({
                 ))}
               </tr>
             ))
+          ) : error ? (
+            <tr>
+              <td colSpan={columns.length} className="px-4 py-12 text-center">
+                <p className="text-sm font-medium text-destructive">{errorMessage}</p>
+                {onRetry && (
+                  <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+                    Retry
+                  </Button>
+                )}
+              </td>
+            </tr>
           ) : data.length === 0 ? (
             <tr>
               <td

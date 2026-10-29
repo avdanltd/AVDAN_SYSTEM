@@ -10,10 +10,25 @@ import { authService } from '../services/auth.service'
 
 interface OtpFormProps {
   userId: string
+  email?: string
   onBack?: () => void
 }
 
-export function OtpForm({ userId, onBack }: OtpFormProps) {
+function obfuscateEmail(email?: string): string {
+  if (!email) return 'your email'
+  const [local, domain] = email.split('@')
+  if (!local || !domain) return email
+  const obscuredLocal = local.length > 2
+    ? `${local[0]}***${local[local.length - 1]}`
+    : `${local[0]}***`
+  const domainParts = domain.split('.')
+  const obscuredDomain = domainParts.length > 1
+    ? `${domainParts[0]![0]}***.${domainParts[domainParts.length - 1]}`
+    : domain
+  return `${obscuredLocal}@${obscuredDomain}`
+}
+
+export function OtpForm({ userId, email, onBack }: OtpFormProps) {
   const [digits, setDigits] = useState(['', '', '', '', '', ''])
   const [countdown, setCountdown] = useState(60)
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
@@ -38,6 +53,15 @@ export function OtpForm({ userId, onBack }: OtpFormProps) {
     onError: (err: Error) => toast.error(err.message),
   })
 
+  const resendMutation = useMutation({
+    mutationFn: () => authService.resendOtp(userId),
+    onSuccess: () => {
+      setCountdown(60)
+      toast.success('A new verification code has been sent!')
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
   const handleChange = (index: number, value: string) => {
     const digit = value.replace(/\D/g, '').slice(-1)
     const next = [...digits]
@@ -57,7 +81,7 @@ export function OtpForm({ userId, onBack }: OtpFormProps) {
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
     if (!pasted) return
     const next = ['', '', '', '', '', '']
-    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i]
+    for (let i = 0; i < pasted.length; i++) next[i] = pasted[i] ?? ''
     setDigits(next)
     inputRefs.current[Math.min(pasted.length, 5)]?.focus()
   }
@@ -68,8 +92,8 @@ export function OtpForm({ userId, onBack }: OtpFormProps) {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Verify your phone</CardTitle>
-          <CardDescription>Enter the 6-digit code sent to your phone</CardDescription>
+          <CardTitle>Verify your email</CardTitle>
+          <CardDescription>Enter the 6-digit code sent to <span className="font-semibold text-foreground">{obfuscateEmail(email)}</span></CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="flex justify-center gap-2">
@@ -106,11 +130,10 @@ export function OtpForm({ userId, onBack }: OtpFormProps) {
               <button
                 type="button"
                 className="text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                onClick={() => setCountdown(60)}
-                disabled
-                title="Resend not yet available — contact support"
+                onClick={() => resendMutation.mutate()}
+                disabled={resendMutation.isPending}
               >
-                Resend OTP
+                {resendMutation.isPending ? 'Sending…' : 'Resend OTP'}
               </button>
             )}
           </p>

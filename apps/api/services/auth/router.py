@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Cookie, Depends, Response
-from sqlalchemy.ext.asyncio import AsyncSession
-
 import redis.asyncio as aioredis
+from fastapi import APIRouter, Body, Cookie, Depends, Header, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import CurrentUser, get_current_user
@@ -9,6 +8,9 @@ from core.exceptions import AuthException
 from core.redis import get_redis
 from services.auth.schemas import (
     LoginRequest,
+    LogoutRequest,
+    PushTokenRequest,
+    RefreshRequest,
     RegisterCustomerRequest,
     RegisterVendorRequest,
     TokenResponse,
@@ -47,9 +49,13 @@ async def register_customer(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    from core.config import settings
     svc = AuthService(db, redis)
     user, otp = await svc.register_customer(data)
-    return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
+    res = {"user_id": str(user.id), "message": "OTP sent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
 
 
 @router.post("/register/vendor", response_model=dict, status_code=201)
@@ -58,9 +64,28 @@ async def register_vendor(
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    from core.config import settings
     svc = AuthService(db, redis)
     user, otp = await svc.register_vendor(data)
-    return {"user_id": str(user.id), "message": "OTP sent", "otp_dev": otp}
+    res = {"user_id": str(user.id), "message": "OTP sent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
+
+
+@router.post("/resend-otp", response_model=dict)
+async def resend_otp(
+    data: VerifyOtpRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    from core.config import settings
+    svc = AuthService(db, redis)
+    otp = await svc.resend_otp(data.user_id)
+    res = {"message": "OTP resent"}
+    if not settings.is_production:
+        res["otp_dev"] = otp
+    return res
 
 
 @router.post("/verify-otp", response_model=dict)
@@ -80,6 +105,7 @@ async def login(
     response: Response,
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+    x_client_platform: str | None = Header(default=None),
 ) -> TokenResponse:
     from core.config import settings
 
@@ -89,39 +115,56 @@ async def login(
     secure = settings.is_production
     response.set_cookie("avdan_token", access_token, secure=secure, **_COOKIE_OPTS)
     response.set_cookie("avdan_refresh_token", refresh_token, secure=secure, **_COOKIE_OPTS)
-    return TokenResponse(message="Login successful")
+
+    is_mobile = (x_client_platform or "").lower() == "mobile"
+    return TokenResponse(
+        message="Login successful",
+        access_token=access_token if is_mobile else None,
+        refresh_token=refresh_token if is_mobile else None,
+    )
 
 
 @router.post("/refresh", response_model=TokenResponse)
 async def refresh(
     response: Response,
     avdan_refresh_token: str | None = Cookie(default=None),
+    data: RefreshRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+    x_client_platform: str | None = Header(default=None),
 ) -> TokenResponse:
-    if not avdan_refresh_token:
+    token = avdan_refresh_token or (data.refresh_token if data else None)
+    if not token:
         raise AuthException("Refresh token missing")
 
     from core.config import settings
 
     svc = AuthService(db, redis)
-    access_token, new_refresh_token = await svc.refresh_tokens(avdan_refresh_token)
+    access_token, new_refresh_token = await svc.refresh_tokens(token)
 
     secure = settings.is_production
     response.set_cookie("avdan_token", access_token, secure=secure, **_COOKIE_OPTS)
     response.set_cookie("avdan_refresh_token", new_refresh_token, secure=secure, **_COOKIE_OPTS)
-    return TokenResponse(message="Token refreshed")
+
+    is_mobile = (x_client_platform or "").lower() == "mobile"
+    return TokenResponse(
+        message="Token refreshed",
+        access_token=access_token if is_mobile else None,
+        refresh_token=new_refresh_token if is_mobile else None,
+    )
 
 
 @router.post("/logout")
 async def logout(
     response: Response,
     avdan_refresh_token: str | None = Cookie(default=None),
+    data: LogoutRequest | None = Body(default=None),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
+    token = avdan_refresh_token or (data.refresh_token if data else None)
     svc = AuthService(db, redis)
-    await svc.logout(avdan_refresh_token)
+    await svc.logout(token)
     response.delete_cookie("avdan_token", path="/")
     response.delete_cookie("avdan_refresh_token", path="/")
     return {"message": "Logged out"}
@@ -148,3 +191,45 @@ async def update_me(
     svc = AuthService(db, redis)
     user = await svc.update_profile(current_user.user_id, data)
     return _user_response(user)
+
+
+@router.patch("/me/push-token", response_model=dict)
+async def update_push_token(
+    data: PushTokenRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    from sqlalchemy import select, update
+
+    from services.auth.models import User
+
+    # A push token identifies a device, not a person: if someone else last signed in on this
+    # device, detach it from them first so their notifications stop landing on this phone.
+    await db.execute(
+        update(User)
+        .where(User.fcm_token == data.token, User.id != current_user.user_id)  # type: ignore[arg-type]
+        .values(fcm_token=None)
+    )
+    result = await db.execute(
+        select(User).where(User.id == current_user.user_id)  # type: ignore[arg-type]
+    )
+    user = result.scalar_one_or_none()
+    if user:
+        user.fcm_token = data.token
+    return {"message": "Push token updated"}
+
+
+@router.delete("/me/push-token", response_model=dict)
+async def clear_push_token(
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Called by the mobile apps on sign-out so the device stops receiving this user's pushes."""
+    from sqlalchemy import update
+
+    from services.auth.models import User
+    await db.execute(
+        update(User).where(User.id == current_user.user_id).values(fcm_token=None)  # type: ignore[arg-type]
+    )
+    return {"message": "Push token cleared"}

@@ -1,12 +1,25 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-
-import redis.asyncio as aioredis
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
+from services.admin.schemas import (
+    AdminProductResponse,
+    ApproveProductRequest,
+    PaginatedAdminProductsResponse,
+    RejectProductRequest,
+)
 from services.admin.service import AdminService
+from services.analytics.schemas import (
+    OrderVolumeResponse,
+    OverviewResponse,
+    PaginatedAuditLogResponse,
+    PlatformConfigResponse,
+    UpdateConfigRequest,
+    VendorAnalyticsResponse,
+)
 from services.auth.schemas import (
     AdminCreateUserRequest,
     PaginatedUsersResponse,
@@ -14,6 +27,26 @@ from services.auth.schemas import (
     UserResponse,
 )
 from services.auth.service import AuthService
+from services.dispute.schemas import (
+    DisputeResponse,
+    PaginatedDisputesResponse,
+    ResolveDisputeRequest,
+)
+from services.orders.schemas import (
+    AdminOverrideStatusRequest,
+    OrderDetailResponse,
+    OrderEventResponse,
+    OrderItemResponse,
+    OrderResponse,
+    PaginatedOrdersResponse,
+)
+from services.payment.schemas import EscrowStatusResponse, RefundRequest
+from services.qa.schemas import AssignHubRequest, CreateHubRequest, HubResponse, UpdateHubRequest
+from services.vendor.schemas import (
+    AdminVendorResponse,
+    PaginatedVendorsResponse,
+    UpdateVendorStatusRequest,
+)
 
 router = APIRouter()
 
@@ -72,4 +105,511 @@ async def create_admin_user(
 ) -> UserResponse:
     svc = AuthService(db, redis)
     user = await svc.create_privileged_user(data)
+    return _user_response(user)
+
+
+# ── Vendor management ─────────────────────────────────────────────────────────
+
+def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
+    from services.vendor.models import Vendor
+    v: Vendor = vendor  # type: ignore[assignment]
+    return AdminVendorResponse(
+        id=str(v.id),
+        user_id=str(v.user_id),
+        name=v.name,
+        slug=v.slug,
+        description=v.description,
+        logo_url=v.logo_url,
+        status=v.status,
+        zone_id=str(v.zone_id) if v.zone_id else None,
+        rating=float(v.rating),
+        created_at=v.created_at.isoformat(),
+    )
+
+
+@router.get("/vendors", response_model=PaginatedVendorsResponse)
+async def list_vendors(
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedVendorsResponse:
+    svc = AdminService(db)
+    vendors, total = await svc.list_vendors(status=status, page=page, page_size=page_size)
+    return PaginatedVendorsResponse(
+        items=[_admin_vendor_response(v) for v in vendors],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.patch("/vendors/{vendor_id}/status", response_model=AdminVendorResponse)
+async def update_vendor_status(
+    vendor_id: str,
+    data: UpdateVendorStatusRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminVendorResponse:
+    svc = AdminService(db)
+    vendor = await svc.update_vendor_status(vendor_id, data.status)
+    return _admin_vendor_response(vendor)
+
+
+# ── Product approval ──────────────────────────────────────────────────────────
+
+def _admin_product_response(p: object) -> AdminProductResponse:
+    from services.vendor.models import Product
+    product: Product = p  # type: ignore[assignment]
+    cat = getattr(product, "category", None)
+    return AdminProductResponse(
+        id=str(product.id),
+        vendor_id=str(product.vendor_id),
+        vendor_name=product.vendor.name,
+        category_name=cat.name if cat else None,
+        name=product.name,
+        description=product.description,
+        image_urls=product.image_urls or [],
+        stock_qty=product.stock_qty,
+        approval_status=product.approval_status,
+        rejection_reason=product.rejection_reason,
+        vendor_price_kobo=product.vendor_price_kobo,
+        price_kobo=product.price_kobo,
+        compare_at_price_kobo=product.compare_at_price_kobo,
+        discount_type=product.discount_type,
+        discount_value=product.discount_value,
+        markup_kobo=product.price_kobo - product.vendor_price_kobo,
+        created_at=product.created_at.isoformat(),
+    )
+
+
+@router.get("/products", response_model=PaginatedAdminProductsResponse)
+async def list_products(
+    approval_status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED)$"),
+    vendor_id: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedAdminProductsResponse:
+    products, total = await AdminService(db).list_products(approval_status, vendor_id, page, page_size)
+    return PaginatedAdminProductsResponse(
+        items=[_admin_product_response(p) for p in products], total=total, page=page, page_size=page_size
+    )
+
+
+@router.post("/products/{product_id}/approve", response_model=AdminProductResponse)
+async def approve_product(
+    product_id: str,
+    data: ApproveProductRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminProductResponse:
+    """Approve a product and set the price customers will see. Also re-prices a live product."""
+    return _admin_product_response(await AdminService(db).approve_product(
+        product_id, data.price_kobo, data.discount_type, data.discount_value
+    ))
+
+
+@router.post("/products/{product_id}/reject", response_model=AdminProductResponse)
+async def reject_product(
+    product_id: str,
+    data: RejectProductRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminProductResponse:
+    return _admin_product_response(await AdminService(db).reject_product(product_id, data.reason))
+
+
+# ── Order management ──────────────────────────────────────────────────────────
+
+def _item_resp(item: object) -> OrderItemResponse:
+    from services.orders.models import OrderItem
+    i: OrderItem = item  # type: ignore[assignment]
+    return OrderItemResponse(
+        id=str(i.id),
+        product_id=str(i.product_id),
+        product_name=i.product_name,
+        product_image_url=i.product_image_url,
+        price_kobo=i.price_kobo,
+        quantity=i.quantity,
+        subtotal_kobo=i.subtotal_kobo,
+    )
+
+
+def _event_resp(event: object) -> OrderEventResponse:
+    from services.orders.models import OrderEvent
+    e: OrderEvent = event  # type: ignore[assignment]
+    return OrderEventResponse(
+        id=str(e.id),
+        from_state=e.from_state,
+        to_state=e.to_state,
+        actor_role=e.actor_role,
+        metadata=e.event_metadata,
+        created_at=e.created_at.isoformat(),
+    )
+
+
+async def _rider_info(db: AsyncSession, orders: list) -> dict:
+    """{rider_id: (name, phone)} for the riders on these orders, in one query."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+    from services.dispatch.models import Rider
+
+    rider_ids = list({o.rider_id for o in orders if o.rider_id})
+    if not rider_ids:
+        return {}
+    rows = await db.execute(
+        select(Rider.id, User.name, User.phone)
+        .join(User, User.id == Rider.user_id)
+        .where(Rider.id.in_(rider_ids))
+    )
+    return {rid: (name, phone) for rid, name, phone in rows.all()}
+
+
+def _order_resp(order: object, riders: dict | None = None) -> OrderResponse:
+    from services.orders.models import Order
+    o: Order = order  # type: ignore[assignment]
+    return OrderResponse(
+        id=str(o.id),
+        customer_id=str(o.customer_id),
+        vendor_id=str(o.vendor_id),
+        rider_id=str(o.rider_id) if o.rider_id else None,
+        rider_name=(riders or {}).get(o.rider_id, (None, None))[0],
+        rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
+        hub_id=str(o.hub_id) if o.hub_id else None,
+        status=o.status,
+        total_kobo=o.total_kobo,
+        delivery_fee_kobo=o.delivery_fee_kobo,
+        delivery_address=o.delivery_address,
+        items=[_item_resp(i) for i in (o.items or [])],
+        created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
+    )
+
+
+def _order_detail_resp(order: object, riders: dict | None = None) -> OrderDetailResponse:
+    from services.orders.models import Order
+    o: Order = order  # type: ignore[assignment]
+    return OrderDetailResponse(
+        id=str(o.id),
+        customer_id=str(o.customer_id),
+        vendor_id=str(o.vendor_id),
+        rider_id=str(o.rider_id) if o.rider_id else None,
+        rider_name=(riders or {}).get(o.rider_id, (None, None))[0],
+        rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
+        hub_id=str(o.hub_id) if o.hub_id else None,
+        status=o.status,
+        total_kobo=o.total_kobo,
+        delivery_fee_kobo=o.delivery_fee_kobo,
+        delivery_address=o.delivery_address,
+        items=[_item_resp(i) for i in (o.items or [])],
+        events=[_event_resp(e) for e in (o.events or [])],
+        created_at=o.created_at.isoformat(),
+        updated_at=o.updated_at.isoformat(),
+    )
+
+
+@router.get("/orders", response_model=PaginatedOrdersResponse)
+async def list_all_orders(
+    status: str | None = Query(default=None),
+    vendor_id: str | None = Query(default=None),
+    customer_id: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedOrdersResponse:
+    svc = AdminService(db)
+    orders, total = await svc.list_orders(
+        status=status,
+        vendor_id=vendor_id,
+        customer_id=customer_id,
+        page=page,
+        page_size=page_size,
+    )
+    riders = await _rider_info(db, orders)
+    return PaginatedOrdersResponse(
+        items=[_order_resp(o, riders) for o in orders],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/orders/{order_id}", response_model=OrderDetailResponse)
+async def get_order_detail(
+    order_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderDetailResponse:
+    svc = AdminService(db)
+    order = await svc.get_order_detail(order_id)
+    return _order_detail_resp(order, await _rider_info(db, [order]))
+
+
+@router.patch("/orders/{order_id}/status", response_model=OrderResponse)
+async def override_order_status(
+    order_id: str,
+    data: AdminOverrideStatusRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderResponse:
+    svc = AdminService(db)
+    order = await svc.override_order_status(
+        order_id, data.status, data.reason, current_user.user_id
+    )
+    return _order_resp(order, await _rider_info(db, [order]))
+
+
+# ── Payment / refund management ───────────────────────────────────────────────
+
+def _escrow_resp(escrow: object) -> EscrowStatusResponse:
+    from services.payment.models import EscrowTransaction
+    e: EscrowTransaction = escrow  # type: ignore[assignment]
+    return EscrowStatusResponse(
+        id=str(e.id),
+        order_id=str(e.order_id),
+        provider=e.provider,
+        provider_ref=e.provider_ref,
+        amount_kobo=e.amount_kobo,
+        status=e.status,
+        created_at=e.created_at.isoformat(),
+    )
+
+
+@router.post("/payment/refund/{order_id}", response_model=EscrowStatusResponse)
+async def refund_order(
+    order_id: str,
+    data: RefundRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> EscrowStatusResponse:
+    from services.payment.service import PaymentService
+    svc = PaymentService(db)
+    escrow = await svc.process_refund(
+        order_id, data.amount_kobo, current_user.user_id, data.reason
+    )
+    return _escrow_resp(escrow)
+
+
+# ── Dispute management ────────────────────────────────────────────────────────
+
+def _dispute_resp(dispute: object) -> DisputeResponse:
+    from services.dispute.models import Dispute
+    d: Dispute = dispute  # type: ignore[assignment]
+    return DisputeResponse(
+        id=str(d.id),
+        order_id=str(d.order_id),
+        raised_by=str(d.raised_by),
+        reason=d.reason,
+        description=d.description,
+        evidence_urls=d.evidence_urls or [],
+        status=d.status,
+        resolution=d.resolution,
+        resolution_notes=d.resolution_notes,
+        resolved_at=d.resolved_at.isoformat() if d.resolved_at else None,
+        created_at=d.created_at.isoformat(),
+    )
+
+
+@router.get("/disputes", response_model=PaginatedDisputesResponse)
+async def list_all_disputes(
+    status: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedDisputesResponse:
+    from services.dispute.service import DisputeService
+    svc = DisputeService(db)
+    disputes, total = await svc.list_all_disputes(status, page, page_size)
+    return PaginatedDisputesResponse(
+        items=[_dispute_resp(d) for d in disputes],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/disputes/{dispute_id}", response_model=DisputeResponse)
+async def get_dispute_detail(
+    dispute_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> DisputeResponse:
+    from services.dispute.service import DisputeService
+    svc = DisputeService(db)
+    dispute = await svc.get_dispute_detail(dispute_id)
+    return _dispute_resp(dispute)
+
+
+@router.post("/disputes/{dispute_id}/resolve", response_model=DisputeResponse)
+async def resolve_dispute(
+    dispute_id: str,
+    data: ResolveDisputeRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> DisputeResponse:
+    from services.dispute.service import DisputeService
+    svc = DisputeService(db)
+    dispute = await svc.resolve_dispute(dispute_id, current_user.user_id, data)
+    return _dispute_resp(dispute)
+
+
+# ── Analytics ─────────────────────────────────────────────────────────────────
+
+@router.get("/analytics/overview", response_model=OverviewResponse)
+async def analytics_overview(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> OverviewResponse:
+    from services.analytics.service import AnalyticsService
+    data = await AnalyticsService(db).get_overview()
+    return OverviewResponse(**data)
+
+
+@router.get("/analytics/orders", response_model=OrderVolumeResponse)
+async def analytics_orders(
+    period: str = Query(default="day", pattern="^(day|week|month)$"),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderVolumeResponse:
+    from services.analytics.service import AnalyticsService
+    data = await AnalyticsService(db).get_order_volume(period)
+    return OrderVolumeResponse(**data)
+
+
+@router.get("/analytics/vendors/{vendor_id}", response_model=VendorAnalyticsResponse)
+async def analytics_vendor(
+    vendor_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> VendorAnalyticsResponse:
+    from services.analytics.service import AnalyticsService
+    data = await AnalyticsService(db).get_vendor_analytics(vendor_id)
+    return VendorAnalyticsResponse(**data)
+
+
+# ── Platform config ───────────────────────────────────────────────────────────
+
+@router.get("/config", response_model=PlatformConfigResponse)
+async def get_platform_config(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PlatformConfigResponse:
+    from services.analytics.service import AnalyticsService
+    config = await AnalyticsService(db).get_config()
+    return PlatformConfigResponse(config=config)
+
+
+@router.patch("/config", response_model=PlatformConfigResponse)
+async def update_platform_config(
+    data: UpdateConfigRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> PlatformConfigResponse:
+    from services.analytics.service import AnalyticsService
+    config = await AnalyticsService(db).update_config(data.updates, current_user.user_id)
+    return PlatformConfigResponse(config=config)
+
+
+@router.get("/audit-log", response_model=PaginatedAuditLogResponse)
+async def get_audit_log(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedAuditLogResponse:
+    from services.analytics.schemas import AuditLogEntryResponse
+    from services.analytics.service import AnalyticsService
+    entries, total = await AnalyticsService(db).list_audit_log(page, page_size)
+    return PaginatedAuditLogResponse(
+        items=[
+            AuditLogEntryResponse(
+                id=str(e.id),
+                admin_id=str(e.actor_id),
+                action=e.action,
+                resource=e.target_type,
+                resource_id=e.target_id,
+                metadata=e.after,
+                created_at=e.created_at.isoformat(),
+            )
+            for e in entries
+        ],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+# ── Hub management ────────────────────────────────────────────────────────────
+
+def _hub_resp(hub: object) -> HubResponse:
+    from services.qa.models import AgentHub
+    h: AgentHub = hub  # type: ignore[assignment]
+    return HubResponse(
+        id=str(h.id),
+        name=h.name,
+        active=h.active,
+        capacity=h.capacity,
+        lat=float(h.lat) if h.lat is not None else None,
+        lng=float(h.lng) if h.lng is not None else None,
+    )
+
+
+@router.get("/hubs", response_model=list[HubResponse])
+async def list_hubs(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[HubResponse]:
+    svc = AdminService(db)
+    hubs = await svc.list_hubs()
+    return [_hub_resp(h) for h in hubs]
+
+
+@router.post("/hubs", response_model=HubResponse, status_code=201)
+async def create_hub(
+    data: CreateHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    svc = AdminService(db)
+    hub = await svc.create_hub(data.name, data.capacity, data.lat, data.lng)
+    return _hub_resp(hub)
+
+
+@router.patch("/hubs/{hub_id}", response_model=HubResponse)
+async def update_hub(
+    hub_id: str,
+    data: UpdateHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    svc = AdminService(db)
+    hub = await svc.update_hub(hub_id, data.name, data.capacity)
+    return _hub_resp(hub)
+
+
+@router.delete("/hubs/{hub_id}", status_code=204)
+async def delete_hub(
+    hub_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    svc = AdminService(db)
+    await svc.delete_hub(hub_id)
+
+
+@router.patch("/users/{user_id}/hub", response_model=UserResponse)
+async def assign_agent_hub(
+    user_id: str,
+    data: AssignHubRequest,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> UserResponse:
+    svc = AdminService(db)
+    user = await svc.assign_agent_hub(user_id, data.hub_id)
     return _user_response(user)

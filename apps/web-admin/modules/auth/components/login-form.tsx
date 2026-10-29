@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 
 import {
   Button, Card, CardHeader, CardContent, CardTitle, CardDescription,
-  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input,
+  Form, FormField, FormItem, FormLabel, FormControl, FormMessage, Input, PasswordInput, Logo,
 } from '@avdan/ui'
 
 import { loginSchema, type LoginInput } from '../schemas/auth.schemas'
@@ -13,15 +13,15 @@ import { useLogin } from '../hooks/use-login'
 
 export function LoginForm() {
   const { mutate: login, isPending } = useLogin()
-  const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
+  const form = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } })
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <div className="mb-2 text-3xl font-bold text-primary">AVDAN</div>
-          <CardTitle>Admin sign in</CardTitle>
-          <CardDescription>Welcome back — enter your credentials to continue</CardDescription>
+          <Logo size="lg" className="mb-2" />
+          <CardTitle>Sign in</CardTitle>
+          <CardDescription>Welcome back! Please enter your details</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -43,7 +43,7 @@ export function LoginForm() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Password</FormLabel>
-                    <FormControl><Input placeholder="••••••••" type="password" {...field} /></FormControl>
+                    <FormControl><PasswordInput placeholder="••••••••" {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -1,0 +1,185 @@
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+# ── Product ──────────────────────────────────────────────────────────────────
+
+class ProductResponse(BaseModel):
+    id: str
+    vendor_id: str
+    category_id: str | None
+    category_name: str | None
+    name: str
+    description: str | None
+    # In the vendor's own view this is the vendor's price; the marked-up price customers pay
+    # is never exposed to the vendor.
+    price_kobo: int
+    compare_at_price_kobo: int | None = None
+    approval_status: str = "APPROVED"
+    rejection_reason: str | None = None
+    available: bool
+    stock_qty: int
+    image_urls: list[str]
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("vendor_id", "category_id", mode="before")
+    @classmethod
+    def uuid_to_str(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        return str(v)
+
+
+class PublicProductResponse(BaseModel):
+    """Extended product response for public listing — includes vendor info."""
+    id: str
+    vendor_id: str
+    vendor_name: str
+    vendor_slug: str
+    category_id: str | None
+    category_name: str | None
+    name: str
+    description: str | None
+    price_kobo: int
+    # Pre-discount price to show struck through, when admin has put a discount on the product.
+    compare_at_price_kobo: int | None = None
+    available: bool
+    stock_qty: int
+    image_urls: list[str]
+    created_at: str
+
+
+class PaginatedProductsResponse(BaseModel):
+    items: list[PublicProductResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class CreateProductRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    price_kobo: int = Field(gt=0, description="Price in kobo (must be > 0)")
+    stock_qty: int = Field(default=0, ge=0)
+    image_urls: list[str] = Field(default_factory=list)
+    category_id: str | None = None
+
+
+class UpdateProductRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    price_kobo: int | None = Field(default=None, gt=0)
+    stock_qty: int | None = Field(default=None, ge=0)
+    image_urls: list[str] | None = None
+    category_id: str | None = None
+
+
+class UpdateProductAvailabilityRequest(BaseModel):
+    available: bool
+
+
+# ── Vendor ────────────────────────────────────────────────────────────────────
+
+class VendorResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    description: str | None
+    logo_url: str | None
+    status: str
+    zone_id: str | None
+    address: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    rating: float
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("zone_id", mode="before")
+    @classmethod
+    def uuid_to_str(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        return str(v)
+
+    @field_validator("rating", mode="before")
+    @classmethod
+    def decimal_to_float(cls, v: object) -> float:
+        return float(v)  # type: ignore[arg-type]
+
+    @field_validator("lat", "lng", mode="before")
+    @classmethod
+    def coords_to_float(cls, v: object) -> float | None:
+        return None if v is None else float(v)  # type: ignore[arg-type]
+
+
+class VendorDetailResponse(VendorResponse):
+    products: list[ProductResponse] = []
+    has_payout_account: bool = False
+    payout_bank_name: str | None = None
+    payout_account_name: str | None = None
+
+
+class UpdateVendorProfileRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    logo_url: str | None = None
+    # Re-geocoded server-side on every change (see VendorService.update_vendor_profile).
+    address: str | None = Field(default=None, max_length=500)
+
+
+class PaginatedVendorsResponse(BaseModel):
+    items: list[VendorResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+# ── Payout account ───────────────────────────────────────────────────────────
+
+class BankResponse(BaseModel):
+    name: str
+    code: str
+
+
+class VerifyAccountRequest(BaseModel):
+    account_number: str = Field(min_length=10, max_length=10, pattern=r"^\d{10}$")
+    bank_code: str = Field(min_length=1)
+
+
+class VerifyAccountResponse(BaseModel):
+    account_name: str
+    account_number: str
+
+
+class SavePayoutAccountRequest(BaseModel):
+    account_number: str = Field(min_length=10, max_length=10, pattern=r"^\d{10}$")
+    bank_code: str = Field(min_length=1)
+    bank_name: str = Field(min_length=1)
+    account_name: str = Field(min_length=1)
+
+
+class PayoutAccountResponse(BaseModel):
+    has_payout_account: bool
+    account_number: str | None
+    bank_name: str | None
+    account_name: str | None
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class UpdateVendorStatusRequest(BaseModel):
+    status: Literal["active", "suspended", "rejected"]
+
+
+class AdminVendorResponse(VendorResponse):
+    user_id: str
+
+    @field_validator("user_id", mode="before")
+    @classmethod
+    def user_id_to_str(cls, v: object) -> str:
+        return str(v)

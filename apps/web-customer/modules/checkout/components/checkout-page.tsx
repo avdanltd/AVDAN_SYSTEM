@@ -1,0 +1,375 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Input,
+  Label,
+  Separator,
+  Textarea,
+  toast,
+} from '@avdan/ui'
+import { Loader2, MapPin, ShoppingCart } from 'lucide-react'
+import { checkoutSchema, type CheckoutInput } from '../schemas/checkout.schemas'
+import { useCreateOrder, useDeliveryQuote, useInitiatePayment } from '../hooks/use-checkout'
+import type { OrderCreated } from '../services/checkout.service'
+import { useCartStore } from '@/modules/cart/store/cart.store'
+import { useSession } from '@/modules/auth/hooks/use-session'
+import { ROUTES } from '@/config/routes'
+
+function formatPrice(kobo: number): string {
+  return (kobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
+}
+
+export function CheckoutPage() {
+  const router = useRouter()
+  const { items, vendorId, vendorName, totalKobo, clearCart } = useCartStore()
+  const { user } = useSession()
+
+  const [placedOrder, setPlacedOrder] = useState<OrderCreated | null>(null)
+
+  const { mutateAsync: createOrder, isPending: isCreating } = useCreateOrder()
+  const { mutateAsync: initiatePayment, isPending: isInitiating } = useInitiatePayment()
+
+  const isLoading = isCreating || isInitiating
+  const [locating, setLocating] = useState(false)
+
+  const form = useForm<CheckoutInput>({
+    resolver: zodResolver(checkoutSchema),
+    defaultValues: {
+      delivery_address: { street: '', city: '', state: '', notes: '', lat: undefined, lng: undefined },
+      contact_phone: user?.phone ?? '',
+    },
+  })
+
+  const lat = form.watch('delivery_address.lat')
+  const lng = form.watch('delivery_address.lng')
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(vendorId, lat, lng)
+
+  function captureLocation() {
+    if (!('geolocation' in navigator)) {
+      toast.error('Your browser cannot share location. Try another browser or device.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        form.setValue('delivery_address.lat', pos.coords.latitude, { shouldValidate: true })
+        form.setValue('delivery_address.lng', pos.coords.longitude, { shouldValidate: true })
+        setLocating(false)
+      },
+      () => {
+        setLocating(false)
+        toast.error('Could not get your location. Allow location access and try again.')
+      },
+      { enableHighAccuracy: true, timeout: 15_000 },
+    )
+  }
+
+  // Prefill phone once session loads
+  useEffect(() => {
+    if (user?.phone && !form.getValues('contact_phone')) {
+      form.setValue('contact_phone', user.phone)
+    }
+  }, [user?.phone, form])
+
+  // The persisted cart is empty on the server-rendered first pass and only fills in once the
+  // browser has hydrated, so an empty cart only means "empty" after mount.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  // If cart is empty, redirect home
+  useEffect(() => {
+    if (mounted && items.length === 0) {
+      router.replace(ROUTES.home)
+    }
+  }, [mounted, items.length, router])
+
+  if (items.length === 0 || !vendorId) {
+    return null
+  }
+
+  async function onSubmit(data: CheckoutInput) {
+    try {
+      const order = await createOrder({
+        vendor_id: vendorId!,
+        items: items.map((i) => ({ product_id: i.product_id, quantity: i.quantity })),
+        delivery_address: { ...data.delivery_address, phone: data.contact_phone },
+      })
+      // Order is placed but not yet paid — show the real, confirmed delivery
+      // fee before sending the customer to pay, rather than charging a total
+      // they never saw.
+      setPlacedOrder(order)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to place order. Please try again.'
+      toast.error(message)
+    }
+  }
+
+  async function onPay() {
+    if (!placedOrder) return
+    try {
+      const payment = await initiatePayment(placedOrder.id)
+      clearCart()
+      // Redirect to Paystack payment page
+      window.location.href = payment.payment_url
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to start payment. Please try again.'
+      toast.error(message)
+    }
+  }
+
+  const deliveryFeeKobo = placedOrder?.delivery_fee_kobo ?? quote?.fee_kobo ?? null
+  const grandTotalKobo = totalKobo() + (deliveryFeeKobo ?? 0)
+  // Admin-set floor on the item subtotal. Only known once the quote has loaded; the API
+  // enforces it regardless, this just explains it before the customer hits an error.
+  const minOrderKobo = quote?.min_order_kobo ?? 0
+  const belowMinimum = minOrderKobo > 0 && totalKobo() < minOrderKobo
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Checkout</h1>
+
+        {/* Step indicator */}
+        <div className="mt-4 flex items-center gap-0">
+          {(() => {
+            const activeStep = placedOrder ? 2 : 1
+            return ['Cart', 'Delivery', 'Payment'].map((step, i) => (
+              <div key={step} className="flex items-center">
+                <div className={`flex items-center gap-1.5 ${i === activeStep ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>
+                  <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${i === activeStep ? 'bg-primary text-white' : i < activeStep ? 'bg-primary/20 text-primary' : 'bg-secondary text-muted-foreground'}`}>
+                    {i + 1}
+                  </span>
+                  <span className="text-sm">{step}</span>
+                </div>
+                {i < 2 && <span className="mx-3 h-px w-8 bg-border" />}
+              </div>
+            ))
+          })()}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+        {/* Delivery form */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Delivery Details</CardTitle>
+            {placedOrder && (
+              <p className="text-sm text-muted-foreground">
+                Order placed.{' '}
+                <button
+                  type="button"
+                  className="font-medium text-primary underline underline-offset-2"
+                  onClick={() => setPlacedOrder(null)}
+                >
+                  Edit details
+                </button>
+              </p>
+            )}
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <fieldset disabled={!!placedOrder || isLoading} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="contact_phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 08012345678" type="tel" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="delivery_address.street"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Street Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 12 Adeola Hopewell Street" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="delivery_address.city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Lagos" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="delivery_address.state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Lagos" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Delivery Location</Label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button type="button" variant="outline" onClick={captureLocation} disabled={locating}>
+                        {locating ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <MapPin className="mr-2 h-4 w-4" />
+                        )}
+                        {lat !== undefined ? 'Update my location' : 'Use my current location'}
+                      </Button>
+                      {lat !== undefined && lng !== undefined && (
+                        <span className="text-sm text-success">Location saved</span>
+                      )}
+                    </div>
+                    {quote && quote.total_km != null && (
+                      <p className="text-xs text-muted-foreground">
+                        Delivery is priced on the route
+                        {quote.hub_name ? ` store → ${quote.hub_name} hub → you` : ' store → you'} (about{' '}
+                        {quote.total_km.toFixed(1)} km).
+                      </p>
+                    )}
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.delivery_address?.lat?.message}
+                    </p>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="delivery_address.notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Delivery Notes (optional)</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Landmark, gate code, floor number…"
+                            className="resize-none"
+                            rows={3}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </fieldset>
+
+                {!placedOrder && belowMinimum && (
+                  <p className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                    The minimum order is {formatPrice(minOrderKobo)}. Add {formatPrice(minOrderKobo - totalKobo())}{' '}
+                    more to continue.
+                  </p>
+                )}
+
+                {!placedOrder ? (
+                  <Button type="submit" className="w-full" size="lg" disabled={isLoading || belowMinimum}>
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Placing order…
+                      </>
+                    ) : (
+                      'Continue to Payment'
+                    )}
+                  </Button>
+                ) : (
+                  <Button type="button" className="w-full" size="lg" disabled={isLoading} onClick={onPay}>
+                    {isInitiating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Redirecting to payment…
+                      </>
+                    ) : (
+                      `Pay ${formatPrice(grandTotalKobo)}`
+                    )}
+                  </Button>
+                )}
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        {/* Order summary */}
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ShoppingCart className="h-4 w-4" />
+                Order Summary
+              </CardTitle>
+              {vendorName && (
+                <p className="text-sm text-muted-foreground">from {vendorName}</p>
+              )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {items.map((item) => (
+                <div key={item.product_id} className="flex justify-between gap-2 text-sm">
+                  <span className="text-foreground flex-1 line-clamp-1">
+                    {item.name}
+                    <span className="ml-1 text-muted-foreground">×{item.quantity}</span>
+                  </span>
+                  <span className="font-medium shrink-0">{formatPrice(item.price_kobo * item.quantity)}</span>
+                </div>
+              ))}
+              <Separator />
+              <div className="flex justify-between font-semibold">
+                <span>Subtotal</span>
+                <span>{formatPrice(totalKobo())}</span>
+              </div>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Delivery fee</span>
+                <span>
+                  {deliveryFeeKobo === null ? (quoting ? 'Calculating…' : 'Share your location to see it') : formatPrice(deliveryFeeKobo)}
+                </span>
+              </div>
+              <Separator />
+              <div className="flex justify-between font-bold text-base">
+                <span>Total</span>
+                <span>{formatPrice(grandTotalKobo)}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Your payment is processed securely via Paystack. You will be redirected after clicking Pay.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}

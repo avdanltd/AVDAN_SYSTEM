@@ -37,6 +37,16 @@ class UpdateProfileRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     message: str
+    access_token: str | None = None
+    refresh_token: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str | None = None
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -46,6 +56,7 @@ class UserResponse(BaseModel):
     name: str | None
     role: str
     status: str
+    created_at: str = ""
 
     model_config = {"from_attributes": True}
 
@@ -55,7 +66,7 @@ class AdminCreateUserRequest(BaseModel):
     phone: str | None = None
     password: str
     name: str
-    role: Literal["admin", "support"]
+    role: Literal["admin", "support", "agent", "rider"]
 
 
 class UpdateUserStatusRequest(BaseModel):
@@ -67,3 +78,7 @@ class PaginatedUsersResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class PushTokenRequest(BaseModel):
+    token: str

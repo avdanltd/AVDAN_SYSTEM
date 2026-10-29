@@ -1,0 +1,459 @@
+import { useMemo, useState } from 'react'
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native'
+import * as Location from 'expo-location'
+import { useRouter } from 'expo-router'
+import { CreditCard, MapPin, ShieldCheck, Store } from 'lucide-react-native'
+import { z } from 'zod'
+import {
+  Button,
+  Card,
+  EmptyState,
+  fonts,
+  formatKobo,
+  toast,
+  radius,
+  spacing,
+  useAuthStore,
+  useTheme,
+} from '@avdan/mobile'
+
+import { useCheckout, useDeliveryQuote } from '../hooks/use-checkout'
+import { groupByVendor, useCartStore } from '../store/cart.store'
+import type { CustomerOrder } from '../types'
+
+// Mirrors DeliveryAddress on the API.
+const addressSchema = z.object({
+  street: z.string().trim().min(4, 'Enter the street address'),
+  city: z.string().trim().min(2, 'Enter the city'),
+  state: z.string().trim().min(2, 'Enter the state'),
+  notes: z.string().trim().max(300, 'Notes are too long').optional(),
+  // Who the rider calls on arrival.
+  phone: z.string().trim().regex(/^\+?[0-9]{7,15}$/, 'Enter a valid phone number, e.g. +2348012345678'),
+})
+
+export function Checkout() {
+  const { colors } = useTheme()
+  const router = useRouter()
+  const lines = useCartStore((s) => s.lines)
+  const { placeOrder, payExistingOrder, stage, isBusy } = useCheckout()
+
+  const groups = useMemo(() => groupByVendor(lines), [lines])
+
+  const [street, setStreet] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
+  const [notes, setNotes] = useState('')
+  const accountPhone = useAuthStore((s) => s.user?.phone)
+  const [phone, setPhone] = useState(accountPhone ?? '')
+  const [focused, setFocused] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [placedOrder, setPlacedOrder] = useState<CustomerOrder | null>(null)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+
+  if (groups.length === 0 && !placedOrder) {
+    return (
+      <View style={styles.centered}>
+        <EmptyState
+          title="Nothing to check out"
+          description="Your cart is empty."
+          action={<Button label="Browse products" onPress={() => router.push('/')} fullWidth={false} />}
+        />
+      </View>
+    )
+  }
+
+  // One vendor at a time. The API takes a single vendor_id per order, so the button pays for
+  // the first group and returns here with the rest still in the cart. Once an order is placed,
+  // its lines are cleared from the cart (see placeOrder), so from then on the summary reads from
+  // the confirmed order itself rather than the live (now-shifted) cart groups.
+  const current = groups[0]
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(current?.vendorId, coords)
+  const remaining = placedOrder ? groups.length : groups.length - 1
+
+  const captureLocation = async () => {
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        toast.error('Location needed', 'Allow location access so we can price delivery by distance.')
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+      setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      setErrors((e) => ({ ...e, location: '' }))
+    } catch {
+      toast.error('Could not get your location', 'Check that location services are on and try again.')
+    } finally {
+      setLocating(false)
+    }
+  }
+
+  const handlePlaceOrder = async () => {
+    const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined, phone })
+    if (!parsed.success) {
+      const next: Record<string, string> = {}
+      for (const issue of parsed.error.issues) {
+        const key = issue.path[0]
+        if (typeof key === 'string' && !next[key]) next[key] = issue.message
+      }
+      setErrors(next)
+      return
+    }
+    if (!coords) {
+      setErrors({ location: 'Share your delivery location so we can price delivery by distance' })
+      return
+    }
+    setErrors({})
+
+    const order = await placeOrder(current, {
+      street: parsed.data.street,
+      city: parsed.data.city,
+      state: parsed.data.state,
+      country: 'Nigeria',
+      notes: parsed.data.notes ?? null,
+      phone: parsed.data.phone,
+      lat: coords.lat,
+      lng: coords.lng,
+    })
+
+    if (order) {
+      setPlacedOrder(order)
+    }
+  }
+
+  const handleConfirmPay = async () => {
+    if (!placedOrder) return
+    const outcome = await payExistingOrder(placedOrder.id)
+    if (outcome) {
+      router.replace(`/orders/${outcome.orderId}`)
+    }
+  }
+
+  const field = (key: string) => [
+    styles.inputWrap,
+    {
+      backgroundColor: colors.card,
+      borderColor: errors[key] ? colors.destructive : focused === key ? colors.primary : colors.border,
+      borderWidth: focused === key || errors[key] ? 1.6 : 1,
+    },
+  ]
+
+  const grandTotalKobo = placedOrder
+    ? placedOrder.total_kobo + placedOrder.delivery_fee_kobo
+    : quote
+      ? current.subtotalKobo + quote.fee_kobo
+      : null
+
+  // Admin-set floor on the item subtotal (known once the quote loads; the API enforces it too).
+  const minOrderKobo = quote?.min_order_kobo ?? 0
+  const belowMinimum = !placedOrder && minOrderKobo > 0 && current.subtotalKobo < minOrderKobo
+
+  const label = !placedOrder
+    ? stage === 'creating'
+      ? 'Placing order…'
+      : 'Continue to payment'
+    : stage === 'paying'
+      ? 'Waiting for payment…'
+      : stage === 'verifying'
+        ? 'Confirming payment…'
+        : `Pay ${formatKobo(grandTotalKobo!)}`
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={90}
+    >
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        {/* What is being paid for now */}
+        <Card style={styles.summary}>
+          <View style={styles.summaryHead}>
+            <View style={[styles.storeIcon, { backgroundColor: colors.primaryMuted }]}>
+              <Store size={15} color={colors.primary} />
+            </View>
+            <Text style={[styles.storeName, { color: colors.foreground }]} numberOfLines={1}>
+              {placedOrder ? placedOrder.vendor_name ?? 'Vendor' : current.vendorName}
+            </Text>
+          </View>
+
+          {placedOrder
+            ? placedOrder.items.map((item) => (
+                <View key={item.id} style={styles.sumLine}>
+                  <Text style={[styles.sumQty, { color: colors.mutedForeground }]}>{item.quantity}×</Text>
+                  <Text style={[styles.sumName, { color: colors.foreground }]} numberOfLines={1}>
+                    {item.product_name}
+                  </Text>
+                  <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+                    {formatKobo(item.subtotal_kobo)}
+                  </Text>
+                </View>
+              ))
+            : current.lines.map((l) => (
+                <View key={l.productId} style={styles.sumLine}>
+                  <Text style={[styles.sumQty, { color: colors.mutedForeground }]}>{l.quantity}×</Text>
+                  <Text style={[styles.sumName, { color: colors.foreground }]} numberOfLines={1}>
+                    {l.name}
+                  </Text>
+                  <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+                    {formatKobo(l.priceKobo * l.quantity)}
+                  </Text>
+                </View>
+              ))}
+
+          <View style={styles.sumLine}>
+            <Text style={[styles.sumName, { color: colors.mutedForeground }]}>Subtotal</Text>
+            <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+              {formatKobo(placedOrder ? placedOrder.total_kobo : current.subtotalKobo)}
+            </Text>
+          </View>
+          <View style={styles.sumLine}>
+            <Text style={[styles.sumName, { color: colors.mutedForeground }]}>Delivery fee</Text>
+            <Text style={[styles.sumPrice, { color: colors.mutedForeground }]}>
+              {placedOrder
+                ? formatKobo(placedOrder.delivery_fee_kobo)
+                : quote
+                  ? formatKobo(quote.fee_kobo)
+                  : quoting
+                    ? 'Calculating…'
+                    : 'Share your location to see it'}
+            </Text>
+          </View>
+
+          <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
+            <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Total</Text>
+            <Text style={[styles.totalValue, { color: colors.foreground }]}>
+              {formatKobo(grandTotalKobo ?? current.subtotalKobo)}
+            </Text>
+          </View>
+
+          {remaining > 0 ? (
+            <Text style={[styles.remaining, { color: colors.warning }]}>
+              {remaining} other {remaining === 1 ? 'seller' : 'sellers'} in your cart will be paid
+              for separately after this.
+            </Text>
+          ) : null}
+        </Card>
+
+        {/* Delivery */}
+        {placedOrder ? (
+          <Card style={styles.block}>
+            <View style={styles.blockHead}>
+              <MapPin size={16} color={colors.primary} />
+              <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivering to</Text>
+            </View>
+            <Text style={[styles.sumName, { color: colors.foreground }]}>
+              {placedOrder.delivery_address.street}, {placedOrder.delivery_address.city},{' '}
+              {placedOrder.delivery_address.state}
+            </Text>
+          </Card>
+        ) : (
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <MapPin size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Street address</Text>
+            <View style={field('street')}>
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={street}
+                onChangeText={setStreet}
+                onFocus={() => setFocused('street')}
+                onBlur={() => setFocused(null)}
+                placeholder="12 Adeola Odeku Street"
+                placeholderTextColor={colors.subtleForeground}
+              />
+            </View>
+            {errors.street ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.street}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.row}>
+            <View style={styles.flex1}>
+              <Text style={[styles.label, { color: colors.foreground }]}>City</Text>
+              <View style={field('city')}>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  value={city}
+                  onChangeText={setCity}
+                  onFocus={() => setFocused('city')}
+                  onBlur={() => setFocused(null)}
+                  placeholder="Victoria Island"
+                  placeholderTextColor={colors.subtleForeground}
+                />
+              </View>
+              {errors.city ? (
+                <Text style={[styles.error, { color: colors.destructive }]}>{errors.city}</Text>
+              ) : null}
+            </View>
+            <View style={styles.flex1}>
+              <Text style={[styles.label, { color: colors.foreground }]}>State</Text>
+              <View style={field('state')}>
+                <TextInput
+                  style={[styles.input, { color: colors.foreground }]}
+                  value={state}
+                  onChangeText={setState}
+                  onFocus={() => setFocused('state')}
+                  onBlur={() => setFocused(null)}
+                  placeholder="Lagos"
+                  placeholderTextColor={colors.subtleForeground}
+                />
+              </View>
+              {errors.state ? (
+                <Text style={[styles.error, { color: colors.destructive }]}>{errors.state}</Text>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Delivery location</Text>
+            <Button
+              label={coords ? 'Update my location' : 'Use my current location'}
+              variant="outline"
+              loading={locating}
+              onPress={captureLocation}
+            />
+            {coords ? (
+              <Text style={[styles.error, { color: colors.success }]}>
+                Location saved
+                {quote?.total_km != null
+                  ? ` · about ${quote.total_km.toFixed(1)} km via ${quote.hub_name ?? 'our hub'}`
+                  : ''}
+              </Text>
+            ) : null}
+            {errors.location ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.location}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>Phone number</Text>
+            <View style={field('phone')}>
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                value={phone}
+                onChangeText={setPhone}
+                onFocus={() => setFocused('phone')}
+                onBlur={() => setFocused(null)}
+                placeholder="+2348012345678"
+                placeholderTextColor={colors.subtleForeground}
+                keyboardType="phone-pad"
+              />
+            </View>
+            {errors.phone ? (
+              <Text style={[styles.error, { color: colors.destructive }]}>{errors.phone}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.fieldGroup}>
+            <Text style={[styles.label, { color: colors.foreground }]}>
+              Delivery notes (optional)
+            </Text>
+            <View style={[...field('notes'), styles.textareaWrap]}>
+              <TextInput
+                style={[styles.input, styles.textarea, { color: colors.foreground }]}
+                value={notes}
+                onChangeText={setNotes}
+                onFocus={() => setFocused('notes')}
+                onBlur={() => setFocused(null)}
+                placeholder="Gate code, landmark, who to call…"
+                placeholderTextColor={colors.subtleForeground}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          </View>
+        </Card>
+        )}
+
+        {/* Escrow reassurance — this is the product's actual promise */}
+        <Card style={[styles.escrow, { backgroundColor: colors.successMuted }]}>
+          <ShieldCheck size={18} color={colors.success} />
+          <Text style={[styles.escrowText, { color: colors.mutedForeground }]}>
+            Your payment is held safely by AVDAN and only released to the seller after your order
+            is delivered and checked.
+          </Text>
+        </Card>
+
+        {belowMinimum ? (
+          <Text style={[styles.error, { color: colors.destructive }]}>
+            The minimum order is {formatKobo(minOrderKobo)}. Add{' '}
+            {formatKobo(minOrderKobo - current.subtotalKobo)} more to continue.
+          </Text>
+        ) : null}
+
+        <Button
+          label={label}
+          disabled={belowMinimum}
+          onPress={placedOrder ? handleConfirmPay : handlePlaceOrder}
+          loading={isBusy}
+          size="lg"
+          icon={<CreditCard size={17} color={colors.primaryForeground} />}
+        />
+
+        <Text style={[styles.footnote, { color: colors.subtleForeground }]}>
+          Payment opens in your device's secure browser. Card details are handled by Paystack and
+          never seen by AVDAN.
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
+  )
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  flex1: { flex: 1 },
+  centered: { flex: 1, justifyContent: 'center', padding: spacing.lg },
+  container: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  summary: { gap: spacing.sm },
+  summaryHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 2 },
+  storeIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storeName: { flex: 1, fontFamily: fonts.sansSemiBold, fontSize: 15 },
+  sumLine: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sumQty: { fontFamily: fonts.sansSemiBold, fontSize: 13, minWidth: 26 },
+  sumName: { flex: 1, fontFamily: fonts.sans, fontSize: 14 },
+  sumPrice: { fontFamily: fonts.sansMedium, fontSize: 13.5 },
+  totalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: spacing.md,
+    marginTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  totalLabel: { fontFamily: fonts.sansMedium, fontSize: 13.5 },
+  totalValue: { fontFamily: fonts.display, fontSize: 20 },
+  remaining: { fontFamily: fonts.sansMedium, fontSize: 12.5, lineHeight: 18 },
+  block: { gap: spacing.md },
+  blockHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  blockTitle: { fontFamily: fonts.sansSemiBold, fontSize: 14.5 },
+  fieldGroup: { gap: spacing.sm },
+  row: { flexDirection: 'row', gap: spacing.md },
+  label: { fontFamily: fonts.sansSemiBold, fontSize: 13, marginBottom: spacing.sm },
+  inputWrap: { borderRadius: radius.md, paddingHorizontal: spacing.lg, minHeight: 50, justifyContent: 'center' },
+  textareaWrap: { minHeight: 84, paddingVertical: spacing.sm },
+  input: { fontFamily: fonts.sans, fontSize: 15, paddingVertical: spacing.md },
+  textarea: { minHeight: 68 },
+  error: { fontFamily: fonts.sansMedium, fontSize: 12.5 },
+  escrow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  escrowText: { flex: 1, fontFamily: fonts.sans, fontSize: 13, lineHeight: 19 },
+  footnote: { fontFamily: fonts.sans, fontSize: 12, textAlign: 'center', lineHeight: 17 },
+})

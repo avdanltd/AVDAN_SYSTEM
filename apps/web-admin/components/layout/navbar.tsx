@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 
 import {
   Avatar,
@@ -14,10 +15,13 @@ import {
   Sheet,
   SheetContent,
   SheetTrigger,
+  Logo,
+  ThemeToggle,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { SidebarContent } from './sidebar'
+import { ROUTES } from '@/config/routes'
 
 function MenuIcon() {
   return (
@@ -53,12 +57,13 @@ export function Navbar() {
             <SidebarContent onNav={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <span className="text-lg font-bold tracking-tight text-primary">AVDAN Admin</span>
+        <Logo size="sm" suffix="Admin" />
       </div>
 
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="h-9 w-9 rounded-full p-0" aria-label="User menu">
@@ -72,6 +77,10 @@ export function Navbar() {
               <p className="text-sm font-medium">{user?.name ?? '—'}</p>
               <p className="truncate text-xs text-muted-foreground capitalize">{user?.role ?? ''}</p>
             </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href={ROUTES.profile}>Profile</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => logout()}

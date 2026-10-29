@@ -36,6 +36,9 @@ export const authService = {
   verifyOtp: (payload: VerifyOtpPayload) =>
     apiClient.post<{ message: string }>('/auth/verify-otp', payload),
 
+  resendOtp: (userId: string) =>
+    apiClient.post<{ message: string }>('/auth/resend-otp', { user_id: userId, otp: '' }),
+
   logout: () => apiClient.post<{ message: string }>('/auth/logout', {}),
 
   getMe: () => apiClient.get<User>('/auth/me'),

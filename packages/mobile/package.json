@@ -1,0 +1,47 @@
+{
+  "name": "@avdan/mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@react-native-community/netinfo": "*",
+    "@tanstack/react-query": "^5.64.1",
+    "expo-constants": "*",
+    "expo-notifications": "*",
+    "expo-router": "*",
+    "expo-secure-store": "*",
+    "lucide-react-native": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": "*",
+    "react-native-svg": "*",
+    "react-native-toast-message": "*",
+    "zod": "^3.24.1",
+    "zustand": "^5.0.3"
+  },
+  "dependencies": {
+    "@avdan/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@react-native-community/netinfo": "^12.0.1",
+    "@types/react": "~19.2.16",
+    "expo-constants": "~57.0.18",
+    "expo-notifications": "~57.0.19",
+    "expo-router": "~57.0.21",
+    "expo-secure-store": "~57.0.4",
+    "lucide-react-native": "^1.27.0",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4",
+    "react-native-toast-message": "2.4.0",
+    "typescript": "~6.0.3"
+  }
+}

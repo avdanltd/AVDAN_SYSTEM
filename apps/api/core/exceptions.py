@@ -10,28 +10,41 @@ class AppError(Exception):
         self.message = message
         super().__init__(message)
 
+    def __reduce__(self) -> tuple[object, tuple[type["AppError"], int, str, str]]:
+        # Celery pickles task exceptions to ship them to the result backend; the default
+        # Exception pickling replays only `args` (the message) into __init__, which doesn't fit
+        # this signature (nor the subclasses'), so every failure surfaced as an opaque
+        # UnpickleableExceptionWrapper instead of the real error.
+        return (_restore_app_error, (type(self), self.status_code, self.code, self.message))
 
-class NotFoundException(AppError):
+
+def _restore_app_error(cls: type[AppError], status_code: int, code: str, message: str) -> AppError:
+    exc = cls.__new__(cls)
+    AppError.__init__(exc, status_code, code, message)
+    return exc
+
+
+class NotFoundException(AppError):  # noqa: N818
     def __init__(self, message: str = "Resource not found") -> None:
         super().__init__(status.HTTP_404_NOT_FOUND, "NOT_FOUND", message)
 
 
-class ValidationException(AppError):
+class ValidationException(AppError):  # noqa: N818
     def __init__(self, message: str) -> None:
         super().__init__(status.HTTP_400_BAD_REQUEST, "VALIDATION_ERROR", message)
 
 
-class AuthException(AppError):
+class AuthException(AppError):  # noqa: N818
     def __init__(self, message: str = "Authentication required") -> None:
         super().__init__(status.HTTP_401_UNAUTHORIZED, "UNAUTHORIZED", message)
 
 
-class ForbiddenException(AppError):
+class ForbiddenException(AppError):  # noqa: N818
     def __init__(self, message: str = "Forbidden") -> None:
         super().__init__(status.HTTP_403_FORBIDDEN, "FORBIDDEN", message)
 
 
-class ConflictException(AppError):
+class ConflictException(AppError):  # noqa: N818
     def __init__(self, message: str) -> None:
         super().__init__(status.HTTP_409_CONFLICT, "CONFLICT", message)
 
@@ -44,8 +57,9 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 
 
 async def unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    from core.config import settings
     import logging
+
+    from core.config import settings
 
     logging.getLogger(__name__).exception("Unhandled exception: %s", exc)
 

@@ -1,0 +1,78 @@
+from __future__ import annotations
+
+from pydantic import BaseModel, Field
+
+
+class QAInspectionResponse(BaseModel):
+    id: str
+    order_id: str
+    agent_id: str
+    hub_id: str
+    result: str
+    notes: str | None
+    evidence_urls: list[str]
+    created_at: str
+
+    model_config = {"from_attributes": True}
+
+
+class QAFailRequest(BaseModel):
+    notes: str = Field(min_length=1)
+    evidence_urls: list[str] = Field(default_factory=list)
+
+
+class HubAnalyticsResponse(BaseModel):
+    hub_id: str
+    hub_name: str
+    period_days: int
+    orders_processed: int
+    qa_pass_count: int
+    qa_fail_count: int
+    qa_pass_rate_pct: float
+    avg_dwell_minutes: float | None
+
+
+class EvidenceUploadResponse(BaseModel):
+    url: str
+    filename: str
+
+
+class HubResponse(BaseModel):
+    id: str
+    name: str
+    active: bool
+    capacity: int
+    lat: float | None
+    lng: float | None
+
+
+class CreateHubRequest(BaseModel):
+    name: str
+    capacity: int = 100
+    lat: float | None = None
+    lng: float | None = None
+
+
+class AssignHubRequest(BaseModel):
+    hub_id: str | None = None
+
+
+class UpdateHubRequest(BaseModel):
+    name: str
+    capacity: int = 100
+
+
+class IncomingDeliveryResponse(BaseModel):
+    """A rider on the way to (or just arrived at) this hub with an order."""
+
+    order_id: str
+    status: str
+    stage: str  # "to_vendor" | "to_hub" | "at_hub"
+    vendor_name: str | None
+    item_count: int
+    rider_name: str | None
+    rider_phone: str | None
+    eta_seconds: int | None
+    rider_lat: float | None
+    rider_lng: float | None
+    location_updated_at: str | None
