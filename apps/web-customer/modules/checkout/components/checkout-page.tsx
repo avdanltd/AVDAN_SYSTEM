@@ -17,6 +17,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  Label,
   Separator,
   Textarea,
   toast,
@@ -237,7 +238,7 @@ export function CheckoutPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <FormLabel>Delivery Location</FormLabel>
+                    <Label>Delivery Location</Label>
                     <div className="flex flex-wrap items-center gap-3">
                       <Button type="button" variant="outline" onClick={captureLocation} disabled={locating}>
                         {locating ? (
