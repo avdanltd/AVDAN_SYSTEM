@@ -176,6 +176,9 @@ def _admin_product_response(p: object) -> AdminProductResponse:
         rejection_reason=product.rejection_reason,
         vendor_price_kobo=product.vendor_price_kobo,
         price_kobo=product.price_kobo,
+        compare_at_price_kobo=product.compare_at_price_kobo,
+        discount_type=product.discount_type,
+        discount_value=product.discount_value,
         markup_kobo=product.price_kobo - product.vendor_price_kobo,
         created_at=product.created_at.isoformat(),
     )
@@ -204,7 +207,9 @@ async def approve_product(
     db: AsyncSession = Depends(get_db),
 ) -> AdminProductResponse:
     """Approve a product and set the price customers will see. Also re-prices a live product."""
-    return _admin_product_response(await AdminService(db).approve_product(product_id, data.price_kobo))
+    return _admin_product_response(await AdminService(db).approve_product(
+        product_id, data.price_kobo, data.discount_type, data.discount_value
+    ))
 
 
 @router.post("/products/{product_id}/reject", response_model=AdminProductResponse)

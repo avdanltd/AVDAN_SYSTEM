@@ -16,6 +16,7 @@ class ProductResponse(BaseModel):
     # In the vendor's own view this is the vendor's price; the marked-up price customers pay
     # is never exposed to the vendor.
     price_kobo: int
+    compare_at_price_kobo: int | None = None
     approval_status: str = "APPROVED"
     rejection_reason: str | None = None
     available: bool
@@ -43,6 +44,8 @@ class PublicProductResponse(BaseModel):
     name: str
     description: str | None
     price_kobo: int
+    # Pre-discount price to show struck through, when admin has put a discount on the product.
+    compare_at_price_kobo: int | None = None
     available: bool
     stock_qty: int
     image_urls: list[str]

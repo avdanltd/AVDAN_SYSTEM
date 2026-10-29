@@ -1,14 +1,13 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from '@avdan/ui'
-import { productsService } from '../services/products.service'
+import { productsService, type ApproveBody } from '../services/products.service'
 
 export function useReviewProduct() {
   const queryClient = useQueryClient()
   const onSettled = () => queryClient.invalidateQueries({ queryKey: ['admin-products'] })
 
   const approve = useMutation({
-    mutationFn: ({ id, priceKobo }: { id: string; priceKobo: number }) =>
-      productsService.approve(id, priceKobo),
+    mutationFn: ({ id, body }: { id: string; body: ApproveBody }) => productsService.approve(id, body),
     onSuccess: () => toast.success('Product approved and live at the price you set.'),
     onError: (err: Error) => toast.error(err.message ?? 'Failed to approve product.'),
     onSettled,

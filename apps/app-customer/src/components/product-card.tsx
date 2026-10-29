@@ -51,6 +51,14 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
           <View style={styles.footer}>
             <Text style={[styles.price, { color: colors.foreground }]}>
               {formatKobo(product.price_kobo)}
+              {product.compare_at_price_kobo ? (
+                <Text
+                  style={{ fontSize: 12, color: colors.mutedForeground, textDecorationLine: 'line-through' }}
+                >
+                  {' '}
+                  {formatKobo(product.compare_at_price_kobo)}
+                </Text>
+              ) : null}
             </Text>
             {!soldOut ? (
               <Pressable

@@ -11,6 +11,9 @@ export interface AdminProduct {
   rejection_reason: string | null
   vendor_price_kobo: number
   price_kobo: number
+  compare_at_price_kobo: number | null
+  discount_type: 'FIXED' | 'PERCENT' | null
+  discount_value: number | null
   markup_kobo: number
   created_at: string
 }
