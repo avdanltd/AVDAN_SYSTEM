@@ -29,6 +29,8 @@ export interface SetPasswordCardProps {
   submitError: string | null
   done: boolean
   onSubmit: (password: string) => void
+  /** `reset` is the forgot-password flow; `invite` (default) is a new account's first password. */
+  mode?: 'invite' | 'reset'
   /** Rendered after success: a link or note telling them where to sign in. */
   signInSlot: React.ReactNode
 }
@@ -44,7 +46,9 @@ export function SetPasswordCard({
   done,
   onSubmit,
   signInSlot,
+  mode = 'invite',
 }: SetPasswordCardProps) {
+  const reset = mode === 'reset'
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: { password: '', confirm: '' },
@@ -58,7 +62,9 @@ export function SetPasswordCard({
   } else if (done) {
     body = (
       <div className="space-y-4">
-        <p className="text-sm text-muted-foreground">Your password is set. You can sign in now.</p>
+        <p className="text-sm text-muted-foreground">
+          {reset ? 'Your password has been reset.' : 'Your password is set.'} You can sign in now.
+        </p>
         {signInSlot}
       </div>
     )
@@ -94,7 +100,7 @@ export function SetPasswordCard({
           />
           {submitError && <p className="text-sm text-destructive">{submitError}</p>}
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Saving…' : 'Set password'}
+            {submitting ? 'Saving…' : reset ? 'Reset password' : 'Set password'}
           </Button>
         </form>
       </Form>
@@ -106,11 +112,15 @@ export function SetPasswordCard({
       <Card className="w-full max-w-md">
         <CardHeader>
           <Logo href="/" size="lg" className="mb-2" />
-          <CardTitle>{invitee?.name ? `Welcome, ${invitee.name}` : 'Create your password'}</CardTitle>
+          <CardTitle>
+            {reset ? 'Reset your password' : invitee?.name ? `Welcome, ${invitee.name}` : 'Create your password'}
+          </CardTitle>
           <CardDescription>
             {invitee?.email
-              ? `Choose a password for ${invitee.email}.`
-              : 'Choose a password to finish setting up your account.'}
+              ? `Choose a new password for ${invitee.email}.`
+              : reset
+                ? 'Choose a new password for your account.'
+                : 'Choose a password to finish setting up your account.'}
           </CardDescription>
         </CardHeader>
         <CardContent>{body}</CardContent>

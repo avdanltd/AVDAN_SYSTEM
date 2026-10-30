@@ -64,6 +64,14 @@ def send_invite_email_task(email: str, name: str, role: str, link: str, valid_ho
     send_email_via_resend(email, "Welcome to AVDAN — set up your account", html)
 
 
+@celery_app.task(name="workers.tasks.notifications.send_password_reset_email_task")
+def send_password_reset_email_task(email: str, name: str, link: str, valid_minutes: int) -> None:
+    from services.notification.emails import build_password_reset_email, send_email_via_resend
+    send_email_via_resend(
+        email, "Reset your AVDAN password", build_password_reset_email(name, link, valid_minutes)
+    )
+
+
 @celery_app.task(name="workers.tasks.notifications.send_order_notification")
 def send_order_notification(order_id: str, from_state: str | None, to_state: str) -> None:
     triggers = _TRIGGERS.get((from_state, to_state), [])

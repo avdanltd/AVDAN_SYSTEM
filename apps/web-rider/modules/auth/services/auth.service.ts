@@ -21,6 +21,17 @@ export interface InvitePreview {
 }
 
 export const authService = {
+  forgotPassword: (email: string) =>
+    apiClient.post<{ message: string }>('/auth/forgot-password', { email }),
+
+  getPasswordReset: (token: string) =>
+    apiClient.get<{ name: string | null; email: string | null; role: string }>(
+      `/auth/reset/${encodeURIComponent(token)}`,
+    ),
+
+  resetPassword: (payload: { token: string; password: string }) =>
+    apiClient.post<{ message: string }>('/auth/reset-password', payload),
+
   getInvite: (token: string) =>
     apiClient.get<InvitePreview>(`/auth/invite/${encodeURIComponent(token)}`),
 
