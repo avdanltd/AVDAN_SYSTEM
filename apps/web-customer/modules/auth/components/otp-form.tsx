@@ -95,7 +95,7 @@ export function OtpForm({ userId, email, onBack }: OtpFormProps) {
       badgeSrc="/brand/logo-badge.png"
       tagline="Almost there — just one more step."
     >
-      <Logo size="md" className="mb-8" />
+      <Logo href="/" size="md" className="mb-8" />
       <h1 className="font-display text-2xl font-bold text-foreground">Verify your email</h1>
       <p className="mt-1 text-sm text-muted-foreground">
         Enter the 6-digit code sent to{' '}

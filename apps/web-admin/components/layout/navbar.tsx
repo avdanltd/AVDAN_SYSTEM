@@ -57,7 +57,7 @@ export function Navbar() {
             <SidebarContent onNav={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <Logo size="sm" suffix="Admin" />
+        <Logo href="/" size="sm" suffix="Admin" />
       </div>
 
       <div className="hidden lg:block" />

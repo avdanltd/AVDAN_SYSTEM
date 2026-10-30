@@ -55,7 +55,7 @@ export function Navbar() {
             <SidebarContent onNav={() => setMobileOpen(false)} />
           </SheetContent>
         </Sheet>
-        <Logo size="sm" suffix="Hub" />
+        <Logo href="/" size="sm" suffix="Hub" />
       </div>
 
       <div className="hidden lg:block" />
