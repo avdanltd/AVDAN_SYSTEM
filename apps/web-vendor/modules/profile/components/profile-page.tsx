@@ -27,6 +27,7 @@ import {
 } from '@avdan/ui'
 import { profileService } from '../services/profile.service'
 import type { Bank } from '../services/profile.service'
+import { ChangePasswordCard } from './change-password-card'
 
 // ── Account form ───────────────────────────────────────────────────────────────
 const accountSchema = z.object({
@@ -525,6 +526,7 @@ export function ProfilePage() {
           <PayoutAccountForm />
         </CardContent>
       </Card>
+      <ChangePasswordCard />
     </div>
   )
 }

@@ -27,6 +27,9 @@ export interface User {
 }
 
 export const authService = {
+  changePassword: (payload: { current_password: string; new_password: string }) =>
+    apiClient.post<{ message: string }>('/auth/change-password', payload),
+
   login: (payload: LoginPayload) =>
     apiClient.post<{ message: string }>('/auth/login', payload),
 

@@ -27,6 +27,7 @@ import {
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useUpdateProfile } from '../hooks/use-update-profile'
+import { ChangePasswordCard } from './change-password-card'
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(80),
@@ -195,6 +196,7 @@ export function ProfilePage() {
           </dl>
         </CardContent>
       </Card>
+      <ChangePasswordCard />
     </div>
   )
 }
