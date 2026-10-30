@@ -220,10 +220,14 @@ class VendorService:
 
         if data.address is not None:
             vendor.address = data.address
+        if data.lat is not None and data.lng is not None:
+            # Sent explicitly (the device's own position): more reliable than looking up an address.
+            vendor.lat, vendor.lng = data.lat, data.lng
+        elif data.address is not None:
             from core.geocoding import geocode_address
             coords = await geocode_address(data.address)
             # Best-effort: a vendor whose address couldn't be geocoded keeps whatever
-            # coordinates it had (or none), and falls back to zone-based matching.
+            # coordinates it had (or none), and falls back to the flat delivery fee.
             if coords:
                 vendor.lat, vendor.lng = coords
 

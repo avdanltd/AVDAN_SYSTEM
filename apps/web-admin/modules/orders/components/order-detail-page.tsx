@@ -188,6 +188,15 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             <p className="mt-1 text-lg font-bold tabular-nums">
               {formatKobo(order.total_kobo + order.delivery_fee_kobo)}
             </p>
+            {order.delivery_quote?.method === 'flat' ? (
+              <p className="mt-1 text-xs text-warning">
+                Flat delivery fee: the vendor or customer location was missing, so distance was not used.
+              </p>
+            ) : order.delivery_quote?.total_km != null ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Delivery {formatKobo(order.delivery_fee_kobo)} for {order.delivery_quote.total_km} km
+              </p>
+            ) : null}
           </CardContent>
         </Card>
       </div>

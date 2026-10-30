@@ -131,9 +131,14 @@ export function OrdersPage() {
       key: "amount",
       header: "Amount",
       cell: (row) => (
-        <span className="font-medium tabular-nums">
-          {formatKobo(row.total_kobo + row.delivery_fee_kobo)}
-        </span>
+        <div>
+          <span className="font-medium tabular-nums">
+            {formatKobo(row.total_kobo + row.delivery_fee_kobo)}
+          </span>
+          {row.delivery_quote?.method === "flat" && (
+            <p className="text-xs text-warning">flat delivery fee</p>
+          )}
+        </div>
       ),
     },
     {

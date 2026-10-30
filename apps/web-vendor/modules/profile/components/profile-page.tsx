@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { LocateFixed, MapPin } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -172,6 +173,28 @@ function BusinessForm() {
     resolver: zodResolver(businessSchema),
     defaultValues: { name: '', description: '', address: '' },
   })
+  const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+
+  function shareDeviceLocation() {
+    if (!navigator.geolocation) {
+      toast.error('This browser cannot share its location. Enter your address instead.')
+      return
+    }
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setLocating(false)
+        toast.success('Location captured. Press Save Changes to keep it.')
+      },
+      () => {
+        setLocating(false)
+        toast.error('Could not get your location. Allow location access, or enter a more specific address.')
+      },
+      { enableHighAccuracy: true, timeout: 15_000 },
+    )
+  }
 
   useEffect(() => {
     if (vendor) {
@@ -188,7 +211,8 @@ function BusinessForm() {
       name: values.name,
       description: values.description || undefined,
       address: values.address || undefined,
-    })
+      ...(deviceCoords ?? {}),
+    }, { onSuccess: () => setDeviceCoords(null) })
   }
 
   if (isLoading) {
@@ -250,11 +274,29 @@ function BusinessForm() {
             </FormItem>
           )}
         />
-        {vendor && !vendor.lat && vendor.address && (
-          <p className="text-xs text-amber-600">
-            Couldn&apos;t pinpoint this address on the map — try a more specific street address.
-          </p>
-        )}
+        <div className="space-y-2 rounded-md border border-border p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="outline" size="sm" onClick={shareDeviceLocation} disabled={locating}>
+              <LocateFixed className="mr-2 h-4 w-4" />
+              {locating ? 'Locating…' : 'Use my current location'}
+            </Button>
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              {deviceCoords
+                ? `New position ${deviceCoords.lat.toFixed(5)}, ${deviceCoords.lng.toFixed(5)} (not saved yet)`
+                : vendor?.lat != null && vendor?.lng != null
+                  ? `Map position saved: ${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)}`
+                  : 'No map position yet'}
+            </span>
+          </div>
+          {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) && (
+            <p className="text-xs text-amber-600">
+              Your location isn&apos;t set, so customers are charged only the flat delivery fee and riders can&apos;t
+              be matched by distance. Stand at your pickup point and press &quot;Use my current location&quot;, or
+              enter a more specific street address and save.
+            </p>
+          )}
+        </div>
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Saving…' : 'Save Changes'}
