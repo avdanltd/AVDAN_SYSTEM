@@ -129,7 +129,7 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
       </div>
 
       {/* Meta cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Customer</p>
@@ -161,6 +161,21 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
               </Button>
             ) : (
               <p className="mt-1 text-sm font-medium text-muted-foreground">Unassigned</p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Hub</p>
+            {order.hub_name ? (
+              <div className="mt-1">
+                <p className="text-sm font-medium">{order.hub_name}</p>
+                {order.hub_description && (
+                  <p className="text-xs text-muted-foreground">{order.hub_description}</p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-1 text-sm font-medium text-muted-foreground">Not routed yet</p>
             )}
           </CardContent>
         </Card>
