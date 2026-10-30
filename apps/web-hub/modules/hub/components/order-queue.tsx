@@ -10,6 +10,7 @@ import { formatRelativeTime, formatKobo } from '@/lib/format'
 import { useInboundOrders } from '../hooks/use-inbound-orders'
 import { useReceiveOrder } from '../hooks/use-receive-order'
 import type { HubOrder } from '../types'
+import { HUB_NOT_ASSIGNED_MESSAGE, isHubNotAssigned } from '../lib/hub-errors'
 
 function OrderCard({ order }: { order: HubOrder }) {
   const router = useRouter()
@@ -158,7 +159,7 @@ export function OrderQueue({ heading = 'Inbound Queue', statusFilter, fullEmpty 
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
-          Failed to load orders. Retrying…
+          {isHubNotAssigned(error) ? HUB_NOT_ASSIGNED_MESSAGE : 'Failed to load orders. Retrying…'}
         </div>
       ) : orders.length === 0 ? (
         <EmptyState

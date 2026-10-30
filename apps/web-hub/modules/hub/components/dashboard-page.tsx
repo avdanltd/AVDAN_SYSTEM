@@ -5,6 +5,7 @@ import { StatsCard } from '@avdan/ui'
 import { useHubStats } from '../hooks/use-hub-stats'
 import { useInboundOrders } from '../hooks/use-inbound-orders'
 import { OrderQueue } from './order-queue'
+import { HUB_NOT_ASSIGNED_MESSAGE, isHubNotAssigned } from '../lib/hub-errors'
 
 const INCOMING_STATUS = 'READY_FOR_PICKUP,PICKED_UP,IN_TRANSIT_TO_HUB'
 const AT_HUB_STATUS = 'ARRIVED_AT_HUB,AT_HUB,QA_IN_PROGRESS,QA_PASSED,QA_FAILED,VENDOR_REMEDIATION'
@@ -29,7 +30,9 @@ export function DashboardPage() {
 
   // A failed fetch should never look identical to "zero orders" — surface it in the subtitle
   // instead of quietly falling back to `?? 0`.
-  const errSubtitle = (fallback: string, err: unknown) => (err ? "Couldn't load" : fallback)
+  const notAssigned = [statsError, incomingError, atHubError, qaError].some(isHubNotAssigned)
+  const errSubtitle = (fallback: string, err: unknown) =>
+    isHubNotAssigned(err) ? 'No hub assigned' : err ? "Couldn't load" : fallback
 
   return (
     <div className="space-y-8">
@@ -40,6 +43,12 @@ export function DashboardPage() {
           Live queue updates every 15 seconds.
         </p>
       </div>
+
+      {notAssigned && (
+        <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
+          {HUB_NOT_ASSIGNED_MESSAGE}
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
