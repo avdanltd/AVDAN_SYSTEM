@@ -160,3 +160,62 @@ def test_new_rider_account_works_without_a_profile_row(sent) -> None:  # type: i
         with pytest.raises(NotFoundException):
             await DispatchService(db, FakeRedis()).get_or_create_rider(str(other.id))  # type: ignore[arg-type]
     run(body)
+
+
+def _reset_sent(monkeypatch):  # type: ignore[no-untyped-def]
+    out: list[tuple] = []
+    monkeypatch.setattr(
+        "workers.tasks.notifications.send_password_reset_email_task.delay", lambda *a: out.append(a)
+    )
+    return out
+
+
+def test_forgot_password_flow(sent, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    resets = _reset_sent(monkeypatch)
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        svc = AuthService(db, FakeRedis())
+        user = await svc.create_privileged_user(_req("rider"))
+        await svc.accept_invite(_token_from(sent[0][3]), "first-password")
+
+        await svc.request_password_reset(user.email)
+        email, _name, link, _mins = resets[0]
+        assert email == user.email and "/reset-password?token=" in link and "rider." in link
+        token = _token_from(link)
+
+        await svc.complete_password_reset(token, "second-password")
+        await svc.login(LoginRequest(email=user.email, password="second-password"))
+        with pytest.raises(AuthException):
+            await svc.login(LoginRequest(email=user.email, password="first-password"))
+        # Single use.
+        with pytest.raises(ValidationException):
+            await svc.complete_password_reset(token, "third-password")
+    run(body)
+
+
+def test_forgot_password_new_request_replaces_old_link(sent, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    resets = _reset_sent(monkeypatch)
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        svc = AuthService(db, FakeRedis())
+        user = await svc.create_privileged_user(_req("agent"))
+        await svc.accept_invite(_token_from(sent[0][3]), "first-password")
+        await svc.request_password_reset(user.email)
+        await svc.request_password_reset(user.email)
+        first, second = _token_from(resets[0][2]), _token_from(resets[1][2])
+        with pytest.raises(ValidationException):
+            await svc.complete_password_reset(first, "second-password")
+        await svc.complete_password_reset(second, "second-password")
+    run(body)
+
+
+def test_forgot_password_is_silent_for_unknown_and_inactive_accounts(sent, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    resets = _reset_sent(monkeypatch)
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        svc = AuthService(db, FakeRedis())
+        await svc.request_password_reset("nobody-here@t.io")
+        invited = await svc.create_privileged_user(_req("agent"))  # still `invited`
+        await svc.request_password_reset(invited.email)
+        assert resets == []
+    run(body)

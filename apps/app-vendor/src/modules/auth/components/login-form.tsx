@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useRouter } from 'expo-router'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native'
 import { Button, fonts, loginSchema, radius, spacing, useLogin, useTheme } from '@avdan/mobile'
 
 export function LoginForm() {
   const { mutate: login, isPending } = useLogin()
+  const router = useRouter()
   const { colors } = useTheme()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -92,6 +94,10 @@ export function LoginForm() {
         </View>
       ) : null}
 
+      <Pressable onPress={() => router.push('/forgot-password')} hitSlop={8} style={styles.forgot}>
+        <Text style={[styles.forgotText, { color: colors.primary }]}>Forgot password?</Text>
+      </Pressable>
+
       <Button
         label={isPending ? 'Signing in…' : 'Sign in'}
         onPress={handleSubmit}
@@ -104,6 +110,8 @@ export function LoginForm() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.lg },
+  forgot: { alignSelf: 'flex-end' },
+  forgotText: { fontSize: 13.5, fontFamily: fonts.sansSemiBold },
   field: { gap: spacing.sm },
   label: { fontSize: 13, fontFamily: fonts.sansSemiBold, letterSpacing: 0.2 },
   inputWrap: {

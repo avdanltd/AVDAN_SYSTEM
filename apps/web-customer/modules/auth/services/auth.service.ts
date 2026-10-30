@@ -27,6 +27,17 @@ export interface User {
 }
 
 export const authService = {
+  forgotPassword: (email: string) =>
+    apiClient.post<{ message: string }>('/auth/forgot-password', { email }),
+
+  getPasswordReset: (token: string) =>
+    apiClient.get<{ name: string | null; email: string | null; role: string }>(
+      `/auth/reset/${encodeURIComponent(token)}`,
+    ),
+
+  resetPassword: (payload: { token: string; password: string }) =>
+    apiClient.post<{ message: string }>('/auth/reset-password', payload),
+
   changePassword: (payload: { current_password: string; new_password: string }) =>
     apiClient.post<{ message: string }>('/auth/change-password', payload),
 

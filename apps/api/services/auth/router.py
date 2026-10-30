@@ -1,13 +1,15 @@
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Body, Cookie, Depends, Header, Response
+from fastapi import APIRouter, Body, Cookie, Depends, Header, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import CurrentUser, get_current_user
 from core.exceptions import AuthException
+from core.limiter import limiter
 from core.redis import get_redis
 from services.auth.schemas import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     InvitePreviewResponse,
     LoginRequest,
     LogoutRequest,
@@ -193,6 +195,39 @@ async def set_password(
 ) -> dict:
     await AuthService(db, redis).accept_invite(data.token, data.password)
     return {"message": "Password set. You can now sign in."}
+
+
+@router.post("/forgot-password", response_model=dict)
+@limiter.limit("5/minute")
+async def forgot_password(
+    request: Request,
+    data: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    """Always the same answer, whether or not the address has an account."""
+    await AuthService(db, redis).request_password_reset(data.email)
+    return {"message": "If an account exists for that email, a reset link is on its way."}
+
+
+@router.get("/reset/{token}", response_model=InvitePreviewResponse)
+async def preview_reset(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> InvitePreviewResponse:
+    user = await AuthService(db, redis).preview_password_reset(token)
+    return InvitePreviewResponse(name=user.name, email=user.email, role=user.role)
+
+
+@router.post("/reset-password", response_model=dict)
+async def reset_password(
+    data: SetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    await AuthService(db, redis).complete_password_reset(data.token, data.password)
+    return {"message": "Password updated. You can now sign in."}
 
 
 @router.post("/change-password", response_model=dict)
