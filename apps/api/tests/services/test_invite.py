@@ -137,3 +137,26 @@ def test_change_password_needs_current_password(sent) -> None:  # type: ignore[n
         await svc.change_password(str(user.id), "my-own-password", "brand-new-pass")
         await svc.login(LoginRequest(email=user.email, password="brand-new-pass"))
     run(body)
+
+
+def test_new_rider_account_works_without_a_profile_row(sent) -> None:  # type: ignore[no-untyped-def]
+    """Regression: an admin-created rider got "Rider profile not found" on first load."""
+    from services.dispatch.models import Rider
+    from services.dispatch.service import DispatchService
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        svc = AuthService(db, FakeRedis())
+        user = await svc.create_privileged_user(_req("rider"))
+        rider = (await db.execute(select(Rider).where(Rider.user_id == user.id))).scalar_one()
+        # And an older rider with no Rider row yet still gets one on first use.
+        await db.delete(rider)
+        await db.flush()
+        created = await DispatchService(db, FakeRedis()).get_or_create_rider(str(user.id))  # type: ignore[arg-type]
+        assert created.user_id == user.id
+
+        # A non-rider account is still refused.
+        other = await svc.create_privileged_user(_req("agent"))
+        from core.exceptions import NotFoundException
+        with pytest.raises(NotFoundException):
+            await DispatchService(db, FakeRedis()).get_or_create_rider(str(other.id))  # type: ignore[arg-type]
+    run(body)
