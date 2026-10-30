@@ -1,8 +1,10 @@
 name: Staging — CI → Build → Deploy
 
+# Deliberately NOT triggered by pushes to develop any more. Production is a separate server
+# deployed only from main (deploy-prod.yml); the old server this workflow targeted is retired.
+# CI still runs on develop via ci.yml. Run this by hand only if a staging server is set up again.
 on:
-  push:
-    branches: [develop]
+  workflow_dispatch:
 
 concurrency:
   group: deploy-staging
