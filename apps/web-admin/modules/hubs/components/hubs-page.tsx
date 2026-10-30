@@ -162,6 +162,19 @@ export function HubsPage() {
       ),
     },
     {
+      key: 'location',
+      header: 'Location',
+      cell: (row) =>
+        row.address || row.description ? (
+          <div className="max-w-xs">
+            {row.address && <p className="text-sm">{row.address}</p>}
+            {row.description && <p className="text-xs text-muted-foreground">{row.description}</p>}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">Not set yet</span>
+        ),
+    },
+    {
       key: 'capacity',
       header: 'Max Orders',
       cell: (row) => <span className="text-sm">{row.capacity}</span>,

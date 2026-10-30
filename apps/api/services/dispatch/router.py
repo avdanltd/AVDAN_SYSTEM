@@ -179,9 +179,14 @@ def _order_resp(o: object, hub: object | None = None) -> OrderResponse:
         hub_name=h.name if h else None,
         hub_lat=float(h.lat) if h and h.lat is not None else None,
         hub_lng=float(h.lng) if h and h.lng is not None else None,
+        hub_address=h.address if h else None,
+        hub_description=h.description if h else None,
         status=order.status,
         total_kobo=order.total_kobo,
-        delivery_fee_kobo=order.delivery_fee_kobo,
+        # The rider sees what they earn: their share after AVDAN's delivery commission.
+        delivery_fee_kobo=(
+            order.delivery_fee_kobo if order.rider_fee_kobo is None else order.rider_fee_kobo
+        ),
         # Not just hidden client-side — genuinely not sent over the wire before handoff, so
         # there's nothing for the rider's device to leak or a curious rider to inspect early.
         delivery_address=order.delivery_address if reveal_delivery_address else {},

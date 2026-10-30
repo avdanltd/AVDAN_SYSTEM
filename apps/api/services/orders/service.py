@@ -171,6 +171,10 @@ class OrderService:
             delivery_address["phone"] = customer.phone if customer else None
         delivery_quote = await self.quote_delivery(vendor, delivery_address)
         delivery_fee_kobo = delivery_quote["fee_kobo"]
+        delivery_commission = float(
+            (await AnalyticsService(self.db).get_config()).get("delivery_commission_percent", 0) or 0
+        )
+        rider_fee_kobo = delivery_fee_kobo - int(delivery_fee_kobo * delivery_commission / 100)
 
         # Create order
         order = Order(
@@ -180,6 +184,7 @@ class OrderService:
             total_kobo=total_kobo,
             vendor_total_kobo=vendor_total_kobo,
             delivery_fee_kobo=delivery_fee_kobo,
+            rider_fee_kobo=rider_fee_kobo,
             delivery_quote=delivery_quote,
             delivery_address=delivery_address,
             delivery_code=f"{secrets.randbelow(10000):04d}",

@@ -11,6 +11,8 @@ export interface PlatformConfig {
     per_km_kobo: number
     road_factor: number
   }
+  /** Percent of each delivery fee AVDAN keeps; the rider gets the rest. */
+  delivery_commission_percent: number
   min_withdrawal_kobo: number
   /** Smallest order subtotal customers can place; 0 = no minimum. */
   min_order_kobo: number

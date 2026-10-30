@@ -25,6 +25,7 @@ import {
   Skeleton,
 } from '@avdan/ui'
 import { useProfile, useUpdateProfile } from '../hooks/use-profile'
+import { ChangePasswordCard } from './change-password-card'
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -174,6 +175,7 @@ export function ProfilePage() {
           </CardContent>
         </Card>
       )}
+      <ChangePasswordCard />
     </div>
   )
 }

@@ -421,8 +421,8 @@ export function StoreHomePage() {
                 Fast delivery, total confidence.
               </h2>
               <p className="text-background/70">
-                Thousands of orders move across Lagos every week — verified vendors, tracked
-                riders, and escrow-protected payments from checkout to doorstep.
+                Verified vendors, tracked riders, and escrow-protected payments from checkout to
+                doorstep.
               </p>
               <div className="grid grid-cols-2 gap-8 pt-4">
                 <div>

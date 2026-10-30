@@ -31,6 +31,10 @@ def _split_sums() -> tuple:
             (Order.vendor_total_kobo.is_not(None), Order.total_kobo - Order.vendor_total_kobo), else_=0
         )), 0),
         func.coalesce(func.sum(case((Order.vendor_total_kobo.is_(None), Order.total_kobo), else_=0)), 0),
+        # AVDAN's cut of the delivery fee (the part not paid to the rider).
+        func.coalesce(func.sum(case(
+            (Order.rider_fee_kobo.is_not(None), Order.delivery_fee_kobo - Order.rider_fee_kobo), else_=0
+        )), 0),
     )
 
 
@@ -65,7 +69,7 @@ class AnalyticsService:
         # orders, then apply commission once.
         # Orders priced with a vendor price: the platform's revenue is the markup (customer total
         # minus the vendor's total). Older orders: commission rate on the total.
-        markup_today, legacy_gross_today = (await self.db.execute(
+        markup_today, legacy_gross_today, delivery_cut_today = (await self.db.execute(
             select(*_split_sums())
             .select_from(Order)
             .join(EscrowTransaction, EscrowTransaction.order_id == Order.id)
@@ -74,7 +78,7 @@ class AnalyticsService:
                 EscrowTransaction.created_at >= today_start,
             )
         )).one()
-        revenue_today = int(markup_today) + int(int(legacy_gross_today) * commission_rate)
+        revenue_today = int(markup_today) + int(int(legacy_gross_today) * commission_rate) + int(delivery_cut_today)
 
         gmv_today = int((await self.db.execute(
             select(func.coalesce(func.sum(Order.total_kobo), 0)).where(

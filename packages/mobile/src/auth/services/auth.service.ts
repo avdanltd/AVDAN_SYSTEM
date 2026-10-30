@@ -34,6 +34,9 @@ export const authService = {
   /** Detaches this device from the user on sign-out so their pushes stop arriving here. */
   clearPushToken: () => apiClient.delete<{ message: string }>('/auth/me/push-token'),
 
+  changePassword: (payload: { current_password: string; new_password: string }) =>
+    apiClient.post<{ message: string }>('/auth/change-password', payload),
+
   updateMe: (payload: Partial<Pick<User, 'name' | 'phone'>>) =>
     apiClient.patch<User>('/auth/me', payload),
 }

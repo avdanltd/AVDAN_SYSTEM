@@ -139,6 +139,11 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
                     {formatPrice(product.compare_at_price_kobo)}
                   </span>
                 ) : null}
+                {product.compare_at_price_kobo ? (
+                  <span className="rounded bg-success/15 px-1 text-xs font-semibold text-success">
+                    -{Math.round((1 - product.price_kobo / product.compare_at_price_kobo) * 100)}%
+                  </span>
+                ) : null}
               </div>
               <Button
                 size="sm"

@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import {
   ChevronRight,
   CircleUser,
+  KeyRound,
   LogOut,
   Mail,
   Moon,
@@ -105,6 +106,12 @@ export function Profile() {
             icon={<CircleUser size={17} color={colors.primary} />}
             label="Edit profile"
             onPress={() => router.push('/profile/edit')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<KeyRound size={17} color={colors.primary} />}
+            label="Change password"
+            onPress={() => router.push('/profile/password')}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow

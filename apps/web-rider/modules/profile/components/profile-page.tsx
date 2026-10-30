@@ -28,6 +28,7 @@ import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { authService } from '@/modules/auth/services/auth.service'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 import { ROUTES } from '@/config/routes'
+import { ChangePasswordCard } from './change-password-card'
 
 const profileSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -141,6 +142,8 @@ export function ProfilePage() {
       </Link>
 
       <Separator />
+
+      <ChangePasswordCard />
 
       <Button
         variant="destructive"

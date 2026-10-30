@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
 class LoginRequest(BaseModel):
@@ -62,11 +62,27 @@ class UserResponse(BaseModel):
 
 
 class AdminCreateUserRequest(BaseModel):
+    """Admin invites a staff member: no password here. They set their own via the emailed link."""
     email: EmailStr
     phone: str | None = None
-    password: str
     name: str
     role: Literal["admin", "support", "agent", "rider"]
+
+
+class InvitePreviewResponse(BaseModel):
+    name: str | None
+    email: str | None
+    role: str
+
+
+class SetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=8, max_length=128)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str = Field(min_length=8, max_length=128)
 
 
 class UpdateUserStatusRequest(BaseModel):

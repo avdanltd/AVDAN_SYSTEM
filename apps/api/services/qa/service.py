@@ -19,6 +19,25 @@ class QAService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
+    async def update_my_hub(self, agent_user_id: str, data) -> AgentHub:  # type: ignore[no-untyped-def]
+        """A hub agent fills in their own hub's address, description and map position."""
+        from core.geocoding import geocode_address
+
+        hub = await self.get_hub_for_agent(agent_user_id)
+        if data.address is not None:
+            hub.address = data.address.strip() or None
+        if data.description is not None:
+            hub.description = data.description.strip() or None
+        if data.lat is not None and data.lng is not None:
+            hub.lat, hub.lng = data.lat, data.lng
+        elif data.address and data.address.strip():
+            # No coordinates sent: place the hub from its address (best effort).
+            found = await geocode_address(data.address)
+            if found:
+                hub.lat, hub.lng = found
+        await self.db.flush()
+        return hub
+
     # ── Hub resolution ────────────────────────────────────────────────────────
 
     async def get_hub_for_agent(self, agent_user_id: str) -> AgentHub:

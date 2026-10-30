@@ -35,9 +35,11 @@ import {
   ShieldCheck,
   UserCheck,
   Building2,
+  Send,
 } from "lucide-react";
 import { useUsers } from "../hooks/use-users";
 import { useUpdateUserStatus } from "../hooks/use-update-user-status";
+import { useResendInvite, useRevokeInvite } from "../hooks/use-invite-actions";
 import type { AdminUser } from "../types";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
@@ -69,6 +71,7 @@ export function UsersPage() {
     null,
   );
   const [banConfirmText, setBanConfirmText] = useState("");
+  const [revokeUser, setRevokeUser] = useState<AdminUser | null>(null);
 
   const params: Record<string, string> = { page: String(page), limit: "20" };
   if (role) params.role = role;
@@ -76,6 +79,8 @@ export function UsersPage() {
 
   const { data, isLoading, isError, refetch } = useUsers(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateUserStatus();
+  const { mutate: resendInvite, isPending: resending } = useResendInvite();
+  const { mutate: revokeInvite, isPending: revoking } = useRevokeInvite();
 
   const users = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -158,6 +163,23 @@ export function UsersPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            {row.status === "invited" ? (
+              <>
+                <DropdownMenuItem disabled={resending} onClick={() => resendInvite(row.id)}>
+                  <Send className="mr-2 h-4 w-4 text-info" />
+                  Resend invite
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => setRevokeUser(row)}
+                >
+                  <UserX className="mr-2 h-4 w-4" />
+                  Revoke invite
+                </DropdownMenuItem>
+              </>
+            ) : (
+              <>
             {row.status !== "active" && (
               <DropdownMenuItem onClick={() => handleAction(row, "activate")}>
                 <UserCheck className="mr-2 h-4 w-4 text-success" />
@@ -187,6 +209,8 @@ export function UsersPage() {
               <UserX className="mr-2 h-4 w-4" />
               Ban User
             </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
@@ -267,6 +291,21 @@ export function UsersPage() {
           user={assignHubUser}
           open
           onOpenChange={(o) => !o && setAssignHubUser(null)}
+        />
+      )}
+
+      {revokeUser && (
+        <ConfirmDialog
+          open
+          onOpenChange={(o) => !o && setRevokeUser(null)}
+          title="Revoke Invitation"
+          description={`Revoke the invitation for ${revokeUser.name ?? revokeUser.email}? Their link stops working and the account is removed. You can invite them again later.`}
+          confirmLabel="Revoke"
+          destructive
+          loading={revoking}
+          onConfirm={() =>
+            revokeInvite(revokeUser.id, { onSuccess: () => setRevokeUser(null) })
+          }
         />
       )}
 

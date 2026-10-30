@@ -18,7 +18,6 @@ import {
   FormLabel,
   FormMessage,
   Input,
-  PasswordInput,
   Button,
   Select,
   SelectContent,
@@ -32,7 +31,6 @@ const createAdminSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Valid email is required'),
   phone: z.string().optional(),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
   role: z.enum(['admin', 'support', 'agent', 'rider']),
 })
 
@@ -48,7 +46,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
 
   const form = useForm<CreateAdminFormValues>({
     resolver: zodResolver(createAdminSchema),
-    defaultValues: { name: '', email: '', phone: '', password: '', role: 'support' },
+    defaultValues: { name: '', email: '', phone: '', role: 'support' },
   })
 
   function handleSubmit(values: CreateAdminFormValues) {
@@ -66,7 +64,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
         <DialogHeader>
           <DialogTitle>Create Staff User</DialogTitle>
           <DialogDescription>
-            Create a new admin, support, hub agent, or rider account.
+            Creates the account and emails them a link to set their own password. The link expires, and you can resend or revoke it from the Users list.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -112,19 +110,6 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
             />
             <FormField
               control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <PasswordInput placeholder="Min. 8 characters" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
               name="role"
               render={({ field }) => (
                 <FormItem>
@@ -156,7 +141,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
                 Cancel
               </Button>
               <Button type="submit" disabled={isPending}>
-                {isPending ? 'Creating…' : 'Create User'}
+                {isPending ? 'Creating…' : 'Create & send invite'}
               </Button>
             </DialogFooter>
           </form>

@@ -100,7 +100,24 @@ export function OrdersPage() {
       header: "Rider",
       cell: (row) =>
         row.rider_id ? (
-          <span className="text-sm">{row.rider_name ?? `${row.rider_id.slice(0, 8)}…`}</span>
+          <div>
+            <p className="text-sm">{row.rider_name ?? `${row.rider_id.slice(0, 8)}…`}</p>
+            {row.rider_phone && (
+              <a href={`tel:${row.rider_phone}`} className="text-xs text-primary hover:underline">
+                {row.rider_phone}
+              </a>
+            )}
+          </div>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        ),
+    },
+    {
+      key: "hub",
+      header: "Hub",
+      cell: (row) =>
+        row.hub_name ? (
+          <span className="text-sm">{row.hub_name}</span>
         ) : (
           <span className="text-sm text-muted-foreground">—</span>
         ),

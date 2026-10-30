@@ -147,15 +147,19 @@ class WalletService:
         return net
 
     async def credit_rider_for_order(self, order: Order) -> int:
-        """Credit the rider's Available balance with the order's delivery fee, in full. Called when
-        the order is delivered."""
+        """Credit the rider's Available balance with their share of the delivery fee (the fee less
+        AVDAN's delivery commission; orders from before the commission pay it in full). Called
+        when the order is delivered."""
         if not order.rider_id or order.delivery_fee_kobo <= 0:
             return 0
+        rider_fee = order.delivery_fee_kobo if order.rider_fee_kobo is None else order.rider_fee_kobo
         await self._credit(
-            WalletOwner.RIDER, order.rider_id, order.id, order.delivery_fee_kobo,
-            {"reason": "delivered", "delivery_quote": order.delivery_quote},
+            WalletOwner.RIDER, order.rider_id, order.id, rider_fee,
+            {"reason": "delivered", "delivery_quote": order.delivery_quote,
+             "delivery_fee_kobo": order.delivery_fee_kobo,
+             "platform_delivery_cut_kobo": order.delivery_fee_kobo - rider_fee},
         )
-        return order.delivery_fee_kobo
+        return rider_fee
 
     # ── Balances ──────────────────────────────────────────────────────────────
 
@@ -178,7 +182,9 @@ class WalletService:
             return o.total_kobo - int(o.total_kobo * rate / 100)
 
         def amount(o: Order) -> int:
-            return vendor_net(o) if owner_type == WalletOwner.VENDOR else o.delivery_fee_kobo
+            return vendor_net(o) if owner_type == WalletOwner.VENDOR else (
+                o.delivery_fee_kobo if o.rider_fee_kobo is None else o.rider_fee_kobo
+            )
 
         ongoing = sum(amount(o) for o in await self._sum_orders(owner_type, owner_id, _ONGOING_STATES))
         if owner_type == WalletOwner.VENDOR:

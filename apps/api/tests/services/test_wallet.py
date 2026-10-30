@@ -92,7 +92,7 @@ def test_vendor_credit_is_net_of_commission_and_idempotent() -> None:
     run(body)
 
 
-def test_rider_credit_is_full_delivery_fee() -> None:
+def test_rider_credit_is_full_delivery_fee_on_legacy_orders() -> None:
     async def body(db):  # type: ignore[no-untyped-def]
         s = await _seed(db)
         svc = WalletService(db)
@@ -100,6 +100,18 @@ def test_rider_credit_is_full_delivery_fee() -> None:
         await svc.credit_rider_for_order(s.order)
         summary = await svc.my_summary("rider", str(s.rider_user.id))
         assert summary["available_kobo"] == 80_000
+    run(body)
+
+
+def test_rider_credit_is_net_of_delivery_commission() -> None:
+    async def body(db):  # type: ignore[no-untyped-def]
+        s = await _seed(db)
+        s.order.rider_fee_kobo = 64_000  # 20% of the 80,000 fee kept by AVDAN
+        svc = WalletService(db)
+        assert await svc.credit_rider_for_order(s.order) == 64_000
+        await svc.credit_rider_for_order(s.order)  # retry: no second entry
+        summary = await svc.my_summary("rider", str(s.rider_user.id))
+        assert summary["available_kobo"] == 64_000
     run(body)
 
 
