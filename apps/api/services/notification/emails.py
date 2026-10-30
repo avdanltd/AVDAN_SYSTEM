@@ -139,6 +139,24 @@ def build_otp_email(name: str, otp: str) -> str:
     """
     return _wrap_in_template(content, preview_text=f"Your AVDAN verification code is {otp}")
 
+def build_password_reset_email(name: str, link: str, valid_minutes: int) -> str:
+    """"Forgot password" email: a button to choose a new password."""
+    who = html_escape(name or "there")
+    safe_link = html_escape(link, quote=True)
+    content = f"""
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hi {who},</h2>
+    <p>We received a request to reset your AVDAN password. Use the button below to choose a new one.</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{safe_link}" style="display: inline-block; background-color: {COLOR_PRIMARY}; color: {COLOR_WHITE}; text-decoration: none; font-weight: 600; padding: 14px 28px; border-radius: 8px;">Reset password</a>
+    </div>
+
+    <p style="color: #4B5563; font-size: 14px;">This link is valid for {valid_minutes} minutes and can be used once. If you didn't ask for this, you can ignore this email; your password stays the same.</p>
+    <p style="color: #4B5563; font-size: 14px;">Button not working? Paste this address into your browser:<br>{safe_link}</p>
+    """
+    return _wrap_in_template(content, preview_text="Reset your AVDAN password")
+
+
 _ROLE_LABELS = {
     "admin": "an administrator",
     "support": "a support agent",

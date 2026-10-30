@@ -291,6 +291,61 @@ class AuthService:
         await self.redis.delete(f"invite_user:{user.id}")
         return user
 
+    # ── Forgot / reset password ───────────────────────────────────────────────
+
+    @staticmethod
+    def _reset_key(token: str) -> str:
+        return "pwreset:" + hashlib.sha256(token.encode()).hexdigest()
+
+    @staticmethod
+    def _app_url(role: str) -> str:
+        return {
+            "customer": settings.customer_app_url,
+            "vendor": settings.vendor_app_url,
+            "agent": settings.hub_app_url,
+            "rider": settings.rider_app_url,
+        }.get(role, settings.admin_app_url)
+
+    async def request_password_reset(self, email: str) -> None:
+        """Email a reset link if an active account has this address. Says nothing either way, so
+        the endpoint can't be used to find out who has an account. Accounts that can't sign in
+        yet (invited, unverified, suspended, banned) get nothing: those are sorted out by an
+        admin or by finishing sign-up, not by resetting a password."""
+        user = (await self.db.execute(select(User).where(User.email == email))).scalar_one_or_none()
+        if not user or user.status != "active" or not user.email:
+            return
+        ttl = settings.reset_ttl_minutes * 60
+        previous = await self.redis.get(f"pwreset_user:{user.id}")
+        if previous:
+            await self.redis.delete(previous if isinstance(previous, str) else previous.decode())
+        token = secrets.token_urlsafe(32)
+        key = self._reset_key(token)
+        await self.redis.setex(key, ttl, str(user.id))
+        await self.redis.setex(f"pwreset_user:{user.id}", ttl, key)
+        from workers.tasks.notifications import send_password_reset_email_task
+        link = f"{self._app_url(user.role).rstrip('/')}/reset-password?token={token}"
+        send_password_reset_email_task.delay(user.email, user.name or "", link, settings.reset_ttl_minutes)
+
+    async def _user_for_reset_token(self, token: str) -> User:
+        user_id = await self.redis.get(self._reset_key(token))
+        if not user_id:
+            raise ValidationException("This reset link is invalid or has expired. Request a new one.")
+        user_id = user_id if isinstance(user_id, str) else user_id.decode()
+        user = await self.get_user_by_id(user_id)
+        if user.status != "active":
+            raise ValidationException("This reset link is invalid or has expired. Request a new one.")
+        return user
+
+    async def preview_password_reset(self, token: str) -> User:
+        return await self._user_for_reset_token(token)
+
+    async def complete_password_reset(self, token: str, password: str) -> User:
+        user = await self._user_for_reset_token(token)
+        user.password_hash = hash_password(password)
+        await self.redis.delete(self._reset_key(token))
+        await self.redis.delete(f"pwreset_user:{user.id}")
+        return user
+
     async def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
         user = await self.get_user_by_id(user_id)
         if not verify_password(current_password, user.password_hash):

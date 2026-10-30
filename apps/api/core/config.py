@@ -66,6 +66,11 @@ class Settings(BaseSettings):
     admin_app_url: str = "https://admin.avdanstore.com"
     hub_app_url: str = "https://hub.avdanstore.com"
     rider_app_url: str = "https://rider.avdanstore.com"
+    # Customer and vendor sites, for password-reset links.
+    customer_app_url: str = "https://avdanstore.com"
+    vendor_app_url: str = "https://vendor.avdanstore.com"
+    # How long a "forgot password" link stays valid.
+    reset_ttl_minutes: int = 60
     # How long an invitation link stays valid before the admin has to resend it.
     invite_ttl_hours: int = 72
 
