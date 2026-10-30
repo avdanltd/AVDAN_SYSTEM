@@ -7,6 +7,8 @@ from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
 from services.orders.schemas import OrderItemResponse, OrderResponse, PaginatedOrdersResponse
 from services.qa.schemas import (
+    HubResponse,
+    UpdateMyHubRequest,
     EvidenceUploadResponse,
     HubAnalyticsResponse,
     IncomingDeliveryResponse,
@@ -179,3 +181,36 @@ async def hub_analytics(
     svc = QAService(db)
     data = await svc.get_hub_analytics(current_user.user_id, period_days)
     return HubAnalyticsResponse(**data)
+
+
+def _hub_response(hub: object) -> HubResponse:
+    from services.qa.models import AgentHub
+    h: AgentHub = hub  # type: ignore[assignment]
+    return HubResponse(
+        id=str(h.id),
+        name=h.name,
+        active=h.active,
+        capacity=h.capacity,
+        lat=float(h.lat) if h.lat is not None else None,
+        lng=float(h.lng) if h.lng is not None else None,
+        address=h.address,
+        description=h.description,
+    )
+
+
+@router.get("/me", response_model=HubResponse)
+async def get_my_hub(
+    current_user: CurrentUser = Depends(require_role("agent")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    """The hub this agent works at, with the details they can edit."""
+    return _hub_response(await QAService(db).get_hub_for_agent(current_user.user_id))
+
+
+@router.patch("/me", response_model=HubResponse)
+async def update_my_hub(
+    data: UpdateMyHubRequest,
+    current_user: CurrentUser = Depends(require_role("agent")),
+    db: AsyncSession = Depends(get_db),
+) -> HubResponse:
+    return _hub_response(await QAService(db).update_my_hub(current_user.user_id, data))

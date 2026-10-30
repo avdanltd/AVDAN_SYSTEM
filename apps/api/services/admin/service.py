@@ -50,6 +50,11 @@ class AdminService:
         if not user:
             raise NotFoundException("User not found")
 
+        if user.status == "invited":
+            # Nobody has set a password yet: activating would create a login nobody can use.
+            raise ValidationException(
+                "This account hasn't been set up yet. Resend the invitation or revoke it instead."
+            )
         user.status = new_status
         return user
 

@@ -31,9 +31,9 @@ import { ImageUploadField } from './image-upload-field'
 const productSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   description: z.string().optional(),
-  price_kobo: z
+  price_naira: z
     .number({ invalid_type_error: 'Price is required' })
-    .min(100, 'Minimum price is ₦1'),
+    .min(1, 'Minimum price is ₦1'),
   stock_qty: z
     .number({ invalid_type_error: 'Stock quantity is required' })
     .int('Must be a whole number')
@@ -62,7 +62,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     defaultValues: {
       name: product?.name ?? '',
       description: product?.description ?? '',
-      price_kobo: product?.price_kobo ?? 0,
+      price_naira: product ? product.price_kobo / 100 : 0,
       stock_qty: product?.stock_qty ?? 0,
       available: product?.available ?? true,
       category_id: product?.category_id ?? '',
@@ -75,7 +75,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
       form.reset({
         name: product.name,
         description: product.description ?? '',
-        price_kobo: product.price_kobo,
+        price_naira: product.price_kobo / 100,
         stock_qty: product.stock_qty,
         available: product.available,
         category_id: product.category_id ?? '',
@@ -88,7 +88,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
     const payload = {
       name: values.name,
       description: values.description || undefined,
-      price_kobo: values.price_kobo,
+      // The form works in naira; every amount crossing the API is an integer number of kobo.
+      price_kobo: Math.round(values.price_naira * 100),
       stock_qty: values.stock_qty,
       available: values.available,
       category_id: values.category_id,
@@ -180,14 +181,15 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
-            name="price_kobo"
+            name="price_naira"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Your price (kobo)</FormLabel>
+                <FormLabel>Your price (₦)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    placeholder="e.g. 250000 for ₦2,500"
+                    step="0.01"
+                    placeholder="e.g. 2500"
                     {...field}
                     onChange={(e) => field.onChange(e.target.valueAsNumber)}
                   />
@@ -195,7 +197,7 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                 <FormMessage />
                 {field.value > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    = ₦{(field.value / 100).toLocaleString('en-NG')}. You are paid this price; AVDAN reviews
+                    You are paid ₦{field.value.toLocaleString('en-NG')} per unit; AVDAN reviews
                     it and sets the price customers see. Changing it later needs approval again.
                   </p>
                 )}

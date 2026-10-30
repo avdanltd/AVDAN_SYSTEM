@@ -123,6 +123,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/invite/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview Invite
+         * @description Who an invitation link is for, so the set-password page can greet them (or say the link
+         *     has expired) before asking for anything.
+         */
+        get: operations["preview_invite_auth_invite__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/set-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set Password */
+        post: operations["set_password_auth_set_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change Password */
+        post: operations["change_password_auth_change_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me": {
         parameters: {
             query?: never;
@@ -195,6 +250,43 @@ export interface paths {
         head?: never;
         /** Update User Status */
         patch: operations["update_user_status_admin_users__user_id__status_patch"];
+        trace?: never;
+    };
+    "/admin/users/{user_id}/resend-invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Resend Invite
+         * @description New link, new email; the old link stops working.
+         */
+        post: operations["resend_invite_admin_users__user_id__resend_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{user_id}/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke Invite */
+        delete: operations["revoke_invite_admin_users__user_id__invite_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/vendors": {
@@ -1748,6 +1840,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hub/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Hub
+         * @description The hub this agent works at, with the details they can edit.
+         */
+        get: operations["get_my_hub_hub_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update My Hub */
+        patch: operations["update_my_hub_hub_me_patch"];
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1769,7 +1882,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AdminCreateUserRequest */
+        /**
+         * AdminCreateUserRequest
+         * @description Admin invites a staff member: no password here. They set their own via the emailed link.
+         */
         AdminCreateUserRequest: {
             /**
              * Email
@@ -1778,8 +1894,6 @@ export interface components {
             email: string;
             /** Phone */
             phone?: string | null;
-            /** Password */
-            password: string;
             /** Name */
             name: string;
             /**
@@ -1989,6 +2103,13 @@ export interface components {
             /** Active */
             active?: boolean | null;
         };
+        /** ChangePasswordRequest */
+        ChangePasswordRequest: {
+            /** Current Password */
+            current_password: string;
+            /** New Password */
+            new_password: string;
+        };
         /** CreateHubRequest */
         CreateHubRequest: {
             /** Name */
@@ -2180,6 +2301,10 @@ export interface components {
             lat: number | null;
             /** Lng */
             lng: number | null;
+            /** Address */
+            address?: string | null;
+            /** Description */
+            description?: string | null;
         };
         /**
          * IncomingDeliveryResponse
@@ -2217,6 +2342,15 @@ export interface components {
             reference: string;
             /** Escrow Id */
             escrow_id: string;
+        };
+        /** InvitePreviewResponse */
+        InvitePreviewResponse: {
+            /** Name */
+            name: string | null;
+            /** Email */
+            email: string | null;
+            /** Role */
+            role: string;
         };
         /** LocationUpdate */
         LocationUpdate: {
@@ -2281,6 +2415,10 @@ export interface components {
             hub_lat?: number | null;
             /** Hub Lng */
             hub_lng?: number | null;
+            /** Hub Address */
+            hub_address?: string | null;
+            /** Hub Description */
+            hub_description?: string | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -2377,6 +2515,10 @@ export interface components {
             hub_lat?: number | null;
             /** Hub Lng */
             hub_lng?: number | null;
+            /** Hub Address */
+            hub_address?: string | null;
+            /** Hub Description */
+            hub_description?: string | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -2882,6 +3024,13 @@ export interface components {
             /** Vendors */
             vendors: components["schemas"]["VendorResponse"][];
         };
+        /** SetPasswordRequest */
+        SetPasswordRequest: {
+            /** Token */
+            token: string;
+            /** Password */
+            password: string;
+        };
         /** TokenResponse */
         TokenResponse: {
             /** Message */
@@ -2907,6 +3056,21 @@ export interface components {
              * @default 100
              */
             capacity: number;
+        };
+        /**
+         * UpdateMyHubRequest
+         * @description What a hub agent can fill in about their own hub. Send coordinates (e.g. from the device's
+         *     location) or leave them out and send an address to have it looked up.
+         */
+        UpdateMyHubRequest: {
+            /** Address */
+            address?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
         };
         /** UpdateProductAvailabilityRequest */
         UpdateProductAvailabilityRequest: {
@@ -3411,6 +3575,111 @@ export interface operations {
             };
         };
     };
+    preview_invite_auth_invite__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_password_auth_set_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    change_password_auth_change_password_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_me_auth_me_get: {
         parameters: {
             query?: never;
@@ -3657,6 +3926,74 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resend_invite_admin_users__user_id__resend_invite_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_invite_admin_users__user_id__invite_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                user_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7208,6 +7545,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HubAnalyticsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_hub_hub_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_my_hub_hub_me_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyHubRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
                 };
             };
             /** @description Validation Error */

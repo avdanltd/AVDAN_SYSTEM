@@ -62,6 +62,13 @@ class Settings(BaseSettings):
         return bool(self.r2_account_id and self.r2_access_key_id
                     and self.r2_secret_access_key and self.r2_bucket)
 
+    # Where each staff role signs in. The invitation email links to that app's set-password page.
+    admin_app_url: str = "https://admin.avdanstore.com"
+    hub_app_url: str = "https://hub.avdanstore.com"
+    rider_app_url: str = "https://rider.avdanstore.com"
+    # How long an invitation link stays valid before the admin has to resend it.
+    invite_ttl_hours: int = 72
+
     # App
     environment: str = "development"
     frontend_urls: list[str] = ["http://localhost:3000"]

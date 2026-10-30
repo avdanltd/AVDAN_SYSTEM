@@ -59,6 +59,11 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
                   {formatKobo(product.compare_at_price_kobo)}
                 </Text>
               ) : null}
+              {product.compare_at_price_kobo ? (
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.success }}>
+                  {' '}-{Math.round((1 - product.price_kobo / product.compare_at_price_kobo) * 100)}%
+                </Text>
+              ) : null}
             </Text>
             {!soldOut ? (
               <Pressable

@@ -48,6 +48,7 @@ const ORDER_STATUS_MAP: Record<OrderStatus, StatusConfig> = {
 const USER_STATUS_MAP: Record<string, StatusConfig> = {
   active:    { label: 'Active',    variant: 'default', className: successBadge },
   pending:   { label: 'Pending',   variant: 'secondary' },
+  invited:   { label: 'Invited',   variant: 'outline' },
   suspended: { label: 'Suspended', variant: 'destructive' },
   banned:    { label: 'Banned',    variant: 'destructive' },
 }

@@ -57,6 +57,13 @@ def send_otp_email_task(email: str, name: str, otp: str) -> None:
     send_email_via_resend(email, subject, html)
 
 
+@celery_app.task(name="workers.tasks.notifications.send_invite_email_task")
+def send_invite_email_task(email: str, name: str, role: str, link: str, valid_hours: int) -> None:
+    from services.notification.emails import build_invite_email, send_email_via_resend
+    html = build_invite_email(name, role, link, valid_hours)
+    send_email_via_resend(email, "Welcome to AVDAN — set up your account", html)
+
+
 @celery_app.task(name="workers.tasks.notifications.send_order_notification")
 def send_order_notification(order_id: str, from_state: str | None, to_state: str) -> None:
     triggers = _TRIGGERS.get((from_state, to_state), [])

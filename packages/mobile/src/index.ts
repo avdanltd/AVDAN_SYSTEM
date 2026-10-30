@@ -43,6 +43,7 @@ export {
 } from './components/ui'
 export { AvdanLogo, AvdanMark } from './components/brand-logo'
 export { AuthSplitShell } from './components/auth-split-shell'
+export { ChangePasswordScreen } from './components/change-password'
 export { ConfirmDialog } from './components/confirm-dialog'
 export { WalletPanel, type WalletPanelProps } from './components/wallet-panel'
 

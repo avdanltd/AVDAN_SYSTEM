@@ -10,7 +10,7 @@ export function useCreateAdmin() {
     mutationFn: (payload: CreateAdminPayload) => usersService.createAdmin(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-users'] })
-      toast.success('Admin user created successfully.')
+      toast.success('Account created. An email with a link to set their password is on its way.')
     },
     onError: (err: Error) => {
       toast.error(err.message ?? 'Failed to create admin user.')

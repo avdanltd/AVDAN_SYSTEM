@@ -18,6 +18,9 @@ class AgentHub(BaseModel):
     )
     lat: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
     lng: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
+    # Filled in by the hub itself once they sign in: where it is, in words, and how to find it.
+    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
     capacity: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

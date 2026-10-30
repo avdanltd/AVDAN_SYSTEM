@@ -7,6 +7,12 @@ export interface AdminOrder {
   rider_id: string | null
   rider_name?: string | null
   rider_phone?: string | null
+  hub_id?: string | null
+  hub_name?: string | null
+  hub_address?: string | null
+  hub_description?: string | null
+  hub_lat?: number | null
+  hub_lng?: number | null
   status: OrderStatus
   total_kobo: number
   delivery_fee_kobo: number

@@ -71,6 +71,8 @@ class OrderResponse(BaseModel):
     hub_name: str | None = None
     hub_lat: float | None = None
     hub_lng: float | None = None
+    hub_address: str | None = None
+    hub_description: str | None = None
     status: str
     total_kobo: int
     delivery_fee_kobo: int

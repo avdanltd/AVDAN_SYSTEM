@@ -12,6 +12,12 @@ export const usersService = {
   createAdmin: (payload: CreateAdminPayload) =>
     apiClient.post<AdminUser>('/admin/users', payload),
 
+  resendInvite: (id: string) =>
+    apiClient.post<AdminUser>(`/admin/users/${id}/resend-invite`),
+
+  revokeInvite: (id: string) =>
+    apiClient.delete<void>(`/admin/users/${id}/invite`),
+
   listHubs: () =>
     apiClient.get<Hub[]>('/admin/hubs'),
 

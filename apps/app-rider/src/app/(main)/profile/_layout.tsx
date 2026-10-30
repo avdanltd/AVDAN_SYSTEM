@@ -15,6 +15,7 @@ export default function ProfileLayout() {
     >
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="edit" options={{ title: 'Edit Profile' }} />
+      <Stack.Screen name="password" options={{ title: 'Change Password' }} />
       <Stack.Screen name="appearance" options={{ title: 'Appearance' }} />
       <Stack.Screen name="payout" options={{ title: 'Payout Account' }} />
       <Stack.Screen name="earnings" options={{ title: 'Earnings' }} />

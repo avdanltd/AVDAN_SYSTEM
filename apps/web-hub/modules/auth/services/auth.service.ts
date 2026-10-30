@@ -26,7 +26,22 @@ export interface User {
   status: string
 }
 
+export interface InvitePreview {
+  name: string | null
+  email: string | null
+  role: string
+}
+
 export const authService = {
+  getInvite: (token: string) =>
+    apiClient.get<InvitePreview>(`/auth/invite/${encodeURIComponent(token)}`),
+
+  setPassword: (payload: { token: string; password: string }) =>
+    apiClient.post<{ message: string }>('/auth/set-password', payload),
+
+  changePassword: (payload: { current_password: string; new_password: string }) =>
+    apiClient.post<{ message: string }>('/auth/change-password', payload),
+
   login: (payload: LoginPayload) =>
     apiClient.post<{ message: string }>('/auth/login', payload),
 
