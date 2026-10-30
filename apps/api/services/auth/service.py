@@ -205,6 +205,11 @@ class AuthService:
         )
         self.db.add(user)
         await self.db.flush()
+        if user.role == "rider":
+            # Exists from day one so the admin can see and assign them before their first sign-in.
+            from services.dispatch.models import Rider
+            self.db.add(Rider(user_id=user.id))
+            await self.db.flush()
         await self._send_invite(user)
         return user
 

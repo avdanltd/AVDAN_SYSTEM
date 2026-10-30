@@ -175,11 +175,14 @@ class DispatchService:
         )
         rider = result.scalar_one_or_none()
         if not rider:
-            from services.auth.models import RiderProfile
-            profile_result = await self.db.execute(
-                select(RiderProfile).where(RiderProfile.user_id == uuid.UUID(user_id))
-            )
-            if not profile_result.scalar_one_or_none():
+            # Being a rider is the account's role; nothing else records it (the old check for a
+            # `rider_profiles` row could never pass, because no code ever creates one, so every
+            # admin-created rider got "Rider profile not found" on first load).
+            from services.auth.models import User
+            role = (await self.db.execute(
+                select(User.role).where(User.id == uuid.UUID(user_id))
+            )).scalar_one_or_none()
+            if role != "rider":
                 raise NotFoundException("Rider profile not found")
             rider = Rider(user_id=uuid.UUID(user_id))
             self.db.add(rider)
