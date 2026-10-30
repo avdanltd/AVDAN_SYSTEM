@@ -31,8 +31,9 @@ import { useCreateAdmin } from '../hooks/use-create-admin'
 const createAdminSchema = z.object({
   name: z.string().min(2, 'Name is required'),
   email: z.string().email('Valid email is required'),
+  phone: z.string().optional(),
   password: z.string().min(8, 'Password must be at least 8 characters'),
-  role: z.enum(['admin', 'support', 'agent']),
+  role: z.enum(['admin', 'support', 'agent', 'rider']),
 })
 
 type CreateAdminFormValues = z.infer<typeof createAdminSchema>
@@ -47,11 +48,11 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
 
   const form = useForm<CreateAdminFormValues>({
     resolver: zodResolver(createAdminSchema),
-    defaultValues: { name: '', email: '', password: '', role: 'support' },
+    defaultValues: { name: '', email: '', phone: '', password: '', role: 'support' },
   })
 
   function handleSubmit(values: CreateAdminFormValues) {
-    mutate(values, {
+    mutate({ ...values, phone: values.phone?.trim() || undefined }, {
       onSuccess: () => {
         form.reset()
         onOpenChange(false)
@@ -65,7 +66,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
         <DialogHeader>
           <DialogTitle>Create Staff User</DialogTitle>
           <DialogDescription>
-            Create a new admin, support, or hub agent account.
+            Create a new admin, support, hub agent, or rider account.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -91,6 +92,19 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
                   <FormLabel>Email</FormLabel>
                   <FormControl>
                     <Input type="email" placeholder="admin@avdanstore.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone (optional)</FormLabel>
+                  <FormControl>
+                    <Input type="tel" placeholder="08012345678" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -125,6 +139,7 @@ export function CreateAdminDialog({ open, onOpenChange }: CreateAdminDialogProps
                       <SelectItem value="admin">Admin</SelectItem>
                       <SelectItem value="support">Support</SelectItem>
                       <SelectItem value="agent">Hub Agent</SelectItem>
+                      <SelectItem value="rider">Rider</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -13,8 +13,9 @@ export interface AdminUser {
 export interface CreateAdminPayload {
   email: string
   name: string
+  phone?: string
   password: string
-  role: 'admin' | 'support' | 'agent'
+  role: 'admin' | 'support' | 'agent' | 'rider'
 }
 
 export interface Hub {
