@@ -69,6 +69,15 @@ const config: ExpoConfig = {
       },
     ],
     [
+      'expo-location',
+      {
+        // Foreground only: used once, when the vendor taps "Use my current location" to pin the
+        // pickup point that delivery fees and rider matching are measured from.
+        locationWhenInUsePermission:
+          'AVDAN Vendor uses your location once to set your store pickup point, which is used to price deliveries.',
+      },
+    ],
+    [
       'expo-image-picker',
       {
         photosPermission: 'AVDAN Vendor needs photo access to attach images to your product listings.',
