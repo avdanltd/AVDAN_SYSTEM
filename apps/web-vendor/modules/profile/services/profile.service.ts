@@ -11,6 +11,8 @@ export interface UpdateVendorPayload {
   name?: string
   description?: string
   address?: string
+  lat?: number
+  lng?: number
 }
 
 export interface VendorMeResponse {

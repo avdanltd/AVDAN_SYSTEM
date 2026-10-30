@@ -6,6 +6,7 @@ import type { IncomingDelivery } from '@avdan/types'
 import { Badge, Button, Card, CardContent, EmptyState, Skeleton } from '@avdan/ui'
 import { formatRelativeTime } from '@/lib/format'
 import { useIncoming } from '../hooks/use-incoming'
+import { HUB_NOT_ASSIGNED_MESSAGE, isHubNotAssigned } from '../lib/hub-errors'
 
 const STAGE_LABEL: Record<string, string> = {
   to_vendor: 'Heading to the vendor',
@@ -72,7 +73,7 @@ function IncomingCard({ row }: { row: IncomingDelivery }) {
 }
 
 export function IncomingPage() {
-  const { data, isLoading, isError, refetch } = useIncoming()
+  const { data, isLoading, isError, error, refetch } = useIncoming()
 
   return (
     <div className="space-y-6">
@@ -92,8 +93,8 @@ export function IncomingPage() {
       ) : isError ? (
         <EmptyState
           icon={<Navigation className="h-6 w-6" />}
-          title="Couldn't load incoming riders"
-          description="Check your connection and try again."
+          title={isHubNotAssigned(error) ? 'No hub assigned' : "Couldn't load incoming riders"}
+          description={isHubNotAssigned(error) ? HUB_NOT_ASSIGNED_MESSAGE : 'Check your connection and try again.'}
           action={{ label: 'Retry', onClick: () => refetch() }}
         />
       ) : (data ?? []).length === 0 ? (

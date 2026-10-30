@@ -130,6 +130,9 @@ class UpdateVendorProfileRequest(BaseModel):
     logo_url: str | None = None
     # Re-geocoded server-side on every change (see VendorService.update_vendor_profile).
     address: str | None = Field(default=None, max_length=500)
+    # Explicit map position (e.g. from the device's location). Wins over geocoding the address.
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 class PaginatedVendorsResponse(BaseModel):

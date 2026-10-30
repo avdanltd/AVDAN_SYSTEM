@@ -16,6 +16,8 @@ export interface AdminOrder {
   status: OrderStatus
   total_kobo: number
   delivery_fee_kobo: number
+  /** How the fee was worked out; method "flat" means a location was missing so no distance was used. */
+  delivery_quote?: { method?: string; total_km?: number | null } | null
   delivery_address: Record<string, unknown>
   created_at: string
   updated_at: string
