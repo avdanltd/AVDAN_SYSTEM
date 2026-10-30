@@ -33,7 +33,7 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-20 flex-col justify-center gap-1 border-b border-border px-6">
-        <Logo size="sm" />
+        <Logo href="/" size="sm" />
         <span className="font-display text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
           Vendor Portal
         </span>

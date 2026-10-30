@@ -66,7 +66,7 @@ export function RegisterVendorForm() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
-          <Logo size="lg" className="mb-2" />
+          <Logo href="/" size="lg" className="mb-2" />
           <CardTitle>Register as Vendor</CardTitle>
           <CardDescription>Create your vendor account to start selling</CardDescription>
         </CardHeader>
