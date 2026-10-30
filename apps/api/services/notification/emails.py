@@ -1,4 +1,5 @@
 import logging
+from html import escape as html_escape
 import resend
 from core.config import settings
 
@@ -137,6 +138,33 @@ def build_otp_email(name: str, otp: str) -> str:
     <p style="color: #4B5563; font-size: 14px;">This code is valid for 10 minutes. If you did not request this code, please ignore this email or contact support if you have concerns.</p>
     """
     return _wrap_in_template(content, preview_text=f"Your AVDAN verification code is {otp}")
+
+_ROLE_LABELS = {
+    "admin": "an administrator",
+    "support": "a support agent",
+    "agent": "a hub agent",
+    "rider": "a rider",
+}
+
+
+def build_invite_email(name: str, role: str, link: str, valid_hours: int) -> str:
+    """Welcome email for an account an admin created: a button to set a password and sign in."""
+    who = html_escape(name or "there")
+    role_label = _ROLE_LABELS.get(role, "a team member")
+    safe_link = html_escape(link, quote=True)
+    content = f"""
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Welcome to AVDAN, {who}!</h2>
+    <p>An account has been created for you as {role_label}. To get started, create your password using the button below, then sign in.</p>
+
+    <div style="text-align: center; margin: 30px 0;">
+      <a href="{safe_link}" style="display: inline-block; background-color: {COLOR_PRIMARY}; color: {COLOR_WHITE}; text-decoration: none; font-weight: 600; padding: 14px 28px; border-radius: 8px;">Create your password</a>
+    </div>
+
+    <p style="color: #4B5563; font-size: 14px;">This link is valid for {valid_hours} hours and can be used once. If it has expired, ask your AVDAN administrator to send you a new one.</p>
+    <p style="color: #4B5563; font-size: 14px;">Button not working? Paste this address into your browser:<br>{safe_link}</p>
+    """
+    return _wrap_in_template(content, preview_text="Create your AVDAN password")
+
 
 def build_order_status_email(name: str, order_id: str, title: str, status_message: str) -> str:
     """Builds an HTML email for order status notifications."""

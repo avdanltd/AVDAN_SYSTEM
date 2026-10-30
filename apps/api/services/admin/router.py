@@ -108,6 +108,28 @@ async def create_admin_user(
     return _user_response(user)
 
 
+@router.post("/users/{user_id}/resend-invite", response_model=UserResponse)
+async def resend_invite(
+    user_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> UserResponse:
+    """New link, new email; the old link stops working."""
+    user = await AuthService(db, redis).resend_invite(user_id)
+    return _user_response(user)
+
+
+@router.delete("/users/{user_id}/invite", status_code=204)
+async def revoke_invite(
+    user_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> None:
+    await AuthService(db, redis).revoke_invite(user_id)
+
+
 # ── Vendor management ─────────────────────────────────────────────────────────
 
 def _admin_vendor_response(vendor: object) -> AdminVendorResponse:

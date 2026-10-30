@@ -7,12 +7,15 @@ from core.dependencies import CurrentUser, get_current_user
 from core.exceptions import AuthException
 from core.redis import get_redis
 from services.auth.schemas import (
+    ChangePasswordRequest,
+    InvitePreviewResponse,
     LoginRequest,
     LogoutRequest,
     PushTokenRequest,
     RefreshRequest,
     RegisterCustomerRequest,
     RegisterVendorRequest,
+    SetPasswordRequest,
     TokenResponse,
     UpdateProfileRequest,
     UserResponse,
@@ -168,6 +171,41 @@ async def logout(
     response.delete_cookie("avdan_token", path="/")
     response.delete_cookie("avdan_refresh_token", path="/")
     return {"message": "Logged out"}
+
+
+@router.get("/invite/{token}", response_model=InvitePreviewResponse)
+async def preview_invite(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> InvitePreviewResponse:
+    """Who an invitation link is for, so the set-password page can greet them (or say the link
+    has expired) before asking for anything."""
+    user = await AuthService(db, redis).preview_invite(token)
+    return InvitePreviewResponse(name=user.name, email=user.email, role=user.role)
+
+
+@router.post("/set-password", response_model=dict)
+async def set_password(
+    data: SetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    await AuthService(db, redis).accept_invite(data.token, data.password)
+    return {"message": "Password set. You can now sign in."}
+
+
+@router.post("/change-password", response_model=dict)
+async def change_password(
+    data: ChangePasswordRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
+) -> dict:
+    await AuthService(db, redis).change_password(
+        current_user.user_id, data.current_password, data.new_password
+    )
+    return {"message": "Password changed"}
 
 
 @router.get("/me", response_model=UserResponse)

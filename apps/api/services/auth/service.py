@@ -1,6 +1,7 @@
 """Auth service — business logic only, no HTTP concerns."""
 from __future__ import annotations
 
+import hashlib
 import secrets
 from datetime import UTC, datetime
 
@@ -8,6 +9,7 @@ import redis.asyncio as aioredis
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.config import settings
 from core.exceptions import AuthException, ConflictException, ValidationException
 from core.security import (
     create_access_token,
@@ -189,18 +191,106 @@ class AuthService:
         return user
 
     async def create_privileged_user(self, data: AdminCreateUserRequest) -> User:
+        """Create a staff account in the `invited` state and email them a link to set their own
+        password. Nobody but the account owner ever knows the password."""
         await self._assert_unique(email=data.email, phone=data.phone)
         user = User(
             role=data.role,
             email=data.email,
             phone=data.phone,
-            password_hash=hash_password(data.password),
+            # Unusable placeholder: the column is NOT NULL, and nobody knows this value.
+            password_hash=hash_password(secrets.token_urlsafe(32)),
             name=data.name,
-            status="active",
+            status="invited",
         )
         self.db.add(user)
         await self.db.flush()
+        await self._send_invite(user)
         return user
+
+    # ── Invitations ───────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _invite_key(token: str) -> str:
+        return "invite:" + hashlib.sha256(token.encode()).hexdigest()
+
+    async def _issue_invite_token(self, user: User) -> str:
+        """A fresh single-use token; any earlier one for this user stops working."""
+        ttl = settings.invite_ttl_hours * 3600
+        previous = await self.redis.get(f"invite_user:{user.id}")
+        if previous:
+            await self.redis.delete(previous if isinstance(previous, str) else previous.decode())
+        token = secrets.token_urlsafe(32)
+        key = self._invite_key(token)
+        await self.redis.setex(key, ttl, str(user.id))
+        await self.redis.setex(f"invite_user:{user.id}", ttl, key)
+        return token
+
+    @staticmethod
+    def _invite_link(user: User, token: str) -> str:
+        base = {
+            "agent": settings.hub_app_url,
+            "rider": settings.rider_app_url,
+        }.get(user.role, settings.admin_app_url)
+        return f"{base.rstrip('/')}/set-password?token={token}"
+
+    async def _send_invite(self, user: User) -> None:
+        token = await self._issue_invite_token(user)
+        if user.email:
+            from workers.tasks.notifications import send_invite_email_task
+            send_invite_email_task.delay(
+                user.email, user.name or "", user.role, self._invite_link(user, token),
+                settings.invite_ttl_hours,
+            )
+
+    async def _get_invited_user(self, user_id: str) -> User:
+        user = await self.get_user_by_id(user_id)
+        if user.status != "invited":
+            raise ValidationException("This account has already been set up")
+        return user
+
+    async def resend_invite(self, user_id: str) -> User:
+        user = await self._get_invited_user(user_id)
+        await self._send_invite(user)
+        return user
+
+    async def revoke_invite(self, user_id: str) -> None:
+        """Cancel an invitation nobody has claimed yet. The account never held any data, so it is
+        removed outright and the email address is free to invite again."""
+        user = await self._get_invited_user(user_id)
+        previous = await self.redis.get(f"invite_user:{user.id}")
+        if previous:
+            await self.redis.delete(previous if isinstance(previous, str) else previous.decode())
+        await self.redis.delete(f"invite_user:{user.id}")
+        await self.db.delete(user)
+        await self.db.flush()
+
+    async def _user_for_invite_token(self, token: str) -> User:
+        user_id = await self.redis.get(self._invite_key(token))
+        if not user_id:
+            raise ValidationException("This link is invalid or has expired. Ask your admin to send a new one.")
+        user_id = user_id if isinstance(user_id, str) else user_id.decode()
+        user = await self.get_user_by_id(user_id)
+        if user.status != "invited":
+            raise ValidationException("This account has already been set up. Please sign in.")
+        return user
+
+    async def preview_invite(self, token: str) -> User:
+        return await self._user_for_invite_token(token)
+
+    async def accept_invite(self, token: str, password: str) -> User:
+        user = await self._user_for_invite_token(token)
+        user.password_hash = hash_password(password)
+        user.status = "active"
+        await self.redis.delete(self._invite_key(token))
+        await self.redis.delete(f"invite_user:{user.id}")
+        return user
+
+    async def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
+        user = await self.get_user_by_id(user_id)
+        if not verify_password(current_password, user.password_hash):
+            raise ValidationException("Current password is incorrect")
+        user.password_hash = hash_password(new_password)
 
     async def _assert_unique(self, email: str | None, phone: str | None) -> None:
         if email:
