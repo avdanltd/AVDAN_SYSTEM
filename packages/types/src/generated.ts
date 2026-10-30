@@ -1840,6 +1840,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hub/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get My Hub
+         * @description The hub this agent works at, with the details they can edit.
+         */
+        get: operations["get_my_hub_hub_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update My Hub */
+        patch: operations["update_my_hub_hub_me_patch"];
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -2280,6 +2301,10 @@ export interface components {
             lat: number | null;
             /** Lng */
             lng: number | null;
+            /** Address */
+            address?: string | null;
+            /** Description */
+            description?: string | null;
         };
         /**
          * IncomingDeliveryResponse
@@ -2390,6 +2415,10 @@ export interface components {
             hub_lat?: number | null;
             /** Hub Lng */
             hub_lng?: number | null;
+            /** Hub Address */
+            hub_address?: string | null;
+            /** Hub Description */
+            hub_description?: string | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -2486,6 +2515,10 @@ export interface components {
             hub_lat?: number | null;
             /** Hub Lng */
             hub_lng?: number | null;
+            /** Hub Address */
+            hub_address?: string | null;
+            /** Hub Description */
+            hub_description?: string | null;
             /** Status */
             status: string;
             /** Total Kobo */
@@ -3023,6 +3056,21 @@ export interface components {
              * @default 100
              */
             capacity: number;
+        };
+        /**
+         * UpdateMyHubRequest
+         * @description What a hub agent can fill in about their own hub. Send coordinates (e.g. from the device's
+         *     location) or leave them out and send an address to have it looked up.
+         */
+        UpdateMyHubRequest: {
+            /** Address */
+            address?: string | null;
+            /** Description */
+            description?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
         };
         /** UpdateProductAvailabilityRequest */
         UpdateProductAvailabilityRequest: {
@@ -7497,6 +7545,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HubAnalyticsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_my_hub_hub_me_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_my_hub_hub_me_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMyHubRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HubResponse"];
                 };
             };
             /** @description Validation Error */

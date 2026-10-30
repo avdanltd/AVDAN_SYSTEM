@@ -179,6 +179,8 @@ def _order_resp(o: object, hub: object | None = None) -> OrderResponse:
         hub_name=h.name if h else None,
         hub_lat=float(h.lat) if h and h.lat is not None else None,
         hub_lng=float(h.lng) if h and h.lng is not None else None,
+        hub_address=h.address if h else None,
+        hub_description=h.description if h else None,
         status=order.status,
         total_kobo=order.total_kobo,
         # The rider sees what they earn: their share after AVDAN's delivery commission.

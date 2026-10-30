@@ -44,6 +44,8 @@ class HubResponse(BaseModel):
     capacity: int
     lat: float | None
     lng: float | None
+    address: str | None = None
+    description: str | None = None
 
 
 class CreateHubRequest(BaseModel):
@@ -51,6 +53,15 @@ class CreateHubRequest(BaseModel):
     capacity: int = 100
     lat: float | None = None
     lng: float | None = None
+
+
+class UpdateMyHubRequest(BaseModel):
+    """What a hub agent can fill in about their own hub. Send coordinates (e.g. from the device's
+    location) or leave them out and send an address to have it looked up."""
+    address: str | None = Field(default=None, max_length=500)
+    description: str | None = Field(default=None, max_length=1000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
 
 
 class AssignHubRequest(BaseModel):

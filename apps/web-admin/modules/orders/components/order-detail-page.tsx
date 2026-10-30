@@ -170,6 +170,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             {order.hub_name ? (
               <div className="mt-1">
                 <p className="text-sm font-medium">{order.hub_name}</p>
+                {order.hub_address && (
+                  <p className="text-xs text-muted-foreground">{order.hub_address}</p>
+                )}
                 {order.hub_description && (
                   <p className="text-xs text-muted-foreground">{order.hub_description}</p>
                 )}

@@ -137,6 +137,8 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           </CardHeader>
           <CardContent className="space-y-3 text-sm text-muted-foreground">
             <p>{order.hub_name ?? 'Hub not yet assigned'}</p>
+            {order.hub_address && <p>{order.hub_address}</p>}
+            {order.hub_description && <p>{order.hub_description}</p>}
             {order.hub_lat != null && order.hub_lng != null && (
               <>
                 {locationStatus === 'denied' ? (

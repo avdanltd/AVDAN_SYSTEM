@@ -228,6 +228,12 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <Text style={[styles.addressText, { color: colors.foreground }]}>
             {order.hub_name ?? 'Assigned hub'}
           </Text>
+          {order.hub_address ? (
+            <Text style={[styles.addressText, { color: colors.mutedForeground }]}>{order.hub_address}</Text>
+          ) : null}
+          {order.hub_description ? (
+            <Text style={[styles.addressText, { color: colors.mutedForeground }]}>{order.hub_description}</Text>
+          ) : null}
           {order.hub_lat != null && order.hub_lng != null && (
             <>
               <DeliveryMap

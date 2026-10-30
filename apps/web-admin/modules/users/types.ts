@@ -24,6 +24,8 @@ export interface Hub {
   capacity: number
   lat: number | null
   lng: number | null
+  address?: string | null
+  description?: string | null
 }
 
 export interface CreateHubPayload {

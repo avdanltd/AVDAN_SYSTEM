@@ -312,6 +312,8 @@ def _hub_fields(hubs: dict | None, hub_id: object) -> dict:
         "hub_name": hub.name,
         "hub_lat": float(hub.lat) if hub.lat is not None else None,
         "hub_lng": float(hub.lng) if hub.lng is not None else None,
+        "hub_address": hub.address,
+        "hub_description": hub.description,
     }
 
 
@@ -608,6 +610,8 @@ def _hub_resp(hub: object) -> HubResponse:
         capacity=h.capacity,
         lat=float(h.lat) if h.lat is not None else None,
         lng=float(h.lng) if h.lng is not None else None,
+        address=h.address,
+        description=h.description,
     )
 
 
