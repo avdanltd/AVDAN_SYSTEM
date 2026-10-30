@@ -30,6 +30,7 @@ import { formatDate } from '@/lib/format'
 
 const configSchema = z.object({
   commission_rate_percent: z.coerce.number().min(0).max(100),
+  delivery_commission_percent: z.coerce.number().min(0).max(100),
   base_fee_kobo: z.coerce.number().min(0),
   per_km_kobo: z.coerce.number().min(0),
   road_factor: z.coerce.number().min(1).max(3),
@@ -56,6 +57,7 @@ export function ConfigPage() {
     resolver: zodResolver(configSchema),
     defaultValues: {
       commission_rate_percent: 0,
+      delivery_commission_percent: 20,
       base_fee_kobo: 0,
       per_km_kobo: 0,
       road_factor: 1.3,
@@ -70,6 +72,7 @@ export function ConfigPage() {
     if (config) {
       form.reset({
         commission_rate_percent: config.commission_rate_percent,
+        delivery_commission_percent: config.delivery_commission_percent ?? 20,
         base_fee_kobo: config.delivery_fee_structure.base_fee_kobo,
         per_km_kobo: config.delivery_fee_structure.per_km_kobo,
         road_factor: config.delivery_fee_structure.road_factor ?? 1.3,
@@ -91,6 +94,7 @@ export function ConfigPage() {
     updateConfig(
       {
         commission_rate_percent: pendingValues.commission_rate_percent,
+        delivery_commission_percent: pendingValues.delivery_commission_percent,
         delivery_fee_structure: {
           base_fee_kobo: pendingValues.base_fee_kobo,
           per_km_kobo: pendingValues.per_km_kobo,
@@ -152,6 +156,22 @@ export function ConfigPage() {
                       <FormControl>
                         <Input type="number" step="0.01" min="0" max="100" {...field} />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="delivery_commission_percent"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Delivery Fee Commission (%)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" min="0" max="100" {...field} />
+                      </FormControl>
+                      <p className="text-xs text-muted-foreground">
+                        AVDAN's share of each delivery fee; the rider is paid the rest. Applies to orders placed after the change.
+                      </p>
                       <FormMessage />
                     </FormItem>
                   )}

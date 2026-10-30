@@ -10,6 +10,8 @@ from models.base import Base, BaseModel
 # Default platform-wide settings — used when no DB row exists yet
 DEFAULT_PLATFORM_CONFIG: dict = {
     "commission_rate_percent": 10,
+    # Share of every delivery fee AVDAN keeps; the rider is paid the rest. Snapshotted per order.
+    "delivery_commission_percent": 20,
     "delivery_fee_structure": {
         "base_fee_kobo": 50000,
         "per_km_kobo": 10000,

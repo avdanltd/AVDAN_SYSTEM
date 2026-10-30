@@ -34,6 +34,9 @@ class Order(BaseModel):
     # OrderService._calculate_delivery_fee. Stored rather than recomputed so a later change to
     # the fee structure or either party's address never alters what was already promised.
     delivery_fee_kobo: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # The rider's share of delivery_fee_kobo, snapshotted at checkout after AVDAN's delivery
+    # commission. Null on orders placed before the commission existed: the rider got it all.
+    rider_fee_kobo: Mapped[int | None] = mapped_column(Integer, nullable=True)
     delivery_address: Mapped[dict] = mapped_column(JSONB, nullable=False)
     # Breakdown behind delivery_fee_kobo: route legs (vendor -> hub -> customer), km, rates, and
     # the hub the fee was quoted against (dispatch routes the order through that same hub).
