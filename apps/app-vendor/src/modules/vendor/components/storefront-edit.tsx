@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
+import * as Location from 'expo-location'
 import { z } from 'zod'
 
 import { useUpdateStorefront, useVendorProfile } from '../hooks/use-vendor'
-import { Button, Card, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Button, Card, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
 
 // Mirrors UpdateVendorProfileRequest: name 1-255, description free text, address free text.
 const storefrontSchema = z.object({
@@ -24,6 +25,25 @@ export function StorefrontEdit() {
   const [address, setAddress] = useState(vendor?.address ?? '')
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null)
+  const [locating, setLocating] = useState(false)
+
+  const pinCurrentLocation = async () => {
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        toast.error('Location permission needed', 'Allow location access, or enter a more specific address.')
+        return
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
+      setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+    } catch {
+      toast.error('Could not get your location', 'Check that location is switched on and try again.')
+    } finally {
+      setLocating(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -40,7 +60,8 @@ export function StorefrontEdit() {
   const dirty =
     name !== (vendor?.name ?? '') ||
     description !== (vendor?.description ?? '') ||
-    address !== (vendor?.address ?? '')
+    address !== (vendor?.address ?? '') ||
+    deviceCoords !== null
 
   const handleSave = () => {
     const result = storefrontSchema.safeParse({ name, description, address })
@@ -58,6 +79,7 @@ export function StorefrontEdit() {
       name: result.data.name,
       description: result.data.description || null,
       address: result.data.address || undefined,
+      ...(deviceCoords ?? {}),
     })
   }
 
@@ -136,10 +158,24 @@ export function StorefrontEdit() {
             {errors.address ? (
               <Text style={[styles.error, { color: colors.destructive }]}>{errors.address}</Text>
             ) : null}
-            {vendor && !vendor.lat && vendor.address ? (
+            <Button
+              label={locating ? 'Locating…' : 'Use my current location'}
+              variant="outline"
+              onPress={pinCurrentLocation}
+              loading={locating}
+            />
+            <Text style={[styles.hint, { color: colors.subtleForeground }]}>
+              {deviceCoords
+                ? `New position ${deviceCoords.lat.toFixed(5)}, ${deviceCoords.lng.toFixed(5)} (not saved yet)`
+                : vendor?.lat != null && vendor?.lng != null
+                  ? `Map position saved: ${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)}`
+                  : 'No map position yet'}
+            </Text>
+            {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) ? (
               <Text style={[styles.error, { color: colors.warning }]}>
-                Couldn&apos;t pinpoint this address on the map — try a more specific street
-                address.
+                Your location isn&apos;t set, so customers are charged only the flat delivery fee.
+                Stand at your pickup point and tap &quot;Use my current location&quot;, or enter a more
+                specific street address.
               </Text>
             ) : null}
           </View>
