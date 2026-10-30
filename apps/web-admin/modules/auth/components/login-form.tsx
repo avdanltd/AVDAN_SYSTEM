@@ -19,7 +19,7 @@ export function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-secondary p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <Logo size="lg" className="mb-2" />
+          <Logo href="/" size="lg" className="mb-2" />
           <CardTitle>Sign in</CardTitle>
           <CardDescription>Welcome back! Please enter your details</CardDescription>
         </CardHeader>

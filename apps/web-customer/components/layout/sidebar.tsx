@@ -32,7 +32,7 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-16 items-center border-b border-border px-6">
-        <Logo size="md" />
+        <Logo href="/" size="md" />
       </div>
 
       <nav className="flex-1 px-3 py-4">

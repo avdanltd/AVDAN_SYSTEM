@@ -41,7 +41,7 @@ export function LoginForm() {
         { value: '10k+', label: 'Orders delivered' },
       ]}
     >
-      <Logo size="md" className="mb-8" />
+      <Logo href="/" size="md" className="mb-8" />
       <h1 className="font-display text-2xl font-bold text-foreground">Welcome back</h1>
       <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to your account</p>
 
