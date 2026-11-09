@@ -76,7 +76,7 @@ export function Checkout() {
   // its lines are cleared from the cart (see placeOrder), so from then on the summary reads from
   // the confirmed order itself rather than the live (now-shifted) cart groups.
   const current = groups[0]
-  const { data: quote, isFetching: quoting } = useDeliveryQuote(current?.vendorId, coords)
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(current?.vendorId, coords, current?.lines ?? [])
   const remaining = placedOrder ? groups.length : groups.length - 1
 
   const captureLocation = async () => {
@@ -227,6 +227,11 @@ export function Checkout() {
                     : 'Share your location to see it'}
             </Text>
           </View>
+          {!placedOrder && quote && quote.special_fee_kobo > 0 ? (
+            <Text style={[styles.sumName, { color: colors.mutedForeground }]}>
+              Includes {formatKobo(quote.special_fee_kobo)} special delivery charge for bulky items in your cart.
+            </Text>
+          ) : null}
 
           <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
             <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Total</Text>

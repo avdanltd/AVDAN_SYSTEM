@@ -64,6 +64,7 @@ export const vendorService = {
   setAvailability: (productId: string, available: boolean) =>
     apiClient.patch<Product>(`/vendors/me/products/${productId}/availability`, { available }),
 
+  getAttention: () => apiClient.get<{ orders: number; products: number }>('/vendors/me/attention'),
   getCategories: () => apiClient.get<Category[]>('/categories'),
 
   /* ── Earnings ───────────────────────────────────────────────────────────── */

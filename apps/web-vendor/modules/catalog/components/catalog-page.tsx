@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Package, Plus, Pencil, Search, Trash2 } from 'lucide-react'
+import { AlertCircle, Package, Plus, Pencil, Search, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -18,6 +18,11 @@ import {
   EmptyState,
   ConfirmDialog,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@avdan/ui'
 import { useCatalog } from '../hooks/use-catalog'
 import { useToggleAvailability } from '../hooks/use-toggle-availability'
@@ -25,6 +30,15 @@ import { useDeleteProduct } from '../hooks/use-delete-product'
 import { ProductForm } from './product-form'
 import type { Product } from '../types'
 import { formatPrice } from '@/lib/format'
+import { statusCounts, statusOf, type StatusFilter } from '../lib/product-status'
+
+const FILTERS: { value: StatusFilter; label: string; alert?: boolean }[] = [
+  { value: 'all', label: 'All products' },
+  { value: 'available', label: 'Available' },
+  { value: 'awaiting', label: 'Awaiting approval', alert: true },
+  { value: 'rejected', label: 'Rejected', alert: true },
+  { value: 'out_of_stock', label: 'Out of stock', alert: true },
+]
 
 function ProductCard({ product }: { product: Product }) {
   const [editOpen, setEditOpen] = useState(false)
@@ -162,10 +176,15 @@ export function CatalogPage() {
   const allProducts = data?.products ?? []
   const [query, setQuery] = useState('')
   // Filters as the vendor types; the whole catalogue is already loaded.
+  const [filter, setFilter] = useState<StatusFilter>('all')
+  const counts = statusCounts(allProducts)
   const needle = query.trim().toLowerCase()
-  const products = needle
-    ? allProducts.filter((p) => `${p.name} ${p.description ?? ''}`.toLowerCase().includes(needle))
-    : allProducts
+  const products = allProducts.filter(
+    (p) =>
+      (filter === 'all' || statusOf(p) === filter) &&
+      (!needle || `${p.name} ${p.description ?? ''}`.toLowerCase().includes(needle)),
+  )
+  const narrowed = needle !== '' || filter !== 'all'
 
   return (
     <div className="space-y-6">
@@ -175,7 +194,7 @@ export function CatalogPage() {
           <p className="mt-1 text-sm text-muted-foreground">
             {isLoading
               ? 'Loading…'
-              : needle
+              : narrowed
                 ? `${products.length} of ${allProducts.length} products`
                 : `${products.length} product${products.length !== 1 ? 's' : ''}`}
           </p>
@@ -187,16 +206,36 @@ export function CatalogPage() {
       </div>
 
       {!isLoading && allProducts.length > 0 && (
-        <div className="relative max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search your products"
-            aria-label="Search your products"
-            className="pl-9"
-          />
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="relative w-full max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search your products"
+              aria-label="Search your products"
+              className="pl-9"
+            />
+          </div>
+          <Select value={filter} onValueChange={(v) => setFilter(v as StatusFilter)}>
+            <SelectTrigger className="w-full sm:w-64" aria-label="Filter products by status">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FILTERS.map((f) => (
+                <SelectItem key={f.value} value={f.value}>
+                  <span className="flex w-full items-center gap-2">
+                    {f.alert && counts[f.value] > 0 && (
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden />
+                    )}
+                    <span>{f.label}</span>
+                    <span className="ml-auto pl-4 tabular-nums text-muted-foreground">{counts[f.value]}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
@@ -215,8 +254,12 @@ export function CatalogPage() {
         <EmptyState
           icon={<Search className="h-6 w-6" />}
           title="No matching products"
-          description={`Nothing matches "${query.trim()}". Try a different word.`}
-          action={{ label: 'Clear search', onClick: () => setQuery('') }}
+          description={
+            needle
+              ? `Nothing matches "${query.trim()}"${filter !== 'all' ? ' in this filter' : ''}. Try a different word.`
+              : 'No products in this filter.'
+          }
+          action={{ label: 'Clear filters', onClick: () => { setQuery(''); setFilter('all') } }}
         />
       )}
 

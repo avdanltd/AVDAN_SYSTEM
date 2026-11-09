@@ -18,6 +18,7 @@ def _out(cat: object) -> CategoryResponse:
         slug=c.slug,
         description=c.description,
         icon=c.icon,
+        parent_id=str(c.parent_id) if c.parent_id else None,
         sort_order=c.sort_order,
         active=c.active,
     )

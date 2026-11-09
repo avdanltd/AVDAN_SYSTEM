@@ -40,6 +40,8 @@ import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { useCartStore } from '@/modules/cart/store/cart.store'
 import { CartDrawer } from '@/modules/cart/components/cart-drawer'
 import { useCategories } from '@/modules/categories/hooks/use-categories'
+import type { Category } from '@/modules/categories/types'
+import { nestCategories } from '@/modules/categories/lib/nest'
 
 function getUserInitials(name: string | null | undefined): string {
   if (!name) return 'U'
@@ -170,16 +172,27 @@ function CategoryMegaMenu() {
             Shop by category
           </p>
           <div className="grid grid-cols-2 gap-1">
-            {categories.map((cat) => (
-              <Link
-                key={cat.id}
-                href={ROUTES.category(cat.slug)}
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                {cat.icon && <CategoryIcon name={cat.icon} className="h-4 w-4 shrink-0" />}
-                <span className="line-clamp-1">{cat.name}</span>
-              </Link>
+            {nestCategories(categories).map(({ category: cat, children }) => (
+              <div key={cat.id}>
+                <Link
+                  href={ROUTES.category(cat.slug)}
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                >
+                  {cat.icon && <CategoryIcon name={cat.icon} className="h-4 w-4 shrink-0" />}
+                  <span className="line-clamp-1">{cat.name}</span>
+                </Link>
+                {children.map((sub) => (
+                  <Link
+                    key={sub.id}
+                    href={ROUTES.category(sub.slug)}
+                    onClick={() => setOpen(false)}
+                    className="block rounded-lg py-1.5 pl-10 pr-3 text-xs text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                  >
+                    <span className="line-clamp-1">{sub.name}</span>
+                  </Link>
+                ))}
+              </div>
             ))}
           </div>
           <div className="mt-2 border-t border-border pt-2">
@@ -193,6 +206,54 @@ function CategoryMegaMenu() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function MobileCategoryItem({
+  category,
+  subs,
+  onNav,
+}: {
+  category: Category
+  subs: Category[]
+  onNav?: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div>
+      <div className="flex items-center rounded-md transition-colors hover:bg-secondary">
+        <Link
+          href={ROUTES.category(category.slug)}
+          onClick={onNav}
+          className="flex flex-1 items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          {category.icon && <CategoryIcon name={category.icon} className="h-4 w-4 shrink-0" />}
+          {category.name}
+        </Link>
+        {subs.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            aria-label={`${open ? 'Hide' : 'Show'} ${category.name} sub-categories`}
+            className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+          >
+            <ChevronDown className={cn('h-4 w-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        )}
+      </div>
+      {open &&
+        subs.map((sub) => (
+          <Link
+            key={sub.id}
+            href={ROUTES.category(sub.slug)}
+            onClick={onNav}
+            className="block rounded-md py-2 pl-10 pr-3 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            {sub.name}
+          </Link>
+        ))}
     </div>
   )
 }
@@ -291,16 +352,8 @@ function MobileNav({ isAuthenticated, user, onNav, onLogout, isPending }: Mobile
             <p className="mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Shop by category
             </p>
-            {categories.slice(0, 8).map((cat) => (
-              <Link
-                key={cat.id}
-                href={ROUTES.category(cat.slug)}
-                onClick={onNav}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-              >
-                {cat.icon && <CategoryIcon name={cat.icon} className="h-4 w-4 shrink-0" />}
-                {cat.name}
-              </Link>
+            {nestCategories(categories).slice(0, 8).map(({ category, children }) => (
+              <MobileCategoryItem key={category.id} category={category} subs={children} onNav={onNav} />
             ))}
           </div>
         )}

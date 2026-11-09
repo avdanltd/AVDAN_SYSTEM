@@ -61,6 +61,7 @@ def _product_response(product: object, public: bool = False) -> ProductResponse:
         compare_at_price_kobo=p.compare_at_price_kobo if public else None,
         approval_status=p.approval_status,
         rejection_reason=None if public else p.rejection_reason,
+        special_delivery_fee_kobo=p.special_delivery_fee_kobo,
         available=p.available,
         stock_qty=p.stock_qty,
         image_urls=p.image_urls or [],
@@ -83,6 +84,7 @@ def _public_product_response(product: object) -> PublicProductResponse:
         description=p.description,
         price_kobo=p.price_kobo,
         compare_at_price_kobo=p.compare_at_price_kobo,
+        special_delivery_fee_kobo=p.special_delivery_fee_kobo,
         available=p.available,
         stock_qty=p.stock_qty,
         image_urls=p.image_urls or [],
@@ -195,6 +197,15 @@ async def get_my_vendor(
     svc = VendorService(db)
     vendor = await svc.get_or_create_vendor_for_user(current_user.user_id)
     return _vendor_detail_response(vendor)
+
+
+@router.get("/me/attention")
+async def my_attention(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Counts of items waiting on this vendor, for the menu badges."""
+    return await VendorService(db).attention_counts(current_user.user_id)
 
 
 @router.patch("/me", response_model=VendorResponse)

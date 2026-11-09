@@ -19,25 +19,37 @@ import {
   Input,
   Textarea,
   Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@avdan/ui'
 import { categoryCreateSchema, type CategoryCreateForm } from '../schemas/category.schemas'
-import { useCreateCategory, useUpdateCategory } from '../hooks/use-categories'
+import { useCategories, useCreateCategory, useUpdateCategory } from '../hooks/use-categories'
 import type { Category } from '../types'
 
 interface CategoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing?: Category | null
+  /** Pre-select this parent when creating (the "Add sub-category" action). */
+  defaultParentId?: string | null
 }
 
-export function CategoryDialog({ open, onOpenChange, editing }: CategoryDialogProps) {
+export function CategoryDialog({ open, onOpenChange, editing, defaultParentId }: CategoryDialogProps) {
+  const { data: all = [] } = useCategories()
+  // Only top-level categories can be parents (one level of nesting), and a category that already
+  // has sub-categories can't itself become one.
+  const hasChildren = !!editing && all.some((c) => c.parent_id === editing.id)
+  const parents = all.filter((c) => !c.parent_id && c.id !== editing?.id)
   const { mutate: create, isPending: creating } = useCreateCategory()
   const { mutate: update, isPending: updating } = useUpdateCategory()
   const isPending = creating || updating
 
   const form = useForm<CategoryCreateForm>({
     resolver: zodResolver(categoryCreateSchema),
-    defaultValues: { name: '', description: '', icon: '', sort_order: 0 },
+    defaultValues: { name: '', description: '', icon: '', parent_id: 'none', sort_order: 0 },
   })
 
   useEffect(() => {
@@ -46,27 +58,29 @@ export function CategoryDialog({ open, onOpenChange, editing }: CategoryDialogPr
         name: editing.name,
         description: editing.description ?? '',
         icon: editing.icon ?? '',
+        parent_id: editing.parent_id ?? 'none',
         sort_order: editing.sort_order,
       })
     } else {
-      form.reset({ name: '', description: '', icon: '', sort_order: 0 })
+      form.reset({ name: '', description: '', icon: '', parent_id: defaultParentId ?? 'none', sort_order: 0 })
     }
-  }, [editing, form])
+  }, [editing, defaultParentId, open, form])
 
   function handleSubmit(values: CategoryCreateForm) {
+    const { parent_id, ...rest } = values
     const payload = {
-      ...values,
+      ...rest,
       description: values.description || null,
       icon: values.icon || null,
     }
 
     if (editing) {
       update(
-        { id: editing.id, data: payload },
+        { id: editing.id, data: { ...payload, parent_id: parent_id === 'none' ? '' : parent_id } },
         { onSuccess: () => { form.reset(); onOpenChange(false) } },
       )
     } else {
-      create(payload, { onSuccess: () => { form.reset(); onOpenChange(false) } })
+      create({ ...payload, parent_id: parent_id === 'none' ? null : parent_id }, { onSuccess: () => { form.reset(); onOpenChange(false) } })
     }
   }
 
@@ -74,7 +88,7 @@ export function CategoryDialog({ open, onOpenChange, editing }: CategoryDialogPr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Category' : 'New Category'}</DialogTitle>
+          <DialogTitle>{editing ? 'Edit Category' : defaultParentId ? 'New Sub-category' : 'New Category'}</DialogTitle>
           <DialogDescription>
             {editing
               ? 'Update category details. Changes apply immediately to all vendors and products.'
@@ -93,6 +107,35 @@ export function CategoryDialog({ open, onOpenChange, editing }: CategoryDialogPr
                   <FormControl>
                     <Input placeholder="e.g. Electronics" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="parent_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Parent category <span className="text-xs text-muted-foreground">(makes this a sub-category)</span></FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange} disabled={hasChildren}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="None (top-level)" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="none">None (top-level category)</SelectItem>
+                      {parents.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {hasChildren && (
+                    <p className="text-xs text-muted-foreground">
+                      This category has sub-categories, so it can&apos;t be placed under another one.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}

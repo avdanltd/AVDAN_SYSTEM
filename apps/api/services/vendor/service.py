@@ -52,8 +52,13 @@ class VendorService:
         )
 
         if category_id:
-            q = q.where(Product.category_id == uuid.UUID(category_id))
-            cq = cq.where(Product.category_id == uuid.UUID(category_id))
+            # A top-level category also matches products filed under its sub-categories.
+            cid = uuid.UUID(category_id)
+            in_category = Product.category_id.in_(
+                select(Category.id).where(or_(Category.id == cid, Category.parent_id == cid))
+            )
+            q = q.where(in_category)
+            cq = cq.where(in_category)
 
         if vendor_id:
             q = q.where(Product.vendor_id == uuid.UUID(vendor_id))
@@ -119,6 +124,23 @@ class VendorService:
         )
         related = list(related_result.scalars().all())
         return product, related
+
+    async def attention_counts(self, user_id: str) -> dict:
+        """What is waiting on this vendor: paid orders to accept or reject, and products the
+        admin rejected (which they need to fix). Drives the menu badges."""
+        from services.orders.models import Order
+        from services.orders.state_machine import OrderStatus
+
+        vendor = await self.get_or_create_vendor_for_user(user_id)
+        orders = (await self.db.execute(
+            select(func.count()).select_from(Order)
+            .where(Order.vendor_id == vendor.id, Order.status == OrderStatus.PAID)
+        )).scalar_one()
+        products = (await self.db.execute(
+            select(func.count()).select_from(Product)
+            .where(Product.vendor_id == vendor.id, Product.approval_status == "REJECTED")
+        )).scalar_one()
+        return {"orders": int(orders), "products": int(products)}
 
     # ── Public vendors ────────────────────────────────────────────────────────
 

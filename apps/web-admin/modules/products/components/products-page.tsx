@@ -58,6 +58,7 @@ export function ProductsPage() {
   const [discountOn, setDiscountOn] = useState(false)
   const [discountType, setDiscountType] = useState<'FIXED' | 'PERCENT'>('PERCENT')
   const [discountInput, setDiscountInput] = useState('')
+  const [specialFeeInput, setSpecialFeeInput] = useState('')
   const [reason, setReason] = useState('')
 
   const params: Record<string, string> = { page: String(page), page_size: '20' }
@@ -77,6 +78,7 @@ export function ProductsPage() {
     setPriceInput(String((product.compare_at_price_kobo ?? product.price_kobo) / 100))
     setDiscountOn(product.discount_type !== null)
     setDiscountType(product.discount_type ?? 'PERCENT')
+    setSpecialFeeInput(product.special_delivery_fee_kobo ? String(product.special_delivery_fee_kobo / 100) : '')
     setDiscountInput(
       product.discount_value === null
         ? ''
@@ -103,7 +105,10 @@ export function ProductsPage() {
   const discountValid =
     !discountOn ||
     (discountEntered && (discountType !== 'PERCENT' || discountValue < 100) && pricing !== null && discountedKobo >= pricing.vendor_price_kobo)
-  const canSubmit = priceValid && discountValid
+  // Optional extra delivery charge per unit (naira), blank = none.
+  const specialFeeKobo = specialFeeInput.trim() === '' ? 0 : Math.round(Number(specialFeeInput) * 100)
+  const specialFeeValid = Number.isFinite(specialFeeKobo) && specialFeeKobo >= 0
+  const canSubmit = priceValid && discountValid && specialFeeValid
 
   function submitApprove() {
     if (!pricing || !canSubmit) return
@@ -112,6 +117,7 @@ export function ProductsPage() {
         id: pricing.id,
         body: {
           price_kobo: shownKobo,
+          special_delivery_fee_kobo: specialFeeKobo,
           ...(discountOn ? { discount_type: discountType, discount_value: discountValue } : {}),
         },
       },
@@ -323,6 +329,23 @@ export function ProductsPage() {
                   </div>
                 </div>
               )}
+
+              <div className="space-y-1.5">
+                <Label htmlFor="special-fee">Special delivery fee per unit (₦) — optional</Label>
+                <Input
+                  id="special-fee"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  placeholder="0"
+                  value={specialFeeInput}
+                  onChange={(e) => setSpecialFeeInput(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  For bulky or awkward products. Added to the normal delivery fee for every unit ordered; it doesn&apos;t change how the normal fee is worked out.
+                </p>
+                {!specialFeeValid && <p className="text-sm text-destructive">Enter 0 or more.</p>}
+              </div>
 
               {priceValid && (
                 <div className="rounded-md bg-muted p-3 text-sm">

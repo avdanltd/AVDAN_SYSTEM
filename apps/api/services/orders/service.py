@@ -30,7 +30,9 @@ class OrderService:
     def __init__(self, db: AsyncSession) -> None:
         self.db = db
 
-    async def quote_delivery(self, vendor: object, delivery_address: dict) -> dict:
+    async def quote_delivery(
+        self, vendor: object, delivery_address: dict, items: list[tuple[object, int]] | None = None
+    ) -> dict:
         """Delivery fee = base + per_km × road distance of the rider's real route.
 
         The route is vendor → hub → customer: every parcel goes through a hub for QA, so the
@@ -38,6 +40,9 @@ class OrderService:
         distances are multiplied by `road_factor` because roads are never straight. Degrades
         gracefully: no hub coordinates → vendor → customer directly; any missing coordinate →
         the flat base fee. The hub quoted here is the one dispatch later routes the order through.
+
+        `items` is [(product, quantity)]. Products with a special delivery fee (bulky or awkward
+        goods) add that fee per unit on top; it never changes the distance-based part.
         """
         from services.analytics.service import AnalyticsService
         from services.dispatch.service import pick_hub
@@ -48,8 +53,13 @@ class OrderService:
         per_km_kobo = int(fee_structure.get("per_km_kobo", 0))
         road_factor = float(fee_structure.get("road_factor", 1.0))
 
+        special_fee_kobo = sum(
+            int(getattr(prod, "special_delivery_fee_kobo", 0) or 0) * qty for prod, qty in (items or [])
+        )
+
         quote: dict = {
-            "fee_kobo": base_fee_kobo, "method": "flat",
+            "fee_kobo": base_fee_kobo + special_fee_kobo, "method": "flat",
+            "special_fee_kobo": special_fee_kobo,
             "vendor_to_hub_km": None, "hub_to_customer_km": None, "total_km": None,
             "base_fee_kobo": base_fee_kobo, "per_km_kobo": per_km_kobo, "road_factor": road_factor,
             "hub_id": None, "hub_name": None,
@@ -77,18 +87,27 @@ class OrderService:
             direct = _haversine_km(v_lat, v_lng, c_lat, c_lng) * road_factor
             quote.update(method="direct", total_km=round(direct, 2))
 
-        quote["fee_kobo"] = base_fee_kobo + int(per_km_kobo * quote["total_km"])
+        quote["fee_kobo"] = base_fee_kobo + int(per_km_kobo * quote["total_km"]) + special_fee_kobo
         return quote
 
-    async def quote_delivery_for_vendor(self, vendor_id: str, delivery_address: dict) -> dict:
-        from services.vendor.models import Vendor
+    async def quote_delivery_for_vendor(
+        self, vendor_id: str, delivery_address: dict, items: list[tuple[str, int]] | None = None
+    ) -> dict:
+        from services.vendor.models import Product, Vendor
 
         vendor = (await self.db.execute(
             select(Vendor).where(Vendor.id == uuid.UUID(vendor_id), Vendor.status == "active")
         )).scalar_one_or_none()
         if not vendor:
             raise NotFoundException("Vendor not found or not active")
-        return await self.quote_delivery(vendor, delivery_address)
+        priced: list[tuple[object, int]] = []
+        if items:
+            qty_by_id = {uuid.UUID(pid): qty for pid, qty in items}
+            products = (await self.db.execute(
+                select(Product).where(Product.id.in_(list(qty_by_id)), Product.vendor_id == vendor.id)
+            )).scalars().all()
+            priced = [(p, qty_by_id[p.id]) for p in products]
+        return await self.quote_delivery(vendor, delivery_address, priced)
 
     # ── Customer ──────────────────────────────────────────────────────────────
 
@@ -169,7 +188,9 @@ class OrderService:
                 select(User).where(User.id == uuid.UUID(customer_id))
             )).scalar_one_or_none()
             delivery_address["phone"] = customer.phone if customer else None
-        delivery_quote = await self.quote_delivery(vendor, delivery_address)
+        delivery_quote = await self.quote_delivery(
+            vendor, delivery_address, [(products_by_id[i.product_id], i.quantity) for i in data.items]
+        )
         delivery_fee_kobo = delivery_quote["fee_kobo"]
         delivery_commission = float(
             (await AnalyticsService(self.db).get_config()).get("delivery_commission_percent", 0) or 0

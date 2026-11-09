@@ -22,6 +22,15 @@ export function useCategories() {
   })
 }
 
+/** Items waiting on the vendor, for the tab badges: paid orders to accept, rejected products. */
+export function useAttention() {
+  return useQuery({
+    queryKey: ['attention'],
+    queryFn: () => vendorService.getAttention(),
+    refetchInterval: 30_000,
+  })
+}
+
 export function useVendorAnalytics() {
   return useQuery({
     queryKey: ['vendor-analytics'],
@@ -54,6 +63,7 @@ export function useOrderActions(orderId: string) {
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ['vendor-orders'] })
+    qc.invalidateQueries({ queryKey: ['attention'] })
     qc.invalidateQueries({ queryKey: ['vendor-order', orderId] })
     qc.invalidateQueries({ queryKey: ['vendor-analytics'] })
   }

@@ -19,10 +19,16 @@ export function useVerifyPayment() {
   })
 }
 
-export function useDeliveryQuote(vendorId: string | null, lat?: number, lng?: number) {
+export function useDeliveryQuote(
+  vendorId: string | null,
+  lat: number | undefined,
+  lng: number | undefined,
+  cart: { product_id: string; quantity: number }[],
+) {
+  const items = cart.map((i) => `${i.product_id}:${i.quantity}`).join(',')
   return useQuery({
-    queryKey: ['delivery-quote', vendorId, lat, lng],
-    queryFn: () => checkoutService.getDeliveryQuote(vendorId as string, lat as number, lng as number),
+    queryKey: ['delivery-quote', vendorId, lat, lng, items],
+    queryFn: () => checkoutService.getDeliveryQuote(vendorId as string, lat as number, lng as number, items),
     enabled: vendorId !== null && lat !== undefined && lng !== undefined,
     staleTime: 60_000,
   })

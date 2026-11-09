@@ -26,6 +26,7 @@ import type { Product } from '../types'
 import { useCreateProduct } from '../hooks/use-create-product'
 import { useUpdateProduct } from '../hooks/use-update-product'
 import { useCategories } from '../hooks/use-categories'
+import { categoryOptions } from '../lib/product-status'
 import { ImageUploadField } from './image-upload-field'
 
 const productSchema = z.object({
@@ -138,9 +139,9 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  {categories.map((cat) => (
+                  {categoryOptions(categories).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
-                      {cat.name}
+                      {cat.label}
                     </SelectItem>
                   ))}
                 </SelectContent>

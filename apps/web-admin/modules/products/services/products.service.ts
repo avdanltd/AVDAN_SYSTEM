@@ -6,6 +6,7 @@ export interface ApproveBody {
   price_kobo: number
   discount_type?: 'FIXED' | 'PERCENT'
   discount_value?: number
+  special_delivery_fee_kobo?: number
 }
 
 export const productsService = {

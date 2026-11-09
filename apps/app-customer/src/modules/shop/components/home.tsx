@@ -71,7 +71,7 @@ export function Home() {
         </View>
       ) : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {(categories ?? []).map((c) => (
+          {(categories ?? []).filter((c) => !c.parent_id).map((c) => (
             <Pressable
               key={c.id}
               onPress={() => router.push(`/categories/${c.id}?name=${encodeURIComponent(c.name)}`)}

@@ -31,6 +31,8 @@ export function CategoryProductsPage({ slug }: CategoryProductsPageProps) {
   useEffect(() => setMounted(true), [])
   const categories = mounted ? categoriesData : undefined
   const category = categories?.find((c) => c.slug === slug)
+  const parent = category?.parent_id ? categories?.find((c) => c.id === category.parent_id) : undefined
+  const subCategories = category ? (categories ?? []).filter((c) => c.parent_id === category.id) : []
 
   const sort = (searchParams.get('sort') ?? 'popular') as ProductsParams['sort']
   const page = Math.max(1, Number(searchParams.get('page') ?? '1'))
@@ -95,6 +97,12 @@ export function CategoryProductsPage({ slug }: CategoryProductsPageProps) {
         <span>/</span>
         <Link href={ROUTES.categories} className="hover:text-foreground">Categories</Link>
         <span>/</span>
+        {parent && (
+          <>
+            <Link href={ROUTES.category(parent.slug)} className="hover:text-foreground">{parent.name}</Link>
+            <span>/</span>
+          </>
+        )}
         <span className="text-foreground font-medium">{category?.name ?? slug}</span>
       </nav>
 
@@ -112,6 +120,20 @@ export function CategoryProductsPage({ slug }: CategoryProductsPageProps) {
         </div>
       ) : (
         <h1 className="text-2xl font-bold tracking-tight text-foreground capitalize">{slug}</h1>
+      )}
+
+      {subCategories.length > 0 && (
+        <div className="flex flex-wrap gap-2" aria-label="Sub-categories">
+          {subCategories.map((sub) => (
+            <Link
+              key={sub.id}
+              href={ROUTES.category(sub.slug)}
+              className="rounded-full border border-border bg-background px-3.5 py-1.5 text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+            >
+              {sub.name}
+            </Link>
+          ))}
+        </div>
       )}
 
       <ProductFilters
