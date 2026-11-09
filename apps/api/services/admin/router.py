@@ -8,6 +8,7 @@ from core.redis import get_redis
 from services.admin.schemas import (
     AdminProductResponse,
     ApproveProductRequest,
+    AttentionResponse,
     PaginatedAdminProductsResponse,
     RejectProductRequest,
 )
@@ -63,6 +64,14 @@ def _user_response(user: object) -> UserResponse:
         role=u.role,
         status=u.status,
     )
+
+
+@router.get("/attention", response_model=AttentionResponse)
+async def attention(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> AttentionResponse:
+    return AttentionResponse(**await AdminService(db).attention_counts())
 
 
 @router.get("/users", response_model=PaginatedUsersResponse)
@@ -291,6 +300,49 @@ async def _rider_info(db: AsyncSession, orders: list) -> dict:
     return {rid: (name, phone) for rid, name, phone in rows.all()}
 
 
+async def _party_info(db: AsyncSession, orders: list) -> dict:
+    """Contact details for each order's customer and vendor, in two queries."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+    from services.vendor.models import Vendor
+
+    customer_ids = list({o.customer_id for o in orders})
+    vendor_ids = list({o.vendor_id for o in orders})
+    customers: dict = {}
+    vendors: dict = {}
+    if customer_ids:
+        rows = await db.execute(select(User.id, User.name, User.phone, User.email).where(User.id.in_(customer_ids)))
+        customers = {i: (n, p, e) for i, n, p, e in rows.all()}
+    if vendor_ids:
+        rows = await db.execute(
+            select(Vendor.id, Vendor.name, User.phone, User.email)
+            .join(User, User.id == Vendor.user_id)
+            .where(Vendor.id.in_(vendor_ids))
+        )
+        vendors = {i: (n, p, e) for i, n, p, e in rows.all()}
+    return {"customers": customers, "vendors": vendors}
+
+
+def _party_fields(parties: dict | None, o: object) -> dict:
+    from services.orders.models import Order
+    order: Order = o  # type: ignore[assignment]
+    out: dict = {}
+    if parties:
+        c = parties["customers"].get(order.customer_id)
+        v = parties["vendors"].get(order.vendor_id)
+        if c:
+            out.update(customer_name=c[0], customer_phone=c[1], customer_email=c[2])
+        if v:
+            out.update(vendor_name=v[0], vendor_phone=v[1], vendor_email=v[2])
+    # Orders from before vendor prices / the delivery commission have no snapshot to work from.
+    if order.vendor_total_kobo is not None:
+        out["platform_product_gain_kobo"] = order.total_kobo - order.vendor_total_kobo
+    if order.rider_fee_kobo is not None:
+        out["platform_delivery_gain_kobo"] = order.delivery_fee_kobo - order.rider_fee_kobo
+    return out
+
+
 async def _hub_info(db: AsyncSession, orders: list) -> dict:
     """{hub_id: AgentHub} for the hubs on these orders, in one query."""
     from sqlalchemy import select
@@ -317,7 +369,9 @@ def _hub_fields(hubs: dict | None, hub_id: object) -> dict:
     }
 
 
-def _order_resp(order: object, riders: dict | None = None, hubs: dict | None = None) -> OrderResponse:
+def _order_resp(
+    order: object, riders: dict | None = None, hubs: dict | None = None, parties: dict | None = None
+) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
@@ -329,6 +383,7 @@ def _order_resp(order: object, riders: dict | None = None, hubs: dict | None = N
         rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
         hub_id=str(o.hub_id) if o.hub_id else None,
         **_hub_fields(hubs, o.hub_id),
+        **_party_fields(parties, o),
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_fee_kobo=o.delivery_fee_kobo,
@@ -341,7 +396,7 @@ def _order_resp(order: object, riders: dict | None = None, hubs: dict | None = N
 
 
 def _order_detail_resp(
-    order: object, riders: dict | None = None, hubs: dict | None = None
+    order: object, riders: dict | None = None, hubs: dict | None = None, parties: dict | None = None
 ) -> OrderDetailResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
@@ -354,6 +409,7 @@ def _order_detail_resp(
         rider_phone=(riders or {}).get(o.rider_id, (None, None))[1],
         hub_id=str(o.hub_id) if o.hub_id else None,
         **_hub_fields(hubs, o.hub_id),
+        **_party_fields(parties, o),
         status=o.status,
         total_kobo=o.total_kobo,
         delivery_fee_kobo=o.delivery_fee_kobo,
@@ -386,8 +442,9 @@ async def list_all_orders(
     )
     riders = await _rider_info(db, orders)
     hubs = await _hub_info(db, orders)
+    parties = await _party_info(db, orders)
     return PaginatedOrdersResponse(
-        items=[_order_resp(o, riders, hubs) for o in orders],
+        items=[_order_resp(o, riders, hubs, parties) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -402,7 +459,9 @@ async def get_order_detail(
 ) -> OrderDetailResponse:
     svc = AdminService(db)
     order = await svc.get_order_detail(order_id)
-    return _order_detail_resp(order, await _rider_info(db, [order]), await _hub_info(db, [order]))
+    return _order_detail_resp(
+        order, await _rider_info(db, [order]), await _hub_info(db, [order]), await _party_info(db, [order])
+    )
 
 
 @router.patch("/orders/{order_id}/status", response_model=OrderResponse)
@@ -416,7 +475,9 @@ async def override_order_status(
     order = await svc.override_order_status(
         order_id, data.status, data.reason, current_user.user_id
     )
-    return _order_resp(order, await _rider_info(db, [order]), await _hub_info(db, [order]))
+    return _order_resp(
+        order, await _rider_info(db, [order]), await _hub_info(db, [order]), await _party_info(db, [order])
+    )
 
 
 # ── Payment / refund management ───────────────────────────────────────────────

@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { ImagePlus, Star, X } from 'lucide-react'
+import { ImagePlus, RefreshCw, Star, X } from 'lucide-react'
 import { Button, Progress, cn, toast } from '@avdan/ui'
 import { uploadsService } from '../services/uploads.service'
 
@@ -34,10 +34,17 @@ interface InFlightUpload {
 export function ImageUploadField({ value, onChange }: Props) {
   const [uploads, setUploads] = useState<InFlightUpload[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
+  const replaceInputRef = useRef<HTMLInputElement>(null)
+  // Which existing image the next picked file should replace.
+  const replacingRef = useRef<string | null>(null)
+  // Uploads finish at different times; always merge into the newest list, not the one captured
+  // when the upload started.
+  const valueRef = useRef(value)
+  valueRef.current = value
   const slotsUsed = value.length + uploads.length
   const atCap = slotsUsed >= MAX_IMAGES
 
-  const uploadOne = (file: File) => {
+  const uploadOne = (file: File, replaceUrl?: string) => {
     const id = `${file.name}-${crypto.randomUUID()}`
     setUploads((prev) => [...prev, { id, name: file.name, progress: 0 }])
 
@@ -70,7 +77,13 @@ export function ImageUploadField({ value, onChange }: Props) {
           throw new Error('Upload succeeded but no image URL was returned.')
         }
 
-        onChange([...value, presigned.public_url])
+        const publicUrl = presigned.public_url
+        const current = valueRef.current
+        onChange(
+          replaceUrl && current.includes(replaceUrl)
+            ? current.map((u) => (u === replaceUrl ? publicUrl : u))
+            : [...current, publicUrl],
+        )
       } catch (e) {
         toast.error(e instanceof Error ? e.message : 'Failed to upload image')
       } finally {
@@ -111,7 +124,29 @@ export function ImageUploadField({ value, onChange }: Props) {
       })
     }
 
-    toUpload.forEach(uploadOne)
+    toUpload.forEach((f) => uploadOne(f))
+  }
+
+  const handleReplaceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    const target = replacingRef.current
+    replacingRef.current = null
+    if (!file || !target) return
+    if (!ALLOWED_TYPES.has(file.type)) {
+      toast.error(`"${file.name}" is not a JPEG, PNG, or WebP image`)
+      return
+    }
+    if (file.size > MAX_FILE_BYTES) {
+      toast.error(`"${file.name}" is larger than 8 MB`)
+      return
+    }
+    uploadOne(file, target)
+  }
+
+  const startReplace = (url: string) => {
+    replacingRef.current = url
+    replaceInputRef.current?.click()
   }
 
   const remove = (url: string) => {
@@ -147,7 +182,7 @@ export function ImageUploadField({ value, onChange }: Props) {
                   type="button"
                   onClick={() => makePrimary(url)}
                   aria-label="Make this the main image"
-                  className="absolute bottom-1 left-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground opacity-0 shadow-card transition-opacity group-hover:opacity-100"
+                  className="absolute bottom-1 left-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-card"
                 >
                   <Star className="h-3 w-3" />
                 </button>
@@ -155,9 +190,18 @@ export function ImageUploadField({ value, onChange }: Props) {
 
               <button
                 type="button"
+                onClick={() => startReplace(url)}
+                aria-label="Replace this image"
+                className="absolute bottom-1 right-1 flex h-6 w-6 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-card"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </button>
+
+              <button
+                type="button"
                 onClick={() => remove(url)}
                 aria-label="Remove image"
-                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-card"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -175,6 +219,16 @@ export function ImageUploadField({ value, onChange }: Props) {
           ))}
         </div>
       )}
+
+      <input
+        ref={replaceInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        className="sr-only"
+        aria-hidden
+        tabIndex={-1}
+        onChange={handleReplaceChange}
+      />
 
       <input
         ref={inputRef}
@@ -205,7 +259,7 @@ export function ImageUploadField({ value, onChange }: Props) {
 
       <p className="text-xs text-muted-foreground">
         {slotsUsed
-          ? `${slotsUsed} of ${MAX_IMAGES}. The main image is what customers see first.`
+          ? `${slotsUsed} of ${MAX_IMAGES}. The main image is what customers see first. Use the refresh icon on a photo to swap it.`
           : `Up to ${MAX_IMAGES} images. JPEG, PNG or WebP, max 8 MB each.`}
       </p>
     </div>

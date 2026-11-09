@@ -20,6 +20,9 @@ from services.payment.providers.base import (
     WebhookEvent,
 )
 
+# httpx's default is 5s, which a Paystack transfer or verify can exceed; the resulting
+# unhandled timeout surfaced to admins as "An unexpected error occurred".
+_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 _BASE_URL = "https://api.paystack.co"
 
 
@@ -68,7 +71,7 @@ class PaystackProvider(PaymentProvider):
         }
         if callback_url:
             payload["callback_url"] = callback_url
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.post(
                 f"{_BASE_URL}/transaction/initialize",
                 headers=self._headers(),
@@ -83,7 +86,7 @@ class PaystackProvider(PaymentProvider):
         )
 
     async def verify_payment(self, reference: str) -> PaymentStatus:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.get(
                 f"{_BASE_URL}/transaction/verify/{reference}",
                 headers=self._headers(),
@@ -104,18 +107,29 @@ class PaystackProvider(PaymentProvider):
     async def transfer_to_vendor(
         self, recipient_code: str, amount_kobo: int, reference: str
     ) -> TransferResult:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{_BASE_URL}/transfer",
-                headers=self._headers(),
-                json={
-                    "source": "balance",
-                    "amount": amount_kobo,
-                    "recipient": recipient_code,
-                    "reference": reference,
-                    "reason": "AVDAN vendor payout",
-                },
-            )
+        try:
+            async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
+                response = await client.post(
+                    f"{_BASE_URL}/transfer",
+                    headers=self._headers(),
+                    json={
+                        "source": "balance",
+                        "amount": amount_kobo,
+                        "recipient": recipient_code,
+                        "reference": reference,
+                        "reason": "AVDAN vendor payout",
+                    },
+                )
+        except httpx.HTTPError as exc:
+            # The request may or may not have reached Paystack. Nothing is committed on our side,
+            # and the reference is the same on a retry, so Paystack refuses a duplicate: safe to
+            # try again, but check Paystack's transfer list first if unsure.
+            raise AppError(
+                502,
+                "TRANSFER_NO_RESPONSE",
+                f"Could not reach Paystack ({type(exc).__name__}). Check the transfer list in "
+                "Paystack before trying again.",
+            ) from exc
         if response.status_code not in (200, 201):
             # A recipient code that Paystack doesn't recognise (placeholder data, or one created
             # under a different secret key — every test-mode code is invalid once the live key is
@@ -135,7 +149,7 @@ class PaystackProvider(PaymentProvider):
         )
 
     async def refund(self, payment_ref: str, amount_kobo: int) -> RefundResult:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.post(
                 f"{_BASE_URL}/refund",
                 headers=self._headers(),
@@ -153,7 +167,7 @@ class PaystackProvider(PaymentProvider):
         )
 
     async def get_banks(self) -> list[BankInfo]:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.get(
                 f"{_BASE_URL}/bank?currency=NGN&perPage=200",
                 headers=self._headers(),
@@ -169,7 +183,7 @@ class PaystackProvider(PaymentProvider):
     async def resolve_account(
         self, account_number: str, bank_code: str
     ) -> AccountVerifyResult:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.get(
                 f"{_BASE_URL}/bank/resolve",
                 headers=self._headers(),
@@ -188,7 +202,7 @@ class PaystackProvider(PaymentProvider):
     async def create_transfer_recipient(
         self, account_name: str, account_number: str, bank_code: str
     ) -> RecipientResult:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as client:
             response = await client.post(
                 f"{_BASE_URL}/transferrecipient",
                 headers=self._headers(),

@@ -23,6 +23,7 @@ function useInvalidate() {
   const queryClient = useQueryClient()
   return () => {
     void queryClient.invalidateQueries({ queryKey: ['admin-payouts'] })
+    void queryClient.invalidateQueries({ queryKey: ['admin-attention'] })
     void queryClient.invalidateQueries({ queryKey: ['admin-payout'] })
   }
 }

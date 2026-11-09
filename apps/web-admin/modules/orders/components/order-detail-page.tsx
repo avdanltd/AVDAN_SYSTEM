@@ -133,13 +133,25 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Customer</p>
-            <p className="mt-1 font-mono text-sm font-medium">{order.customer_id.slice(0, 12)}…</p>
+            <p className="mt-1 text-sm font-medium">{order.customer_name ?? `${order.customer_id.slice(0, 12)}…`}</p>
+            {order.customer_phone && (
+              <a href={`tel:${order.customer_phone}`} className="block text-xs text-primary hover:underline">
+                {order.customer_phone}
+              </a>
+            )}
+            {order.customer_email && <p className="break-all text-xs text-muted-foreground">{order.customer_email}</p>}
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Vendor</p>
-            <p className="mt-1 font-mono text-sm font-medium">{order.vendor_id.slice(0, 12)}…</p>
+            <p className="mt-1 text-sm font-medium">{order.vendor_name ?? `${order.vendor_id.slice(0, 12)}…`}</p>
+            {order.vendor_phone && (
+              <a href={`tel:${order.vendor_phone}`} className="block text-xs text-primary hover:underline">
+                {order.vendor_phone}
+              </a>
+            )}
+            {order.vendor_email && <p className="break-all text-xs text-muted-foreground">{order.vendor_email}</p>}
           </CardContent>
         </Card>
         <Card>
@@ -200,6 +212,44 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* What AVDAN earns on this order */}
+      <Card>
+        <CardHeader>
+          <CardTitle>AVDAN earnings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {order.platform_product_gain_kobo == null && order.platform_delivery_gain_kobo == null ? (
+            <p className="text-sm text-muted-foreground">
+              This order was placed before earnings were tracked per order, so there is no breakdown.
+            </p>
+          ) : (
+            <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-muted-foreground">From products (markup)</dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                  {formatKobo(order.platform_product_gain_kobo ?? 0)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">From delivery (AVDAN's cut)</dt>
+                <dd className="mt-1 text-lg font-semibold tabular-nums">
+                  {formatKobo(order.platform_delivery_gain_kobo ?? 0)}
+                </dd>
+                <p className="text-xs text-muted-foreground">
+                  of {formatKobo(order.delivery_fee_kobo)} delivery fee
+                </p>
+              </div>
+              <div>
+                <dt className="text-xs text-muted-foreground">Total AVDAN makes</dt>
+                <dd className="mt-1 text-lg font-bold tabular-nums text-success">
+                  {formatKobo((order.platform_product_gain_kobo ?? 0) + (order.platform_delivery_gain_kobo ?? 0))}
+                </dd>
+              </div>
+            </dl>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Order Items */}
       <Card>
