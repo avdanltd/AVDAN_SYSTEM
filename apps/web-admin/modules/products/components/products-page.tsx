@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { Search } from 'lucide-react'
 import {
   Badge,
   Button,
@@ -52,6 +53,16 @@ function naira(kobo: number): string {
 export function ProductsPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState('PENDING')
+  const [query, setQuery] = useState('')
+  // Wait for a short pause in typing before asking the server, so each keystroke isn't a request.
+  const [search, setSearch] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(query.trim())
+      setPage(1)
+    }, 300)
+    return () => clearTimeout(t)
+  }, [query])
   const [pricing, setPricing] = useState<AdminProduct | null>(null)
   const [rejecting, setRejecting] = useState<AdminProduct | null>(null)
   const [priceInput, setPriceInput] = useState('')
@@ -63,6 +74,7 @@ export function ProductsPage() {
 
   const params: Record<string, string> = { page: String(page), page_size: '20' }
   if (status !== '__all__') params.approval_status = status
+  if (search) params.search = search
 
   const { data, isLoading, isError, refetch } = useAdminProducts(params)
   const { approve, reject } = useReviewProduct()
@@ -222,24 +234,37 @@ export function ProductsPage() {
         </p>
       </div>
 
-      <Select
-        value={status}
-        onValueChange={(v) => {
-          setStatus(v)
-          setPage(1)
-        }}
-      >
-        <SelectTrigger className="w-52">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>
-              {opt.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative w-full max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by product or vendor name"
+            aria-label="Search products"
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={status}
+          onValueChange={(v) => {
+            setStatus(v)
+            setPage(1)
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-52">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
       <div className="rounded-lg border border-border bg-background shadow-card">
         <DataTable
@@ -250,7 +275,13 @@ export function ProductsPage() {
           error={isError}
           errorMessage="Couldn't load products."
           onRetry={() => refetch()}
-          emptyMessage={status === 'PENDING' ? 'Nothing is waiting for approval.' : 'No products found.'}
+          emptyMessage={
+            search
+              ? `No products match "${search}"${status === '__all__' ? '' : ' in this filter. Try "All"'}.`
+              : status === 'PENDING'
+                ? 'Nothing is waiting for approval.'
+                : 'No products found.'
+          }
         />
         <Pagination page={page} pages={pages} total={total} onPageChange={setPage} />
       </div>

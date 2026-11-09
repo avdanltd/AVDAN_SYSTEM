@@ -72,6 +72,10 @@ class OrderResponse(BaseModel):
     # What AVDAN earns on this order: the markup on the products, and its cut of the delivery fee.
     platform_product_gain_kobo: int | None = None
     platform_delivery_gain_kobo: int | None = None
+    # What the vendor and the rider earn on this order (the rider gets the whole fee on orders
+    # from before the delivery commission). Vendor is null on orders from before vendor prices.
+    vendor_earning_kobo: int | None = None
+    rider_earning_kobo: int | None = None
     rider_id: str | None = None
     # Filled in by the admin endpoints so staff can see who is fulfilling an order.
     rider_name: str | None = None

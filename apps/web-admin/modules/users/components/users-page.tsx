@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 import {
   DataTable,
@@ -36,7 +37,9 @@ import {
   UserCheck,
   Building2,
   Send,
+  Wallet,
 } from "lucide-react";
+import { ROUTES } from "@/config/routes";
 import { useUsers } from "../hooks/use-users";
 import { useUpdateUserStatus } from "../hooks/use-update-user-status";
 import { useResendInvite, useRevokeInvite } from "../hooks/use-invite-actions";
@@ -191,6 +194,17 @@ export function UsersPage() {
                 <ShieldCheck className="mr-2 h-4 w-4 text-warning" />
                 Suspend
               </DropdownMenuItem>
+            )}
+            {(row.role === "vendor" || row.role === "rider" || row.role === "customer") && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Link href={`${ROUTES.finance}/${row.role}/${row.id}`}>
+                    <Wallet className="mr-2 h-4 w-4 text-info" />
+                    {row.role === "customer" ? "Spending" : "Earnings"}
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
             )}
             {row.role === "agent" && (
               <>
