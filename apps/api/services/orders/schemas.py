@@ -63,6 +63,15 @@ class OrderResponse(BaseModel):
     customer_id: str
     vendor_id: str
     vendor_name: str | None = None
+    # Filled in by the admin endpoints so staff can contact both sides of an order.
+    customer_name: str | None = None
+    customer_phone: str | None = None
+    customer_email: str | None = None
+    vendor_phone: str | None = None
+    vendor_email: str | None = None
+    # What AVDAN earns on this order: the markup on the products, and its cut of the delivery fee.
+    platform_product_gain_kobo: int | None = None
+    platform_delivery_gain_kobo: int | None = None
     rider_id: str | None = None
     # Filled in by the admin endpoints so staff can see who is fulfilling an order.
     rider_name: str | None = None

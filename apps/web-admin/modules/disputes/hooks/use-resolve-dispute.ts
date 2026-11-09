@@ -10,6 +10,7 @@ export function useResolveDispute(disputeId: string) {
     mutationFn: (payload: ResolveDisputePayload) => disputesService.resolve(disputeId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-disputes'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-attention'] })
       queryClient.invalidateQueries({ queryKey: ['admin-dispute', disputeId] })
       toast.success('Dispute resolved successfully.')
     },

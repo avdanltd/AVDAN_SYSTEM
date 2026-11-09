@@ -161,6 +161,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Forgot Password
+         * @description Always the same answer, whether or not the address has an account.
+         */
+        post: operations["forgot_password_auth_forgot_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Reset */
+        get: operations["preview_reset_auth_reset__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset Password */
+        post: operations["reset_password_auth_reset_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/change-password": {
         parameters: {
             query?: never;
@@ -215,6 +269,23 @@ export interface paths {
         head?: never;
         /** Update Push Token */
         patch: operations["update_push_token_auth_me_push_token_patch"];
+        trace?: never;
+    };
+    "/admin/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Attention */
+        get: operations["attention_admin_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/users": {
@@ -2016,6 +2087,22 @@ export interface components {
             /** Message */
             message: string;
         };
+        /**
+         * AttentionResponse
+         * @description How many items in each admin section are waiting on a person. Drives the badges in the menu.
+         */
+        AttentionResponse: {
+            /** Products */
+            products: number;
+            /** Vendors */
+            vendors: number;
+            /** Payouts */
+            payouts: number;
+            /** Disputes */
+            disputes: number;
+            /** Dispatch */
+            dispatch: number;
+        };
         /** AuditLogEntryResponse */
         AuditLogEntryResponse: {
             /** Id */
@@ -2263,6 +2350,14 @@ export interface components {
             /** Filename */
             filename: string;
         };
+        /** ForgotPasswordRequest */
+        ForgotPasswordRequest: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -2401,6 +2496,20 @@ export interface components {
             vendor_id: string;
             /** Vendor Name */
             vendor_name?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /** Vendor Phone */
+            vendor_phone?: string | null;
+            /** Vendor Email */
+            vendor_email?: string | null;
+            /** Platform Product Gain Kobo */
+            platform_product_gain_kobo?: number | null;
+            /** Platform Delivery Gain Kobo */
+            platform_delivery_gain_kobo?: number | null;
             /** Rider Id */
             rider_id?: string | null;
             /** Rider Name */
@@ -2501,6 +2610,20 @@ export interface components {
             vendor_id: string;
             /** Vendor Name */
             vendor_name?: string | null;
+            /** Customer Name */
+            customer_name?: string | null;
+            /** Customer Phone */
+            customer_phone?: string | null;
+            /** Customer Email */
+            customer_email?: string | null;
+            /** Vendor Phone */
+            vendor_phone?: string | null;
+            /** Vendor Email */
+            vendor_email?: string | null;
+            /** Platform Product Gain Kobo */
+            platform_product_gain_kobo?: number | null;
+            /** Platform Delivery Gain Kobo */
+            platform_delivery_gain_kobo?: number | null;
             /** Rider Id */
             rider_id?: string | null;
             /** Rider Name */
@@ -3117,6 +3240,10 @@ export interface components {
             logo_url?: string | null;
             /** Address */
             address?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
         };
         /** UpdateVendorStatusRequest */
         UpdateVendorStatusRequest: {
@@ -3641,6 +3768,107 @@ export interface operations {
             };
         };
     };
+    forgot_password_auth_forgot_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForgotPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_reset_auth_reset__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitePreviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reset_password_auth_reset_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPasswordRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     change_password_auth_change_password_post: {
         parameters: {
             query?: never;
@@ -3811,6 +4039,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attention_admin_attention_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttentionResponse"];
                 };
             };
             /** @description Validation Error */

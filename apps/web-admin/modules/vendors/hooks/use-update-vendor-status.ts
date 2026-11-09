@@ -10,6 +10,7 @@ export function useUpdateVendorStatus() {
       vendorsService.updateStatus(id, status, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-vendors'] })
+      queryClient.invalidateQueries({ queryKey: ['admin-attention'] })
       toast.success('Vendor status updated successfully.')
     },
     onError: (err: Error) => {

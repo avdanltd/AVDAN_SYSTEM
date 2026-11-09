@@ -5,6 +5,15 @@ export interface AdminOrder {
   customer_id: string
   vendor_id: string
   rider_id: string | null
+  customer_name?: string | null
+  customer_phone?: string | null
+  customer_email?: string | null
+  vendor_name?: string | null
+  vendor_phone?: string | null
+  vendor_email?: string | null
+  /** What AVDAN earns: markup on the products, and its cut of the delivery fee. Null on older orders. */
+  platform_product_gain_kobo?: number | null
+  platform_delivery_gain_kobo?: number | null
   rider_name?: string | null
   rider_phone?: string | null
   hub_id?: string | null
