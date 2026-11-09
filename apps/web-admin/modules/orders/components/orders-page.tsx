@@ -81,18 +81,28 @@ export function OrdersPage() {
       key: "customer",
       header: "Customer",
       cell: (row) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {row.customer_id.slice(0, 8)}…
-        </span>
+        <div>
+          <p className="text-sm">{row.customer_name ?? `${row.customer_id.slice(0, 8)}…`}</p>
+          {row.customer_phone && (
+            <a href={`tel:${row.customer_phone}`} className="text-xs text-primary hover:underline">
+              {row.customer_phone}
+            </a>
+          )}
+        </div>
       ),
     },
     {
       key: "vendor",
       header: "Vendor",
       cell: (row) => (
-        <span className="font-mono text-xs text-muted-foreground">
-          {row.vendor_id.slice(0, 8)}…
-        </span>
+        <div>
+          <p className="text-sm">{row.vendor_name ?? `${row.vendor_id.slice(0, 8)}…`}</p>
+          {row.vendor_phone && (
+            <a href={`tel:${row.vendor_phone}`} className="text-xs text-primary hover:underline">
+              {row.vendor_phone}
+            </a>
+          )}
+        </div>
       ),
     },
     {

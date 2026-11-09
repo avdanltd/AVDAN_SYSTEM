@@ -219,6 +219,28 @@ class AdminService:
             raise NotFoundException("Order not found")
         return order
 
+    async def attention_counts(self) -> dict:
+        from services.dispute.models import Dispute
+        from services.orders.state_machine import OrderStatus
+        from services.vendor.models import Product, Vendor
+        from services.wallet.models import PayoutRequest, PayoutStatus
+
+        async def count(model, *where):  # type: ignore[no-untyped-def]
+            return int((await self.db.execute(
+                select(func.count()).select_from(model).where(*where)
+            )).scalar_one())
+
+        return {
+            "products": await count(Product, Product.approval_status == "PENDING"),
+            "vendors": await count(Vendor, Vendor.status == "pending"),
+            "payouts": await count(PayoutRequest, PayoutRequest.status == PayoutStatus.REQUESTED),
+            "disputes": await count(Dispute, Dispute.status.in_(["open", "under_review"])),
+            # Ready for pickup with nobody assigned yet.
+            "dispatch": await count(
+                Order, Order.status == OrderStatus.READY_FOR_PICKUP, Order.rider_id.is_(None)
+            ),
+        }
+
     # ── Hub management ────────────────────────────────────────────────────────
 
     async def list_hubs(self) -> list:

@@ -66,6 +66,7 @@ export function useAssignRider() {
     onSuccess: (data) => {
       toast.success(`Rider assigned — ${data.message}`)
       void queryClient.invalidateQueries({ queryKey: ['dispatch-ready'] })
+      void queryClient.invalidateQueries({ queryKey: ['admin-attention'] })
       void queryClient.invalidateQueries({ queryKey: ['dispatch-picked-up'] })
       void queryClient.invalidateQueries({ queryKey: ['dispatch-riders'] })
       void queryClient.invalidateQueries({ queryKey: ['admin-order'] })

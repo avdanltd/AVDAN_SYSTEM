@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Package, Plus, Pencil, Trash2 } from 'lucide-react'
+import { Package, Plus, Pencil, Search, Trash2 } from 'lucide-react'
 import {
   Button,
   Card,
@@ -17,6 +17,7 @@ import {
   Skeleton,
   EmptyState,
   ConfirmDialog,
+  Input,
 } from '@avdan/ui'
 import { useCatalog } from '../hooks/use-catalog'
 import { useToggleAvailability } from '../hooks/use-toggle-availability'
@@ -158,7 +159,13 @@ function ProductSkeletons() {
 export function CatalogPage() {
   const [addOpen, setAddOpen] = useState(false)
   const { data, isLoading, error, refetch } = useCatalog()
-  const products = data?.products ?? []
+  const allProducts = data?.products ?? []
+  const [query, setQuery] = useState('')
+  // Filters as the vendor types; the whole catalogue is already loaded.
+  const needle = query.trim().toLowerCase()
+  const products = needle
+    ? allProducts.filter((p) => `${p.name} ${p.description ?? ''}`.toLowerCase().includes(needle))
+    : allProducts
 
   return (
     <div className="space-y-6">
@@ -166,7 +173,11 @@ export function CatalogPage() {
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Products</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {isLoading ? 'Loading…' : `${products.length} product${products.length !== 1 ? 's' : ''}`}
+            {isLoading
+              ? 'Loading…'
+              : needle
+                ? `${products.length} of ${allProducts.length} products`
+                : `${products.length} product${products.length !== 1 ? 's' : ''}`}
           </p>
         </div>
         <Button onClick={() => setAddOpen(true)}>
@@ -174,6 +185,20 @@ export function CatalogPage() {
           Add Product
         </Button>
       </div>
+
+      {!isLoading && allProducts.length > 0 && (
+        <div className="relative max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search your products"
+            aria-label="Search your products"
+            className="pl-9"
+          />
+        </div>
+      )}
 
       {isLoading && <ProductSkeletons />}
 
@@ -186,7 +211,16 @@ export function CatalogPage() {
         />
       )}
 
-      {!isLoading && !error && products.length === 0 && (
+      {!isLoading && !error && allProducts.length > 0 && products.length === 0 && (
+        <EmptyState
+          icon={<Search className="h-6 w-6" />}
+          title="No matching products"
+          description={`Nothing matches "${query.trim()}". Try a different word.`}
+          action={{ label: 'Clear search', onClick: () => setQuery('') }}
+        />
+      )}
+
+      {!isLoading && !error && allProducts.length === 0 && (
         <EmptyState
           icon={<Package className="h-6 w-6" />}
           title="No products yet"

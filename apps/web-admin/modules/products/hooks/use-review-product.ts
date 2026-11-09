@@ -4,7 +4,10 @@ import { productsService, type ApproveBody } from '../services/products.service'
 
 export function useReviewProduct() {
   const queryClient = useQueryClient()
-  const onSettled = () => queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  const onSettled = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-attention'] })
+    return queryClient.invalidateQueries({ queryKey: ['admin-products'] })
+  }
 
   const approve = useMutation({
     mutationFn: ({ id, body }: { id: string; body: ApproveBody }) => productsService.approve(id, body),

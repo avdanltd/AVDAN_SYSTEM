@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-
 # ── Product approval ─────────────────────────────────────────────────────────
 
 class AdminProductResponse(BaseModel):
@@ -34,6 +33,15 @@ class PaginatedAdminProductsResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class AttentionResponse(BaseModel):
+    """How many items in each admin section are waiting on a person. Drives the badges in the menu."""
+    products: int
+    vendors: int
+    payouts: int
+    disputes: int
+    dispatch: int
 
 
 class ApproveProductRequest(BaseModel):

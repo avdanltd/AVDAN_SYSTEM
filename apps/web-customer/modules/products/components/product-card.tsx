@@ -119,7 +119,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             <Link
               href={ROUTES.vendor(product.vendor_slug)}
               onClick={(e) => e.stopPropagation()}
-              className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
+              className="line-clamp-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-primary"
             >
               {product.vendor_name}
             </Link>
@@ -131,8 +131,10 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             </p>
 
             {/* Price + Add to Cart */}
-            <div className="mt-auto flex items-center justify-between gap-2">
-              <div className="flex items-baseline gap-1.5">
+            {/* Stacked on phones: price, struck-through price and discount badge need the full
+                card width, so the button sits underneath instead of being squeezed off the edge. */}
+            <div className="mt-auto flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                 <span className="text-lg font-bold text-primary">{formatPrice(product.price_kobo)}</span>
                 {product.compare_at_price_kobo ? (
                   <span className="text-sm text-muted-foreground line-through">
@@ -150,7 +152,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
                 variant={product.available && product.stock_qty > 0 ? 'default' : 'secondary'}
                 disabled={!product.available || product.stock_qty === 0}
                 onClick={handleAddToCart}
-                className="h-8 shrink-0 gap-1 text-xs"
+                className="h-8 w-full shrink-0 gap-1 text-xs sm:w-auto"
                 aria-label={`Add ${product.name} to cart`}
               >
                 <ShoppingCart className="h-3.5 w-3.5" />
