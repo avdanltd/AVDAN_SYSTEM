@@ -5,9 +5,12 @@ WORKDIR /app
 
 RUN pip install uv
 
-COPY apps/api/pyproject.toml apps/api/alembic.ini ./
+COPY apps/api/pyproject.toml apps/api/uv.lock apps/api/alembic.ini ./
 
-RUN uv pip install --system -e ".[dev]"
+# Install the exact versions in uv.lock (not whatever is newest today), then the project itself.
+RUN uv export --frozen --extra dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt \
+    && uv pip install --system --no-deps -e .
 
 COPY apps/api/ ./
 
@@ -22,9 +25,13 @@ WORKDIR /app
 
 RUN pip install uv
 
-COPY apps/api/pyproject.toml ./
+COPY apps/api/pyproject.toml apps/api/uv.lock ./
 
-RUN uv pip install --system .
+# Install the exact versions in uv.lock (not whatever is newest today), then the project itself.
+# Resolving at build time is what let a new Celery release crash the worker on a routine deploy.
+RUN uv export --frozen --no-dev --no-emit-project --no-hashes -o /tmp/requirements.txt \
+    && uv pip install --system -r /tmp/requirements.txt \
+    && uv pip install --system --no-deps .
 
 COPY apps/api/ ./
 
