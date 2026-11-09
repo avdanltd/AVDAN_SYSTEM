@@ -1,6 +1,7 @@
 """Payment service — escrow logic, payment initiation, refunds."""
 from __future__ import annotations
 
+import logging
 import uuid
 
 from sqlalchemy import select
@@ -13,6 +14,8 @@ from services.orders.service import OrderService
 from services.orders.state_machine import OrderStatus
 from services.payment.models import EscrowStatus, EscrowTransaction
 from services.payment.providers.registry import get_provider
+
+logger = logging.getLogger(__name__)
 
 
 class PaymentService:
@@ -80,6 +83,18 @@ class PaymentService:
 
         if escrow.status == EscrowStatus.HELD:
             return  # already processed
+
+        # Same amount guard as verify_and_apply: never mark an order paid for a different amount
+        # than the order total. `requested_amount` is the amount we asked for (the charged
+        # `amount` can be higher when Paystack's fee is passed on to the customer).
+        data = raw_data.get("data") if isinstance(raw_data.get("data"), dict) else raw_data
+        paid_for = data.get("requested_amount") or data.get("amount")
+        if isinstance(paid_for, int) and paid_for != escrow.amount_kobo:
+            logger.warning(
+                "charge.success amount mismatch for %s: expected %s, got %s",
+                provider_ref, escrow.amount_kobo, paid_for,
+            )
+            return
 
         escrow.status = EscrowStatus.HELD
         escrow.provider_metadata = {**(escrow.provider_metadata or {}), **raw_data}
