@@ -91,9 +91,12 @@ class PaystackProvider(PaymentProvider):
         if response.status_code != 200:
             raise AppError(502, "PAYMENT_VERIFY_FAILED", f"Failed to verify payment: {_paystack_detail(response)}")
         data = response.json()["data"]
+        # `amount` is what the customer was actually charged, which includes Paystack's fee when
+        # the account is set to make the customer bear it. `requested_amount` is the amount we
+        # asked for, i.e. the order total, and is what must match our escrow record.
         return PaymentStatus(
             paid=data["status"] == "success",
-            amount_kobo=data["amount"],
+            amount_kobo=data.get("requested_amount") or data["amount"],
             reference=data["reference"],
             raw_data=data,
         )
