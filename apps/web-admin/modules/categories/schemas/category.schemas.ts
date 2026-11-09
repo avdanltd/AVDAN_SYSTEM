@@ -4,6 +4,8 @@ export const categoryCreateSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional().or(z.literal('')),
   icon: z.string().max(50).optional().or(z.literal('')),
+  /** 'none' = top-level. */
+  parent_id: z.string().default('none'),
   sort_order: z.coerce.number().int().min(0).default(0),
 })
 

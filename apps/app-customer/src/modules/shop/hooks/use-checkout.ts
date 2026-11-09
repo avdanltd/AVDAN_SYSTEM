@@ -102,10 +102,15 @@ export function useCheckout() {
   return { placeOrder, payExistingOrder, stage, isBusy: stage !== 'idle' }
 }
 
-export function useDeliveryQuote(vendorId: string | undefined, coords: { lat: number; lng: number } | null) {
+export function useDeliveryQuote(
+  vendorId: string | undefined,
+  coords: { lat: number; lng: number } | null,
+  cart: { productId: string; quantity: number }[],
+) {
+  const items = cart.map((i) => `${i.productId}:${i.quantity}`).join(',')
   return useQuery({
-    queryKey: ['delivery-quote', vendorId, coords?.lat, coords?.lng],
-    queryFn: () => shopService.getDeliveryQuote(vendorId as string, coords!.lat, coords!.lng),
+    queryKey: ['delivery-quote', vendorId, coords?.lat, coords?.lng, items],
+    queryFn: () => shopService.getDeliveryQuote(vendorId as string, coords!.lat, coords!.lng, items),
     enabled: vendorId !== undefined && coords !== null,
     staleTime: 60_000,
   })

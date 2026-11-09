@@ -18,6 +18,10 @@ class Category(BaseModel):
     slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     icon: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # One level only: a sub-category points at a top-level category. Products may sit in either.
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("categories.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 

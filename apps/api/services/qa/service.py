@@ -59,6 +59,18 @@ class QAService:
 
     # ── Order operations ──────────────────────────────────────────────────────
 
+    async def attention_count(self, agent_user_id: str) -> int:
+        from core.exceptions import AppError
+
+        try:
+            hub = await self.get_hub_for_agent(agent_user_id)
+        except AppError:
+            return 0  # No hub assigned yet: nothing can be waiting here.
+        waiting = [OrderStatus.ARRIVED_AT_HUB, OrderStatus.AT_HUB, OrderStatus.QA_IN_PROGRESS]
+        return int((await self.db.execute(
+            select(func.count()).select_from(Order).where(Order.hub_id == hub.id, Order.status.in_(waiting))
+        )).scalar_one())
+
     async def list_inbound_orders(
         self, agent_user_id: str, page: int, page_size: int, status_filter: list[str] | None = None
     ) -> tuple[list[Order], int]:

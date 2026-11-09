@@ -57,7 +57,7 @@ export function CheckoutPage() {
 
   const lat = form.watch('delivery_address.lat')
   const lng = form.watch('delivery_address.lng')
-  const { data: quote, isFetching: quoting } = useDeliveryQuote(vendorId, lat, lng)
+  const { data: quote, isFetching: quoting } = useDeliveryQuote(vendorId, lat, lng, items)
 
   function captureLocation() {
     if (!('geolocation' in navigator)) {
@@ -357,6 +357,11 @@ export function CheckoutPage() {
                   {deliveryFeeKobo === null ? (quoting ? 'Calculating…' : 'Share your location to see it') : formatPrice(deliveryFeeKobo)}
                 </span>
               </div>
+              {quote && quote.special_fee_kobo > 0 && deliveryFeeKobo !== null && (
+                <p className="-mt-1 text-xs text-muted-foreground">
+                  Includes {formatPrice(quote.special_fee_kobo)} special delivery charge for bulky items in your cart.
+                </p>
+              )}
               <Separator />
               <div className="flex justify-between font-bold text-base">
                 <span>Total</span>

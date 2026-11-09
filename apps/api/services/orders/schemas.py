@@ -130,5 +130,7 @@ class DeliveryQuoteResponse(BaseModel):
     per_km_kobo: int
     road_factor: float
     hub_name: str | None = None
+    # Part of fee_kobo that comes from products with a special delivery fee (0 = none).
+    special_fee_kobo: int = 0
     # Smallest order subtotal (kobo) the platform accepts; 0 = no minimum.
     min_order_kobo: int = 0

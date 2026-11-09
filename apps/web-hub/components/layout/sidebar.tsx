@@ -7,11 +7,18 @@ import { LayoutDashboard, Truck, BarChart2, User, Navigation } from 'lucide-reac
 import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { useAttention } from '@/modules/attention/hooks/use-attention'
+import type { Attention } from '@/modules/attention/services/attention.service'
 
-export const navItems = [
+export const navItems: {
+  label: string
+  href: string
+  icon: typeof LayoutDashboard
+  attention?: keyof Attention
+}[] = [
   { label: 'Dashboard', href: ROUTES.home, icon: LayoutDashboard },
   { label: 'Incoming', href: ROUTES.incoming, icon: Navigation },
-  { label: 'Orders', href: ROUTES.orders, icon: Truck },
+  { label: 'Orders', href: ROUTES.orders, icon: Truck, attention: 'orders' as const },
   { label: 'Analytics', href: ROUTES.analytics, icon: BarChart2 },
   { label: 'Profile', href: ROUTES.profile, icon: User },
 ]
@@ -29,6 +36,7 @@ function getUserInitials(name: string | null | undefined): string {
 export function SidebarContent({ onNav }: { onNav?: () => void }) {
   const pathname = usePathname()
   const { user } = useSession()
+  const { data: attention } = useAttention()
 
   return (
     <div className="flex h-full flex-col">
@@ -43,6 +51,7 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
         <ul className="flex flex-col gap-1">
           {navItems.map((item) => {
             const Icon = item.icon
+            const waiting = item.attention ? (attention?.[item.attention] ?? 0) : 0
             return (
               <li key={item.href}>
                 <Link
@@ -56,7 +65,16 @@ export function SidebarContent({ onNav }: { onNav?: () => void }) {
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
+                  <span className="flex-1">{item.label}</span>
+                  {waiting > 0 && (
+                    <span
+                      className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-semibold leading-none text-destructive-foreground"
+                      title={`${waiting} waiting for action`}
+                      aria-label={`${waiting} waiting for action`}
+                    >
+                      {waiting > 99 ? '99+' : waiting}
+                    </span>
+                  )}
                 </Link>
               </li>
             )

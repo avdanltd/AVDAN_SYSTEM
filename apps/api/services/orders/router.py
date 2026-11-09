@@ -1,8 +1,11 @@
+import uuid
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
+from core.exceptions import ValidationException
 from services.orders.schemas import (
     CreateOrderRequest,
     DeliveryQuoteResponse,
@@ -142,6 +145,9 @@ async def delivery_quote(
     vendor_id: str,
     lat: float = Query(ge=-90, le=90),
     lng: float = Query(ge=-180, le=180),
+    items: str | None = Query(
+        default=None, description="Cart as 'product_id:qty,product_id:qty', so special delivery fees are included"
+    ),
     _current_user: CurrentUser = Depends(require_role("customer")),
     db: AsyncSession = Depends(get_db),
 ) -> DeliveryQuoteResponse:
@@ -150,7 +156,17 @@ async def delivery_quote(
     svc = OrderService(db)
     from services.analytics.service import AnalyticsService
 
-    quote = await svc.quote_delivery_for_vendor(vendor_id, {"lat": lat, "lng": lng})
+    parsed: list[tuple[str, int]] = []
+    for part in (items or "").split(","):
+        if not part.strip():
+            continue
+        try:
+            pid, qty = part.strip().split(":")
+            uuid.UUID(pid)
+            parsed.append((pid, max(int(qty), 1)))
+        except ValueError as exc:
+            raise ValidationException("Invalid items; use product_id:qty,product_id:qty") from exc
+    quote = await svc.quote_delivery_for_vendor(vendor_id, {"lat": lat, "lng": lng}, parsed)
     min_order = int((await AnalyticsService(db).get_config()).get("min_order_kobo", 0) or 0)
     return DeliveryQuoteResponse(**quote, min_order_kobo=min_order)
 

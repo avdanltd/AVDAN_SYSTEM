@@ -15,5 +15,7 @@ export interface AdminProduct {
   discount_type: 'FIXED' | 'PERCENT' | null
   discount_value: number | null
   markup_kobo: number
+  /** Extra delivery charge per unit, on top of the normal delivery fee (0 = none). */
+  special_delivery_fee_kobo: number
   created_at: string
 }

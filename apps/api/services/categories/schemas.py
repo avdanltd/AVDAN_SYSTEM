@@ -11,15 +11,16 @@ class CategoryResponse(BaseModel):
     slug: str
     description: str | None
     icon: str | None
+    parent_id: str | None = None
     sort_order: int
     active: bool
 
     model_config = {"from_attributes": True}
 
-    @field_validator("id", mode="before")
+    @field_validator("id", "parent_id", mode="before")
     @classmethod
-    def uuid_to_str(cls, v: object) -> str:
-        return str(v)
+    def uuid_to_str(cls, v: object) -> str | None:
+        return None if v is None else str(v)
 
 
 class CategoryCreate(BaseModel):
@@ -27,6 +28,7 @@ class CategoryCreate(BaseModel):
     slug: str | None = Field(default=None, max_length=100)
     description: str | None = None
     icon: str | None = Field(default=None, max_length=50)
+    parent_id: str | None = None
     sort_order: int = Field(default=0, ge=0)
 
     @field_validator("slug", mode="before")
@@ -44,3 +46,5 @@ class CategoryUpdate(BaseModel):
     icon: str | None = Field(default=None, max_length=50)
     sort_order: int | None = Field(default=None, ge=0)
     active: bool | None = None
+    # "" clears the parent (makes it top-level again).
+    parent_id: str | None = None

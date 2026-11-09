@@ -36,11 +36,13 @@ export interface PaymentVerified {
 }
 
 export const checkoutService = {
-  getDeliveryQuote: (vendorId: string, lat: number, lng: number) =>
+  getDeliveryQuote: (vendorId: string, lat: number, lng: number, items: string) =>
     apiClient.get<DeliveryQuote>('/orders/delivery-quote', {
       vendor_id: vendorId,
       lat: String(lat),
       lng: String(lng),
+      // The cart as "product_id:qty,…", so products with a special delivery fee are priced in.
+      items,
     }),
   createOrder: (payload: CreateOrderPayload) =>
     apiClient.post<OrderCreated>('/orders', payload),
