@@ -251,6 +251,42 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         </CardContent>
       </Card>
 
+      {/* What the vendor and the rider earn on this order */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Vendor &amp; rider earnings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-xs text-muted-foreground">Vendor earns{order.vendor_name ? ` (${order.vendor_name})` : ''}</dt>
+              <dd className="mt-1 text-lg font-semibold tabular-nums">
+                {order.vendor_earning_kobo == null ? '—' : formatKobo(order.vendor_earning_kobo)}
+              </dd>
+              <p className="text-xs text-muted-foreground">their price for the items</p>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">
+                Rider earns{order.rider_name ? ` (${order.rider_name})` : order.rider_id ? '' : ' (not assigned yet)'}
+              </dt>
+              <dd className="mt-1 text-lg font-semibold tabular-nums">
+                {order.rider_earning_kobo == null ? '—' : formatKobo(order.rider_earning_kobo)}
+              </dd>
+              <p className="text-xs text-muted-foreground">
+                of {formatKobo(order.delivery_fee_kobo)} delivery fee
+              </p>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Together</dt>
+              <dd className="mt-1 text-lg font-bold tabular-nums">
+                {formatKobo((order.vendor_earning_kobo ?? 0) + (order.rider_earning_kobo ?? 0))}
+              </dd>
+              <p className="text-xs text-muted-foreground">paid out to them, not AVDAN&apos;s</p>
+            </div>
+          </dl>
+        </CardContent>
+      </Card>
+
       {/* Order Items */}
       <Card>
         <CardHeader>

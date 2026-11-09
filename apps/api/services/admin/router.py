@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,6 +14,7 @@ from services.admin.schemas import (
     PaginatedAdminProductsResponse,
     RejectProductRequest,
 )
+from services.admin.finance import FinanceService
 from services.admin.service import AdminService
 from services.analytics.schemas import (
     OrderVolumeResponse,
@@ -72,6 +75,55 @@ async def attention(
     db: AsyncSession = Depends(get_db),
 ) -> AttentionResponse:
     return AttentionResponse(**await AdminService(db).attention_counts())
+
+
+# ── Financial tracker ─────────────────────────────────────────────────────────
+# Read-only. The period is a start/end instant; the web app turns "24 hours / 1 week / 1 month" and
+# From/To dates (Lagos time) into these.
+
+@router.get("/finance/summary")
+async def finance_summary(
+    start: datetime,
+    end: datetime,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await FinanceService(db).summary(start, end)
+
+
+@router.get("/finance/pending")
+async def finance_pending(
+    start: datetime,
+    end: datetime,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Orders paid for but not yet released: money that is coming in."""
+    return await FinanceService(db).pending_orders(start, end)
+
+
+@router.get("/finance/people")
+async def finance_people(
+    kind: str = Query(pattern="^(vendor|rider|customer)$"),
+    start: datetime = Query(),
+    end: datetime = Query(),
+    search: str | None = Query(default=None, max_length=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[dict]:
+    return await FinanceService(db).people(kind, start, end, search)
+
+
+@router.get("/finance/people/{kind}/{user_id}")
+async def finance_person(
+    kind: str,
+    user_id: str,
+    start: datetime,
+    end: datetime,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    return await FinanceService(db).person(kind, user_id, start, end)
 
 
 @router.get("/users", response_model=PaginatedUsersResponse)
@@ -220,12 +272,13 @@ def _admin_product_response(p: object) -> AdminProductResponse:
 async def list_products(
     approval_status: str | None = Query(default=None, pattern="^(PENDING|APPROVED|REJECTED)$"),
     vendor_id: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     _current_user: CurrentUser = Depends(require_role("admin", "support")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedAdminProductsResponse:
-    products, total = await AdminService(db).list_products(approval_status, vendor_id, page, page_size)
+    products, total = await AdminService(db).list_products(approval_status, vendor_id, page, page_size, search)
     return PaginatedAdminProductsResponse(
         items=[_admin_product_response(p) for p in products], total=total, page=page, page_size=page_size
     )
@@ -341,6 +394,9 @@ def _party_fields(parties: dict | None, o: object) -> dict:
         out["platform_product_gain_kobo"] = order.total_kobo - order.vendor_total_kobo
     if order.rider_fee_kobo is not None:
         out["platform_delivery_gain_kobo"] = order.delivery_fee_kobo - order.rider_fee_kobo
+    if order.vendor_total_kobo is not None:
+        out["vendor_earning_kobo"] = order.vendor_total_kobo
+    out["rider_earning_kobo"] = order.delivery_fee_kobo if order.rider_fee_kobo is None else order.rider_fee_kobo
     return out
 
 

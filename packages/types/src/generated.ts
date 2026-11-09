@@ -288,6 +288,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/finance/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finance Summary */
+        get: operations["finance_summary_admin_finance_summary_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/finance/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Finance Pending
+         * @description Orders paid for but not yet released: money that is coming in.
+         */
+        get: operations["finance_pending_admin_finance_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/finance/people": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finance People */
+        get: operations["finance_people_admin_finance_people_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/finance/people/{kind}/{user_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Finance Person */
+        get: operations["finance_person_admin_finance_people__kind___user_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -2568,6 +2639,10 @@ export interface components {
             platform_product_gain_kobo?: number | null;
             /** Platform Delivery Gain Kobo */
             platform_delivery_gain_kobo?: number | null;
+            /** Vendor Earning Kobo */
+            vendor_earning_kobo?: number | null;
+            /** Rider Earning Kobo */
+            rider_earning_kobo?: number | null;
             /** Rider Id */
             rider_id?: string | null;
             /** Rider Name */
@@ -2682,6 +2757,10 @@ export interface components {
             platform_product_gain_kobo?: number | null;
             /** Platform Delivery Gain Kobo */
             platform_delivery_gain_kobo?: number | null;
+            /** Vendor Earning Kobo */
+            vendor_earning_kobo?: number | null;
+            /** Rider Earning Kobo */
+            rider_earning_kobo?: number | null;
             /** Rider Id */
             rider_id?: string | null;
             /** Rider Name */
@@ -4153,6 +4232,163 @@ export interface operations {
             };
         };
     };
+    finance_summary_admin_finance_summary_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finance_pending_admin_finance_pending_get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finance_people_admin_finance_people_get: {
+        parameters: {
+            query: {
+                kind: string;
+                start: string;
+                end: string;
+                search?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    finance_person_admin_finance_people__kind___user_id__get: {
+        parameters: {
+            query: {
+                start: string;
+                end: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                kind: string;
+                user_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_admin_users_get: {
         parameters: {
             query?: {
@@ -4416,6 +4652,7 @@ export interface operations {
             query?: {
                 approval_status?: string | null;
                 vendor_id?: string | null;
+                search?: string | null;
                 page?: number;
                 page_size?: number;
             };

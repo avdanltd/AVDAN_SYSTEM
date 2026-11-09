@@ -14,6 +14,9 @@ export interface AdminOrder {
   /** What AVDAN earns: markup on the products, and its cut of the delivery fee. Null on older orders. */
   platform_product_gain_kobo?: number | null
   platform_delivery_gain_kobo?: number | null
+  /** What the vendor and the rider earn on this order. Vendor is null on orders from before vendor prices. */
+  vendor_earning_kobo?: number | null
+  rider_earning_kobo?: number | null
   rider_name?: string | null
   rider_phone?: string | null
   hub_id?: string | null

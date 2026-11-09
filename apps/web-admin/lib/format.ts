@@ -1,9 +1,12 @@
 export function formatKobo(kobo: number): string {
+  const naira = kobo / 100
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
-    minimumFractionDigits: 0,
-  }).format(kobo / 100)
+    // Whole amounts read ₦3,725; anything with kobo always shows both decimals (₦3,724.40, not ₦3,724.4).
+    minimumFractionDigits: Number.isInteger(naira) ? 0 : 2,
+    maximumFractionDigits: 2,
+  }).format(naira)
 }
 
 export function formatDate(iso: string): string {
