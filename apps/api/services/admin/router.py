@@ -211,6 +211,7 @@ def _admin_product_response(p: object) -> AdminProductResponse:
         discount_type=product.discount_type,
         discount_value=product.discount_value,
         markup_kobo=product.price_kobo - product.vendor_price_kobo,
+        special_delivery_fee_kobo=product.special_delivery_fee_kobo,
         created_at=product.created_at.isoformat(),
     )
 
@@ -239,7 +240,7 @@ async def approve_product(
 ) -> AdminProductResponse:
     """Approve a product and set the price customers will see. Also re-prices a live product."""
     return _admin_product_response(await AdminService(db).approve_product(
-        product_id, data.price_kobo, data.discount_type, data.discount_value
+        product_id, data.price_kobo, data.discount_type, data.discount_value, data.special_delivery_fee_kobo
     ))
 
 

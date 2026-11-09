@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import uuid
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,7 +34,9 @@ class CategoryService:
     async def create(self, data: CategoryCreate) -> Category:
         slug = data.slug or self._slugify(data.name)
         await self._check_unique(name=data.name, slug=slug)
+        parent_id = await self._validate_parent(data.parent_id, None)
         cat = Category(
+            parent_id=parent_id,
             name=data.name,
             slug=slug,
             description=data.description,
@@ -68,6 +71,8 @@ class CategoryService:
             cat.sort_order = data.sort_order
         if data.active is not None:
             cat.active = data.active
+        if data.parent_id is not None:
+            cat.parent_id = await self._validate_parent(data.parent_id or None, cat)
 
         return cat
 
@@ -80,8 +85,34 @@ class CategoryService:
         if not cat:
             raise NotFoundException("Category not found")
         cat.active = False
+        for child in (await self.db.execute(select(Category).where(Category.parent_id == cat.id))).scalars():
+            child.active = False
 
     # ── Helpers ───────────────────────────────────────────────────────────────
+
+    async def _validate_parent(self, parent_id: str | None, child: Category | None) -> uuid.UUID | None:
+        """Categories nest one level: the parent must exist and be top-level itself, and a
+        category that already has sub-categories can't become a sub-category."""
+        if not parent_id:
+            return None
+        pid = uuid.UUID(parent_id)
+        parent = (await self.db.execute(select(Category).where(Category.id == pid))).scalar_one_or_none()
+        if not parent:
+            raise NotFoundException("Parent category not found")
+        if parent.parent_id is not None:
+            raise AppError(400, "CATEGORY_TOO_DEEP", "Sub-categories can't have sub-categories of their own")
+        if child is not None:
+            if child.id == pid:
+                raise AppError(400, "CATEGORY_PARENT_SELF", "A category can't be its own parent")
+            has_children = (await self.db.execute(
+                select(Category.id).where(Category.parent_id == child.id).limit(1)
+            )).first()
+            if has_children:
+                raise AppError(
+                    400, "CATEGORY_HAS_CHILDREN",
+                    "This category has sub-categories, so it can't become one itself",
+                )
+        return pid
 
     def _slugify(self, text: str) -> str:
         return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-") or "category"

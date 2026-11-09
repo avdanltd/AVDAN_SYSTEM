@@ -60,6 +60,15 @@ async def list_incoming_deliveries(
     return [IncomingDeliveryResponse(**r) for r in rows]
 
 
+@router.get("/attention")
+async def hub_attention(
+    current_user: CurrentUser = Depends(require_role("agent")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Parcels at this hub that need a person: arrived and not yet received, or mid-QA."""
+    return {"orders": await QAService(db).attention_count(current_user.user_id)}
+
+
 @router.get("/orders/inbound", response_model=PaginatedOrdersResponse)
 async def list_inbound_orders(
     status: str | None = Query(default=None, description="Comma-separated OrderStatus values"),

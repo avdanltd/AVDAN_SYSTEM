@@ -4,6 +4,7 @@ import {
   Image,
   Pressable,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -15,6 +16,7 @@ import { AlertTriangle, ChevronRight, PackagePlus, Search } from 'lucide-react-n
 
 import { useSetAvailability, useVendorProfile } from '../hooks/use-vendor'
 import type { Product } from '../types'
+import { statusCounts, statusOf, type StatusFilter } from '../lib/product-status'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, radius, spacing, useTheme } from '@avdan/mobile'
 
 function ProductRow({ product, onPress }: { product: Product; onPress: () => void }) {
@@ -85,14 +87,24 @@ function ProductRow({ product, onPress }: { product: Product; onPress: () => voi
   )
 }
 
+const FILTERS: { value: StatusFilter; label: string; alert?: boolean }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'available', label: 'Available' },
+  { value: 'awaiting', label: 'Awaiting approval', alert: true },
+  { value: 'rejected', label: 'Rejected', alert: true },
+  { value: 'out_of_stock', label: 'Out of stock', alert: true },
+]
+
 export function Catalog() {
   const router = useRouter()
   const { colors } = useTheme()
   const { data: profile, isLoading, isError, isRefetching, refetch } = useVendorProfile()
   const [query, setQuery] = useState('')
+  const [filter, setFilter] = useState<StatusFilter>('all')
+  const counts = useMemo(() => statusCounts(profile?.products ?? []), [profile])
 
   const products = useMemo(() => {
-    const list = profile?.products ?? []
+    const list = (profile?.products ?? []).filter((p) => filter === 'all' || statusOf(p) === filter)
     const q = query.trim().toLowerCase()
     if (!q) return list
     return list.filter(
@@ -100,7 +112,7 @@ export function Catalog() {
         p.name.toLowerCase().includes(q) ||
         (p.category_name ?? '').toLowerCase().includes(q),
     )
-  }, [profile, query])
+  }, [profile, query, filter])
 
   const hidden = useMemo(
     () => (profile?.products ?? []).filter((p) => !p.available).length,
@@ -137,6 +149,45 @@ export function Catalog() {
           size="sm"
         />
       </View>
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterRow}
+      >
+        {FILTERS.map((f) => {
+          const selected = filter === f.value
+          const n = counts[f.value]
+          return (
+            <Pressable
+              key={f.value}
+              onPress={() => setFilter(f.value)}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              style={[
+                styles.filterChip,
+                {
+                  backgroundColor: selected ? colors.primary : colors.card,
+                  borderColor: selected ? colors.primary : colors.border,
+                },
+              ]}
+            >
+              {f.alert && n > 0 ? (
+                <AlertTriangle size={13} color={selected ? colors.primaryForeground : colors.destructive} />
+              ) : null}
+              <Text
+                style={[
+                  styles.filterText,
+                  { color: selected ? colors.primaryForeground : colors.foreground },
+                ]}
+              >
+                {f.label} {n}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
 
       {hidden > 0 ? (
         <Text style={[styles.hiddenNote, { color: colors.mutedForeground }]}>
@@ -176,14 +227,14 @@ export function Catalog() {
           ListEmptyComponent={
             <EmptyState
               icon={<PackagePlus size={30} color={colors.subtleForeground} />}
-              title={query ? 'No matches' : 'No products yet'}
+              title={query || filter !== 'all' ? 'No matches' : 'No products yet'}
               description={
-                query
-                  ? 'Try a different search term.'
+                query || filter !== 'all'
+                  ? 'Nothing here with this search or filter.'
                   : 'Add your first product so customers can start ordering.'
               }
               action={
-                query ? undefined : (
+                query || filter !== 'all' ? undefined : (
                   <Button
                     label="Add a product"
                     onPress={() => router.push('/catalog/new')}
@@ -201,6 +252,18 @@ export function Catalog() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  filterScroll: { flexGrow: 0, marginBottom: spacing.md },
+  filterRow: { gap: spacing.sm, paddingHorizontal: spacing.lg },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  filterText: { fontFamily: fonts.sansMedium, fontSize: 13 },
   toolbar: {
     flexDirection: 'row',
     alignItems: 'center',

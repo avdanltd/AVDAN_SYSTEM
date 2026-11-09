@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router'
 import { Check, Trash2 } from 'lucide-react-native'
 import { z } from 'zod'
 
+import { categoryOptions } from '../lib/product-status'
 import { ImagePickerField } from './image-picker-field'
 import {
   useCategories,
@@ -258,7 +259,7 @@ export function ProductForm({ productId }: Props) {
               <Skeleton height={40} />
             ) : (
               <View style={styles.chips}>
-                {(categories ?? []).map((c) => {
+                {categoryOptions(categories ?? []).map((c) => {
                   const selected = categoryId === c.id
                   return (
                     <Pressable
@@ -281,7 +282,7 @@ export function ProductForm({ productId }: Props) {
                           { color: selected ? colors.primaryForeground : colors.mutedForeground },
                         ]}
                       >
-                        {c.name}
+                        {c.label}
                       </Text>
                     </Pressable>
                   )

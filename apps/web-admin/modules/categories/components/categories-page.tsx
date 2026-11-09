@@ -24,7 +24,16 @@ export function CategoriesPage() {
   const { mutate: deactivate } = useDeactivateCategory()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Category | null>(null)
+  const [parentForNew, setParentForNew] = useState<string | null>(null)
   const [deactivating, setDeactivating] = useState<Category | null>(null)
+
+  // Each top-level category followed by its sub-categories.
+  const topLevel = categories.filter((c) => !c.parent_id)
+  const ordered = [
+    ...topLevel.flatMap((c) => [c, ...categories.filter((s) => s.parent_id === c.id)]),
+    // A sub-category whose parent is inactive/missing still shows, rather than vanishing.
+    ...categories.filter((c) => c.parent_id && !topLevel.some((t) => t.id === c.parent_id)),
+  ]
 
   const columns: Column<Category>[] = [
     {
@@ -40,8 +49,11 @@ export function CategoriesPage() {
       key: 'name',
       header: 'Name',
       cell: (cat) => (
-        <div>
-          <p className="font-medium text-foreground">{cat.name}</p>
+        <div className={cat.parent_id ? 'pl-6' : ''}>
+          <p className="font-medium text-foreground">
+            {cat.parent_id && <span className="mr-1.5 text-muted-foreground">↳</span>}
+            {cat.name}
+          </p>
           {cat.description && (
             <p className="text-xs text-muted-foreground line-clamp-1">{cat.description}</p>
           )}
@@ -91,6 +103,14 @@ export function CategoriesPage() {
             >
               <Pencil className="h-3.5 w-3.5" /> Edit
             </DropdownMenuItem>
+            {!cat.parent_id && (
+              <DropdownMenuItem
+                onClick={() => { setEditing(null); setParentForNew(cat.id); setDialogOpen(true) }}
+                className="gap-2"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add sub-category
+              </DropdownMenuItem>
+            )}
             {cat.active && (
               <>
                 <DropdownMenuSeparator />
@@ -118,12 +138,12 @@ export function CategoriesPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Categories</h1>
             <p className="text-sm text-muted-foreground">
-              {categories.length} categor{categories.length === 1 ? 'y' : 'ies'} — vendors assign these to products
+              {topLevel.length} categor{topLevel.length === 1 ? 'y' : 'ies'}, {categories.length - topLevel.length} sub-categor{categories.length - topLevel.length === 1 ? 'y' : 'ies'} — vendors assign these to products
             </p>
           </div>
         </div>
         <Button
-          onClick={() => { setEditing(null); setDialogOpen(true) }}
+          onClick={() => { setEditing(null); setParentForNew(null); setDialogOpen(true) }}
           className="gap-2"
         >
           <Plus className="h-4 w-4" />
@@ -132,7 +152,7 @@ export function CategoriesPage() {
       </div>
 
       <DataTable
-        data={categories}
+        data={ordered}
         columns={columns}
         keyExtractor={(row) => row.id}
         loading={isLoading}
@@ -146,9 +166,10 @@ export function CategoriesPage() {
         open={dialogOpen}
         onOpenChange={(open) => {
           setDialogOpen(open)
-          if (!open) setEditing(null)
+          if (!open) { setEditing(null); setParentForNew(null) }
         }}
         editing={editing}
+        defaultParentId={parentForNew}
       />
 
       <ConfirmDialog

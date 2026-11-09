@@ -96,6 +96,11 @@ class Product(BaseModel):
         String(16), nullable=False, default="APPROVED", server_default="APPROVED", index=True
     )
     rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Extra delivery charge per unit for bulky or awkward products (admin-set at approval),
+    # added on top of the normal distance-based fee. 0 = none.
+    special_delivery_fee_kobo: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     image_urls: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)

@@ -126,6 +126,7 @@ class AdminService:
         price_kobo: int,
         discount_type: str | None = None,
         discount_value: int | None = None,
+        special_delivery_fee_kobo: int | None = None,
     ) -> Product:
         """Approve (or re-price) a product. `price_kobo` is the shown price; an optional discount
         (fixed kobo or whole percent) comes off it, and the result is what customers pay. The
@@ -160,6 +161,8 @@ class AdminService:
         product.compare_at_price_kobo = price_kobo if discount_type else None
         product.discount_type = discount_type or None
         product.discount_value = discount_value if discount_type else None
+        if special_delivery_fee_kobo is not None:
+            product.special_delivery_fee_kobo = special_delivery_fee_kobo
         product.approval_status = "APPROVED"
         product.rejection_reason = None
         return product

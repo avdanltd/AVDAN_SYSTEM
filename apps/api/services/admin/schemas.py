@@ -25,6 +25,8 @@ class AdminProductResponse(BaseModel):
     discount_value: int | None
     # price_kobo - vendor_price_kobo: the platform's gain per unit sold.
     markup_kobo: int
+    # Extra delivery charge per unit (0 = none), on top of the normal delivery fee.
+    special_delivery_fee_kobo: int = 0
     created_at: str
 
 
@@ -48,6 +50,8 @@ class ApproveProductRequest(BaseModel):
     price_kobo: int = Field(gt=0, description="Shown (marked-up) price in kobo, before any discount")
     discount_type: Literal["FIXED", "PERCENT"] | None = None
     discount_value: int | None = Field(default=None, gt=0, description="Kobo if FIXED, whole percent if PERCENT")
+    # Per-unit extra delivery charge in kobo; omit to leave unchanged, 0 to clear.
+    special_delivery_fee_kobo: int | None = Field(default=None, ge=0, le=100_000_000)
 
 
 class RejectProductRequest(BaseModel):

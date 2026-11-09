@@ -9,6 +9,7 @@ export function useAcceptOrder() {
     mutationFn: (id: string) => ordersService.acceptOrder(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vendor-orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['attention'] })
       toast.success('Order accepted — start preparing!')
     },
     onError: (error: Error) => {

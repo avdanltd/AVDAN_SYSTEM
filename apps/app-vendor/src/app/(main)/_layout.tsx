@@ -4,12 +4,14 @@ import { Home, Package, Store, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { fonts, useSession, useTheme } from '@avdan/mobile'
 
+import { useAttention } from '@/modules/vendor/hooks/use-vendor'
 import { PayoutNudge } from '@/modules/vendor/components/payout-nudge'
 
 export default function MainLayout() {
   const { isAuthenticated } = useSession()
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
+  const { data: attention } = useAttention()
 
   if (!isAuthenticated) {
     return <Redirect href="/login" />
@@ -40,11 +42,17 @@ export default function MainLayout() {
         />
         <Tabs.Screen
           name="orders"
-          options={{ title: 'Orders', tabBarIcon: ({ color, size }) => <Package color={color} size={size} /> }}
+          options={{
+            title: 'Orders',
+            tabBarBadge: attention?.orders ? attention.orders : undefined,
+            tabBarIcon: ({ color, size }) => <Package color={color} size={size} /> }}
         />
         <Tabs.Screen
           name="catalog"
-          options={{ title: 'Catalog', tabBarIcon: ({ color, size }) => <Store color={color} size={size} /> }}
+          options={{
+            title: 'Catalog',
+            tabBarBadge: attention?.products ? attention.products : undefined,
+            tabBarIcon: ({ color, size }) => <Store color={color} size={size} /> }}
         />
         <Tabs.Screen
           name="profile"

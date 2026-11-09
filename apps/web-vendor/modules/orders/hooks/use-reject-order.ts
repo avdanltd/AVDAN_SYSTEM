@@ -10,6 +10,7 @@ export function useRejectOrder() {
       ordersService.rejectOrder(id, reason),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['vendor-orders'] })
+      void queryClient.invalidateQueries({ queryKey: ['attention'] })
       toast.success('Order rejected')
     },
     onError: (error: Error) => {

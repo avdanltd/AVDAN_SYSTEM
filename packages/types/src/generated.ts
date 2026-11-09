@@ -988,6 +988,26 @@ export interface paths {
         patch: operations["update_my_vendor_vendors_me_patch"];
         trace?: never;
     };
+    "/vendors/me/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Attention
+         * @description Counts of items waiting on this vendor, for the menu badges.
+         */
+        get: operations["my_attention_vendors_me_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vendors/me/products": {
         parameters: {
             query?: never;
@@ -1792,6 +1812,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/hub/attention": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hub Attention
+         * @description Parcels at this hub that need a person: arrived and not yet received, or mid-QA.
+         */
+        get: operations["hub_attention_hub_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hub/orders/inbound": {
         parameters: {
             query?: never;
@@ -2014,6 +2054,11 @@ export interface components {
             discount_value: number | null;
             /** Markup Kobo */
             markup_kobo: number;
+            /**
+             * Special Delivery Fee Kobo
+             * @default 0
+             */
+            special_delivery_fee_kobo: number;
             /** Created At */
             created_at: string;
         };
@@ -2067,6 +2112,8 @@ export interface components {
              * @description Kobo if FIXED, whole percent if PERCENT
              */
             discount_value?: number | null;
+            /** Special Delivery Fee Kobo */
+            special_delivery_fee_kobo?: number | null;
         };
         /** AssignHubRequest */
         AssignHubRequest: {
@@ -2152,6 +2199,8 @@ export interface components {
             description?: string | null;
             /** Icon */
             icon?: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
             /**
              * Sort Order
              * @default 0
@@ -2170,6 +2219,8 @@ export interface components {
             description: string | null;
             /** Icon */
             icon: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
             /** Sort Order */
             sort_order: number;
             /** Active */
@@ -2189,6 +2240,8 @@ export interface components {
             sort_order?: number | null;
             /** Active */
             active?: boolean | null;
+            /** Parent Id */
+            parent_id?: string | null;
         };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
@@ -2295,6 +2348,11 @@ export interface components {
             road_factor: number;
             /** Hub Name */
             hub_name?: string | null;
+            /**
+             * Special Fee Kobo
+             * @default 0
+             */
+            special_fee_kobo: number;
             /**
              * Min Order Kobo
              * @default 0
@@ -2962,6 +3020,11 @@ export interface components {
             approval_status: string;
             /** Rejection Reason */
             rejection_reason?: string | null;
+            /**
+             * Special Delivery Fee Kobo
+             * @default 0
+             */
+            special_delivery_fee_kobo: number;
             /** Available */
             available: boolean;
             /** Stock Qty */
@@ -2994,6 +3057,11 @@ export interface components {
             price_kobo: number;
             /** Compare At Price Kobo */
             compare_at_price_kobo?: number | null;
+            /**
+             * Special Delivery Fee Kobo
+             * @default 0
+             */
+            special_delivery_fee_kobo: number;
             /** Available */
             available: boolean;
             /** Stock Qty */
@@ -5815,6 +5883,41 @@ export interface operations {
             };
         };
     };
+    my_attention_vendors_me_attention_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_product_vendors_me_products_post: {
         parameters: {
             query?: never;
@@ -6213,6 +6316,8 @@ export interface operations {
                 vendor_id: string;
                 lat: number;
                 lng: number;
+                /** @description Cart as 'product_id:qty,product_id:qty', so special delivery fees are included */
+                items?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -7550,6 +7655,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IncomingDeliveryResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hub_attention_hub_attention_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
                 };
             };
             /** @description Validation Error */

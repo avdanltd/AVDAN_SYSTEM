@@ -21,6 +21,7 @@ import {
   Label,
 } from '@avdan/ui'
 import type { Category } from '@/modules/categories/types'
+import { categoryOptions } from '@/modules/categories/lib/nest'
 
 export interface FilterState {
   sort: string
@@ -123,11 +124,11 @@ function FilterPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
-                {categories.map((cat) => (
+                {categoryOptions(categories).map(({ cat, label }) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-2">
                       <CategoryIcon name={cat.icon} className="h-3.5 w-3.5" />
-                      {cat.name}
+                      {label}
                     </span>
                   </SelectItem>
                 ))}
@@ -251,11 +252,11 @@ export function ProductFilters({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
-                {availableCategories.map((cat) => (
+                {categoryOptions(availableCategories).map(({ cat, label }) => (
                   <SelectItem key={cat.id} value={cat.id}>
                     <span className="flex items-center gap-2">
                       <CategoryIcon name={cat.icon} className="h-3.5 w-3.5" />
-                      {cat.name}
+                      {label}
                     </span>
                   </SelectItem>
                 ))}

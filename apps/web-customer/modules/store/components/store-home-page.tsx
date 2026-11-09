@@ -304,7 +304,7 @@ function CategoryGrid() {
 
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-      {categories.map((cat) => (
+      {categories.filter((c) => !c.parent_id).map((cat) => (
         <Link
           key={cat.id}
           href={ROUTES.category(cat.slug)}

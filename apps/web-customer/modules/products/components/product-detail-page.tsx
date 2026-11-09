@@ -177,6 +177,13 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
               </Badge>
             </div>
 
+            {product.special_delivery_fee_kobo ? (
+              <p className="text-sm text-muted-foreground">
+                Bulky item: {formatPrice(product.special_delivery_fee_kobo)} extra delivery per unit, added to your
+                delivery fee at checkout.
+              </p>
+            ) : null}
+
             {product.description && (
               <p className="text-sm leading-relaxed text-muted-foreground">{product.description}</p>
             )}

@@ -19,6 +19,7 @@ class ProductResponse(BaseModel):
     compare_at_price_kobo: int | None = None
     approval_status: str = "APPROVED"
     rejection_reason: str | None = None
+    special_delivery_fee_kobo: int = 0
     available: bool
     stock_qty: int
     image_urls: list[str]
@@ -46,6 +47,8 @@ class PublicProductResponse(BaseModel):
     price_kobo: int
     # Pre-discount price to show struck through, when admin has put a discount on the product.
     compare_at_price_kobo: int | None = None
+    # Extra delivery charge per unit for this product (0 = none), added to the normal fee.
+    special_delivery_fee_kobo: int = 0
     available: bool
     stock_qty: int
     image_urls: list[str]
