@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -95,10 +95,24 @@ class AdminService:
     # ── Product approval ──────────────────────────────────────────────────────
 
     async def list_products(
-        self, approval_status: str | None, vendor_id: str | None, page: int, page_size: int
+        self,
+        approval_status: str | None,
+        vendor_id: str | None,
+        page: int,
+        page_size: int,
+        search: str | None = None,
     ) -> tuple[list[Product], int]:
         query = select(Product).options(selectinload(Product.vendor), selectinload(Product.category))
         count_query = select(func.count()).select_from(Product)
+        if search and search.strip():
+            # Product name or vendor name, as the admin types.
+            pattern = f"%{search.strip()}%"
+            match = or_(
+                Product.name.ilike(pattern),
+                Product.vendor_id.in_(select(Vendor.id).where(Vendor.name.ilike(pattern))),
+            )
+            query = query.where(match)
+            count_query = count_query.where(match)
         if approval_status:
             query = query.where(Product.approval_status == approval_status)
             count_query = count_query.where(Product.approval_status == approval_status)
