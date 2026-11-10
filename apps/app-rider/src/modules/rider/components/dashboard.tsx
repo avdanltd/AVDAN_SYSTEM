@@ -26,7 +26,7 @@ const ACTIVE_STATUSES = new Set([
 ])
 
 export function formatAddress(address: RiderOrder['delivery_address']): string {
-  return [address.street, address.city, address.state].filter(Boolean).join(', ') || 'Delivery address'
+  return [address.street, address.city, address.lga, address.state].filter(Boolean).join(', ') || 'Delivery address'
 }
 
 export function openInMaps(address: RiderOrder['delivery_address']) {

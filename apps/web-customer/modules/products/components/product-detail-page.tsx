@@ -1,5 +1,6 @@
 'use client'
 
+import { formatVendorLocation } from '@avdan/types'
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -162,6 +163,11 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
             >
               <span className="font-medium">{product.vendor_name}</span>
             </Link>
+            {formatVendorLocation(product.vendor_city, product.vendor_state) && (
+              <p className="-mt-1 text-xs text-muted-foreground">
+                {formatVendorLocation(product.vendor_city, product.vendor_state)}
+              </p>
+            )}
 
             <div className="flex items-center gap-3">
               <span className="text-3xl font-bold text-foreground">

@@ -2190,6 +2190,18 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
@@ -2431,6 +2443,10 @@ export interface components {
              * @default Nigeria
              */
             country: string;
+            /** Lga */
+            lga?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Notes */
             notes?: string | null;
             /** Phone */
@@ -2568,6 +2584,18 @@ export interface components {
             lng: number | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Description */
             description?: string | null;
         };
@@ -3172,6 +3200,10 @@ export interface components {
             vendor_name: string;
             /** Vendor Slug */
             vendor_slug: string;
+            /** Vendor City */
+            vendor_city?: string | null;
+            /** Vendor State */
+            vendor_state?: string | null;
             /** Category Id */
             category_id: string | null;
             /** Category Name */
@@ -3388,6 +3420,18 @@ export interface components {
          *     location) or leave them out and send an address to have it looked up.
          */
         UpdateMyHubRequest: {
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Address */
             address?: string | null;
             /** Description */
@@ -3434,6 +3478,18 @@ export interface components {
         };
         /** UpdateVendorProfileRequest */
         UpdateVendorProfileRequest: {
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Name */
             name?: string | null;
             /** Description */
@@ -3523,6 +3579,18 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
@@ -3564,6 +3632,18 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
@@ -7107,6 +7187,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "paystack-signature"?: string | null;
                 "x-paystack-signature"?: string | null;
             };
             path?: never;

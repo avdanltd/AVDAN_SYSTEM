@@ -108,7 +108,9 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
             <>
               <p>{order.delivery_address.street}</p>
               {order.delivery_address.city && <p>{order.delivery_address.city}</p>}
+              {order.delivery_address.lga && <p>{order.delivery_address.lga}</p>}
               {order.delivery_address.state && <p>{order.delivery_address.state}</p>}
+              {order.delivery_address.landmark && <p>Landmark: {order.delivery_address.landmark}</p>}
               {order.delivery_address.phone && (
                 <a
                   href={`tel:${order.delivery_address.phone}`}

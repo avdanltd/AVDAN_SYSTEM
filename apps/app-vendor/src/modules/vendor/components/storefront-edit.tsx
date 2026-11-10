@@ -5,13 +5,14 @@ import * as Location from 'expo-location'
 import { z } from 'zod'
 
 import { useUpdateStorefront, useVendorProfile } from '../hooks/use-vendor'
-import { Button, Card, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
+import { AddressFields, Button, Card, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
+import { addressFromApi, addressProblem, type AddressValue } from '@avdan/types'
 
-// Mirrors UpdateVendorProfileRequest: name 1-255, description free text, address free text.
+// Mirrors UpdateVendorProfileRequest: name 1-255, description free text. The address is validated
+// separately (see addressProblem) because it is a set of boxes, not one string.
 const storefrontSchema = z.object({
   name: z.string().trim().min(1, 'Your store needs a name').max(255, 'Name is too long'),
   description: z.string().trim().max(2000, 'Description is too long'),
-  address: z.string().trim().max(500, 'Address is too long'),
 })
 
 export function StorefrontEdit() {
@@ -22,7 +23,7 @@ export function StorefrontEdit() {
 
   const [name, setName] = useState(vendor?.name ?? '')
   const [description, setDescription] = useState(vendor?.description ?? '')
-  const [address, setAddress] = useState(vendor?.address ?? '')
+  const [address, setAddress] = useState<AddressValue>(addressFromApi(vendor))
   const [focused, setFocused] = useState<string | null>(null)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null)
@@ -60,17 +61,21 @@ export function StorefrontEdit() {
   const dirty =
     name !== (vendor?.name ?? '') ||
     description !== (vendor?.description ?? '') ||
-    address !== (vendor?.address ?? '') ||
+    JSON.stringify(address) !== JSON.stringify(addressFromApi(vendor)) ||
     deviceCoords !== null
 
   const handleSave = () => {
-    const result = storefrontSchema.safeParse({ name, description, address })
-    if (!result.success) {
+    const result = storefrontSchema.safeParse({ name, description })
+    const addressIssue = addressProblem(address, { requireAll: false })
+    if (!result.success || addressIssue) {
       const next: Record<string, string> = {}
-      for (const issue of result.error.issues) {
-        const key = issue.path[0]
-        if (typeof key === 'string' && !next[key]) next[key] = issue.message
+      if (!result.success) {
+        for (const issue of result.error.issues) {
+          const key = issue.path[0]
+          if (typeof key === 'string' && !next[key]) next[key] = issue.message
+        }
       }
+      if (addressIssue) next.address = addressIssue
       setErrors(next)
       return
     }
@@ -78,7 +83,15 @@ export function StorefrontEdit() {
     save({
       name: result.data.name,
       description: result.data.description || null,
-      address: result.data.address || undefined,
+      ...(address.street.trim()
+        ? {
+            street: address.street.trim(),
+            city: address.city.trim(),
+            state: address.state,
+            lga: address.lga,
+            landmark: address.landmark.trim() || undefined,
+          }
+        : {}),
       ...(deviceCoords ?? {}),
     })
   }
@@ -140,24 +153,16 @@ export function StorefrontEdit() {
 
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>Pickup address</Text>
-            <View style={fieldStyle('address')}>
-              <TextInput
-                style={[styles.input, { color: colors.foreground }]}
-                value={address}
-                onChangeText={setAddress}
-                onFocus={() => setFocused('address')}
-                onBlur={() => setFocused(null)}
-                placeholder="e.g. 12 Adeola Odeku Street, Victoria Island, Lagos"
-                placeholderTextColor={colors.subtleForeground}
-              />
-            </View>
             <Text style={[styles.hint, { color: colors.subtleForeground }]}>
-              Used to find the nearest rider and hub for your orders — the more precise, the
-              better the match.
+              Used to find the nearest rider and hub for your orders, and shown to customers as your
+              town and state so they can choose vendors close to them.
             </Text>
-            {errors.address ? (
-              <Text style={[styles.error, { color: colors.destructive }]}>{errors.address}</Text>
+            {vendor?.address && !vendor.street ? (
+              <Text style={[styles.hint, { color: colors.subtleForeground }]}>
+                Saved address: {vendor.address}. Please re-enter it in the boxes below.
+              </Text>
             ) : null}
+            <AddressFields value={address} onChange={setAddress} error={errors.address} />
             <Button
               label={locating ? 'Locating…' : 'Use my current location'}
               variant="outline"

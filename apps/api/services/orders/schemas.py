@@ -9,6 +9,9 @@ class DeliveryAddress(BaseModel):
     city: str = Field(min_length=1)
     state: str = Field(min_length=1)
     country: str = "Nigeria"
+    # Local government area and a nearby landmark help the rider find the door.
+    lga: str | None = Field(default=None, max_length=100)
+    landmark: str | None = Field(default=None, max_length=200)
     notes: str | None = None
     # Who the rider should call on arrival. Falls back to the customer's account phone.
     phone: str | None = Field(default=None, max_length=20)

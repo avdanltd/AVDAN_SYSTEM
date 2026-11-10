@@ -3,6 +3,8 @@ export interface ProductListing {
   vendor_id: string
   vendor_name: string
   vendor_slug: string
+  vendor_city?: string | null
+  vendor_state?: string | null
   category_id: string | null
   category_name: string | null
   name: string

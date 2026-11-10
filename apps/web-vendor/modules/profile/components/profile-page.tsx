@@ -8,6 +8,7 @@ import { LocateFixed, MapPin } from 'lucide-react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
+  AddressFields,
   Button,
   Card,
   CardContent,
@@ -26,6 +27,7 @@ import {
   Textarea,
   toast,
 } from '@avdan/ui'
+import { addressFromApi, addressProblem, EMPTY_ADDRESS, type AddressValue } from '@avdan/types'
 import { profileService } from '../services/profile.service'
 import type { Bank } from '../services/profile.service'
 import { ChangePasswordCard } from './change-password-card'
@@ -42,7 +44,6 @@ type AccountFormValues = z.infer<typeof accountSchema>
 const businessSchema = z.object({
   name: z.string().min(2, 'Business name must be at least 2 characters'),
   description: z.string().optional(),
-  address: z.string().optional(),
 })
 type BusinessFormValues = z.infer<typeof businessSchema>
 
@@ -171,8 +172,10 @@ function BusinessForm() {
 
   const form = useForm<BusinessFormValues>({
     resolver: zodResolver(businessSchema),
-    defaultValues: { name: '', description: '', address: '' },
+    defaultValues: { name: '', description: '' },
   })
+  const [address, setAddress] = useState<AddressValue>(EMPTY_ADDRESS)
+  const [addressError, setAddressError] = useState<string | null>(null)
   const [deviceCoords, setDeviceCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
 
@@ -201,16 +204,28 @@ function BusinessForm() {
       form.reset({
         name: vendor.name ?? '',
         description: vendor.description ?? '',
-        address: vendor.address ?? '',
       })
+      setAddress(addressFromApi(vendor))
     }
   }, [vendor, form])
 
   function onSubmit(values: BusinessFormValues) {
+    const problem = addressProblem(address, { requireAll: false })
+    setAddressError(problem)
+    if (problem) return
+    const hasAddress = address.street.trim() !== ''
     updateVendor({
       name: values.name,
       description: values.description || undefined,
-      address: values.address || undefined,
+      ...(hasAddress
+        ? {
+            street: address.street.trim(),
+            city: address.city.trim(),
+            state: address.state,
+            lga: address.lga,
+            landmark: address.landmark.trim() || undefined,
+          }
+        : {}),
       ...(deviceCoords ?? {}),
     }, { onSuccess: () => setDeviceCoords(null) })
   }
@@ -257,23 +272,22 @@ function BusinessForm() {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="address"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Pickup Address</FormLabel>
-              <FormControl>
-                <Input placeholder="e.g. 12 Adeola Odeku Street, Victoria Island, Lagos" {...field} />
-              </FormControl>
-              <p className="text-xs text-muted-foreground">
-                Used to find the nearest rider and hub for your orders — the more precise, the
-                better the match.
-              </p>
-              <FormMessage />
-            </FormItem>
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">Pickup Address</p>
+            <p className="text-xs text-muted-foreground">
+              Used to find the nearest rider and hub for your orders, and shown to customers as your
+              town and state so they can choose vendors close to them.
+            </p>
+          </div>
+          {vendor?.address && !vendor.street && (
+            <p className="rounded-md bg-secondary p-2 text-xs text-muted-foreground">
+              Saved address: {vendor.address}. Please re-enter it in the boxes below.
+            </p>
           )}
-        />
+          <AddressFields value={address} onChange={setAddress} disabled={isPending} idPrefix="vendor" />
+          {addressError && <p className="text-sm text-destructive">{addressError}</p>}
+        </div>
         <div className="space-y-2 rounded-md border border-border p-3">
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" size="sm" onClick={shareDeviceLocation} disabled={locating}>

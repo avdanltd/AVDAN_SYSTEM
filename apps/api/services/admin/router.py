@@ -4,9 +4,11 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.address import address_fields
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
+from services.admin.finance import FinanceService
 from services.admin.schemas import (
     AdminProductResponse,
     ApproveProductRequest,
@@ -14,7 +16,6 @@ from services.admin.schemas import (
     PaginatedAdminProductsResponse,
     RejectProductRequest,
 )
-from services.admin.finance import FinanceService
 from services.admin.service import AdminService
 from services.analytics.schemas import (
     OrderVolumeResponse,
@@ -205,6 +206,8 @@ def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
         logo_url=v.logo_url,
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
+        address=v.address,
+        **address_fields(v),
         rating=float(v.rating),
         created_at=v.created_at.isoformat(),
     )
@@ -731,6 +734,7 @@ def _hub_resp(hub: object) -> HubResponse:
         lat=float(h.lat) if h.lat is not None else None,
         lng=float(h.lng) if h.lng is not None else None,
         address=h.address,
+        **address_fields(h),
         description=h.description,
     )
 

@@ -167,7 +167,7 @@ export function useSetAvailability() {
 export function useUpdateStorefront(onDone?: () => void) {
   const invalidate = useCatalogInvalidation()
   return useMutation({
-    mutationFn: (payload: { name?: string; description?: string | null; address?: string; lat?: number; lng?: number }) =>
+    mutationFn: (payload: { name?: string; description?: string | null; street?: string; city?: string; state?: string; lga?: string; landmark?: string; lat?: number; lng?: number }) =>
       vendorService.updateProfile(payload),
     onSuccess: () => {
       invalidate()

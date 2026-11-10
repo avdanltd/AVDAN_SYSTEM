@@ -46,6 +46,14 @@ class Vendor(BaseModel):
     # Free-text address plus geocoded coordinates — nullable because geocoding at registration
     # is best-effort. A vendor without coordinates falls back to zone-based rider/hub matching.
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Structured form of the address above (the string is composed from these). All nullable:
+    # rows saved before these existed only have the free-text `address`.
+    street: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lga: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(200), nullable=True)
     lat: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
     lng: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
     rating: Mapped[Decimal] = mapped_column(
