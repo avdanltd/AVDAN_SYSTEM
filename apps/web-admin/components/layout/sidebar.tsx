@@ -18,6 +18,7 @@ import {
   Siren,
   PackageCheck,
   Wallet,
+  Star,
 } from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn, Logo, Button } from '@avdan/ui'
@@ -33,6 +34,7 @@ export const navItems: { label: string; href: string; icon: typeof Users; attent
   { label: 'Vendors', href: ROUTES.vendors, icon: Store, attention: 'vendors' },
   { label: 'Products', href: ROUTES.products, icon: PackageCheck, attention: 'products' },
   { label: 'Categories', href: ROUTES.categories, icon: Tag },
+  { label: 'Reviews', href: ROUTES.reviews, icon: Star },
   { label: 'Disputes', href: ROUTES.disputes, icon: AlertTriangle, attention: 'disputes' },
   { label: 'Escrow', href: ROUTES.escrow, icon: DollarSign },
   { label: 'Payouts', href: ROUTES.payouts, icon: Banknote, attention: 'payouts' },

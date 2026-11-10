@@ -45,6 +45,11 @@ class PublicProductResponse(BaseModel):
     # Where the vendor is, so customers can pick the ones nearest them (faster delivery).
     vendor_city: str | None = None
     vendor_state: str | None = None
+    vendor_rating: float = 0
+    vendor_review_count: int = 0
+    # Average of this product's visible reviews (0 until it has any).
+    rating: float = 0
+    review_count: int = 0
     category_id: str | None
     category_name: str | None
     name: str
@@ -109,6 +114,7 @@ class VendorResponse(BaseModel):
     lat: float | None = None
     lng: float | None = None
     rating: float
+    review_count: int = 0
     created_at: str
 
     model_config = {"from_attributes": True}

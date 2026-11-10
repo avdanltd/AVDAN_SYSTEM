@@ -20,6 +20,7 @@ export const ROUTES = {
 
   escrow: '/escrow',
   payouts: '/payouts',
+  reviews: '/reviews',
   finance: '/finance',
   dispatch: '/dispatch',
   hubs: '/hubs',

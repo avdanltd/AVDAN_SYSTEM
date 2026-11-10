@@ -65,10 +65,11 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
           )}
 
           <div className="mt-3 flex items-center justify-between">
-            {vendor.rating !== null ? (
+            {vendor.rating !== null && (vendor.review_count ?? 0) > 0 ? (
               <span className="flex items-center gap-1 text-sm font-medium text-warning">
                 <Star className="h-3.5 w-3.5 fill-current" />
                 {vendor.rating.toFixed(1)}
+                <span className="text-xs font-normal text-muted-foreground">({vendor.review_count})</span>
               </span>
             ) : (
               <span className="text-xs text-muted-foreground">No ratings yet</span>

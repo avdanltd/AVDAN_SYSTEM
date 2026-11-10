@@ -1,5 +1,6 @@
 'use client'
 
+import { ReviewList } from '@/modules/reviews/components/review-list'
 import { formatVendorLocation } from '@avdan/types'
 import { useState } from 'react'
 import Image from 'next/image'
@@ -7,7 +8,7 @@ import Link from 'next/link'
 import { ShoppingCart, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Badge, Button, ConfirmDialog, Skeleton } from '@avdan/ui'
+import { Badge, Button, StarRating, ConfirmDialog, Skeleton } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useProduct } from '../hooks/use-product'
 import { useCartStore } from '@/modules/cart/store/cart.store'
@@ -157,6 +158,14 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
 
             <h1 className="text-3xl font-bold tracking-tight text-foreground">{product.name}</h1>
 
+            {(product.review_count ?? 0) > 0 && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <StarRating value={product.rating ?? 0} size={16} />
+                <span className="font-medium text-foreground">{(product.rating ?? 0).toFixed(1)}</span>
+                <span>({product.review_count} review{product.review_count === 1 ? '' : 's'})</span>
+              </div>
+            )}
+
             <Link
               href={ROUTES.vendor(product.vendor_slug)}
               className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary"
@@ -235,6 +244,8 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
             </div>
           </div>
         </div>
+
+        <ReviewList target="product" id={product.id} title="Customer reviews" />
 
         {/* Related products */}
         {product.related_products && product.related_products.length > 0 && (

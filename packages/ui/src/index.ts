@@ -42,6 +42,7 @@ export {
   DropdownMenuTrigger,
 } from './components/ui/dropdown-menu'
 export { AddressFields } from './components/forms/address-fields'
+export { StarRating } from './components/primitives/star-rating'
 export {
   Form,
   FormControl,

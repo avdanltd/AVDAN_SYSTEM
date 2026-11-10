@@ -5,6 +5,9 @@ export interface ProductListing {
   vendor_slug: string
   vendor_city?: string | null
   vendor_state?: string | null
+  /** Average of visible reviews; 0 with review_count 0 means "no reviews yet". */
+  rating?: number
+  review_count?: number
   category_id: string | null
   category_name: string | null
   name: string

@@ -209,6 +209,7 @@ def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
         address=v.address,
         **address_fields(v),
         rating=float(v.rating),
+        review_count=v.review_count,
         created_at=v.created_at.isoformat(),
     )
 

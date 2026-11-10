@@ -122,6 +122,7 @@ def test_vendor_profile_update_saves_structured_address_and_exposes_city_state(m
                     id=uuid.uuid4(), vendor_id=vendor.id, vendor=vendor, category_id=None, category=None,
                     name="Power oil", description=None, price_kobo=4_900_000, compare_at_price_kobo=None,
                     special_delivery_fee_kobo=0, available=True, stock_qty=3, image_urls=[],
+                    rating=0, review_count=0,
                     created_at=datetime.now(UTC),
                 )
                 card = _public_product_response(product)
