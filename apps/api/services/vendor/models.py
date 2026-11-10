@@ -56,9 +56,11 @@ class Vendor(BaseModel):
     landmark: Mapped[str | None] = mapped_column(String(200), nullable=True)
     lat: Mapped[float | None] = mapped_column(Numeric(10, 8), nullable=True)
     lng: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
+    # Average of the visible vendor reviews, kept in step by ReviewService (0 = none yet).
     rating: Mapped[Decimal] = mapped_column(
         Numeric(3, 2), default=Decimal("0.00"), nullable=False
     )
+    review_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     paystack_recipient_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     payout_account_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     payout_bank_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
@@ -110,6 +112,11 @@ class Product(BaseModel):
         Integer, nullable=False, default=0, server_default="0"
     )
     available: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # Average of the visible product reviews, kept in step by ReviewService (0 = none yet).
+    rating: Mapped[Decimal] = mapped_column(
+        Numeric(3, 2), default=Decimal("0.00"), server_default="0", nullable=False
+    )
+    review_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
     stock_qty: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     image_urls: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
 

@@ -1,4 +1,4 @@
-import type { DeliveryQuote } from '@avdan/types'
+import type { DeliveryQuote, OrderReviews, ReviewPage, SubmitReviewsInput } from '@avdan/types'
 import { apiClient } from '@avdan/mobile'
 
 import type {
@@ -42,6 +42,11 @@ export const shopService = {
     apiClient.get<PaginatedProducts>('/products', productParams(q)),
 
   getProduct: (id: string) => apiClient.get<Product>(`/products/${id}`),
+  getReviews: (target: 'product' | 'vendor', id: string, page: number) =>
+    apiClient.get<ReviewPage>(`/reviews/${target}s/${id}`, { page: String(page), page_size: '5' }),
+  getOrderReviews: (orderId: string) => apiClient.get<OrderReviews>(`/reviews/orders/${orderId}`),
+  submitOrderReviews: (orderId: string, body: SubmitReviewsInput) =>
+    apiClient.post<OrderReviews>(`/reviews/orders/${orderId}`, body),
 
   getCategories: () => apiClient.get<Category[]>('/categories'),
 

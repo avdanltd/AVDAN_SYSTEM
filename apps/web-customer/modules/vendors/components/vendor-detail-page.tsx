@@ -1,5 +1,6 @@
 'use client'
 
+import { ReviewList } from '@/modules/reviews/components/review-list'
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -360,10 +361,13 @@ export function VendorDetailPage({ slug }: { slug: string }) {
                   {vendor.description}
                 </p>
               )}
-              {vendor.rating !== null && (
+              {vendor.rating !== null && (vendor.review_count ?? 0) > 0 && (
                 <div className="mt-2 flex items-center gap-1 text-sm text-warning font-medium">
                   <Star className="h-3.5 w-3.5 fill-current" />
                   {vendor.rating.toFixed(1)}
+                  <span className="text-xs font-normal text-muted-foreground">
+                    ({vendor.review_count} review{vendor.review_count === 1 ? '' : 's'})
+                  </span>
                 </div>
               )}
             </div>
@@ -373,6 +377,7 @@ export function VendorDetailPage({ slug }: { slug: string }) {
 
       {/* Products with filters */}
       <VendorProducts vendorId={vendor.id} vendorName={vendor.name} />
+      <ReviewList target="vendor" id={vendor.id} title="Store reviews" />
     </div>
   )
 }

@@ -36,6 +36,8 @@ from services.orders.router import router as orders_router
 from services.payment.router import router as payment_router
 from services.payment.webhook_router import webhook_router
 from services.qa.router import router as hub_router
+from services.review.router import admin_router as admin_reviews_router
+from services.review.router import router as reviews_router
 from services.search.router import router as search_router
 from services.storage.router import router as uploads_router
 from services.tracking.router import ws_router
@@ -116,6 +118,8 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
     app.include_router(admin_payouts_router, prefix="/admin/payouts", tags=["admin-payouts"])
+    app.include_router(admin_reviews_router, prefix="/admin/reviews", tags=["admin-reviews"])
+    app.include_router(reviews_router, prefix="/reviews", tags=["reviews"])
     app.include_router(wallet_router, prefix="/wallet", tags=["wallet"])
     app.include_router(categories_router, prefix="/categories", tags=["categories"])
     app.include_router(products_router, prefix="/products", tags=["products"])

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ReviewsSection } from './reviews-section'
 import { formatVendorLocation } from '@avdan/types'
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
@@ -170,6 +171,8 @@ export function ProductDetail({ productId }: { productId: string }) {
               </Text>
             </Card>
           ) : null}
+
+          <ReviewsSection target="product" id={product.id} title="Customer reviews" />
         </View>
       </ScrollView>
 

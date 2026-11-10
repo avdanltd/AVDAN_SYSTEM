@@ -1,5 +1,6 @@
 'use client'
 
+import { OrderReviewCard } from '@/modules/reviews/components/order-review-card'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -184,6 +185,8 @@ export function OrderDetailPage({ id }: { id: string }) {
                 )}
               </CardContent>
             </Card>
+
+            <OrderReviewCard orderId={order.id} />
 
             {/* Status timeline */}
             {order.events && order.events.length > 0 && (
