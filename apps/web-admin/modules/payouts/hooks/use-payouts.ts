@@ -31,8 +31,8 @@ function useInvalidate() {
 export function useApprovePayout() {
   const invalidate = useInvalidate()
   return useMutation({
-    mutationFn: (v: { id: string; approvedKobo: number; note: string | null }) =>
-      payoutsService.approve(v.id, v.approvedKobo, v.note),
+    mutationFn: (v: { id: string; approvedKobo: number; note: string | null; pin: string }) =>
+      payoutsService.approve(v.id, v.approvedKobo, v.note, v.pin),
     onSuccess: () => {
       invalidate()
       toast.success('Approved — the transfer has been sent to the bank.')
@@ -50,5 +50,38 @@ export function useRejectPayout() {
       toast.success('Request rejected — funds returned to the wallet.')
     },
     onError: (error: Error) => toast.error(error.message ?? 'Could not reject this request'),
+  })
+}
+
+export function usePayoutPinStatus() {
+  return useQuery({ queryKey: ['admin-payout-pin'], queryFn: () => payoutsService.pinStatus() })
+}
+
+export function useSetPayoutPin() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (v: { pin: string; currentPassword: string }) =>
+      payoutsService.setPin(v.pin, v.currentPassword),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-payout-pin'] })
+      toast.success('Payout PIN saved.')
+    },
+    onError: (error: Error) => toast.error(error.message ?? 'Could not save your PIN'),
+  })
+}
+
+export function useRefreshPayout() {
+  const invalidate = useInvalidate()
+  return useMutation({
+    mutationFn: (id: string) => payoutsService.refresh(id),
+    onSuccess: (request) => {
+      invalidate()
+      toast.success(
+        request.status === 'PROCESSING'
+          ? 'Paystack still shows this transfer as in progress.'
+          : 'Status updated from Paystack.',
+      )
+    },
+    onError: (error: Error) => toast.error(error.message ?? 'Could not check with Paystack'),
   })
 }

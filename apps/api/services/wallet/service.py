@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,11 @@ from services.wallet.models import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Paystack transfer statuses that mean the money will never reach the bank.
+_TRANSFER_DEAD_STATUSES = {"failed", "reversed", "abandoned", "rejected", "blocked"}
+_PIN_MAX_ATTEMPTS = 5
+_PIN_LOCK_MINUTES = 15
 
 # Order states that count as "ongoing" money — paid for, but the goods have not been delivered yet.
 _ONGOING_STATES = [
@@ -468,8 +473,14 @@ class WalletService:
         request = (await self.db.execute(
             select(PayoutRequest).where(PayoutRequest.transfer_ref == reference).with_for_update()
         )).scalar_one_or_none()
+        await self._apply_transfer_outcome(request, event_type)
+
+    async def _apply_transfer_outcome(self, request: PayoutRequest | None, event_type: str) -> bool:
+        """Settle a PROCESSING payout from a transfer.* verdict, whether it arrived by webhook or
+        was pulled from Paystack. Idempotent: anything not PROCESSING is left alone. Returns True
+        when the request changed."""
         if not request or request.status != PayoutStatus.PROCESSING:
-            return  # unknown, or already settled — webhooks are delivered at-least-once
+            return False  # unknown, or already settled — verdicts are delivered at-least-once
 
         if event_type == "transfer.success":
             request.status = PayoutStatus.PAID
@@ -485,3 +496,120 @@ class WalletService:
             ))
             self._event(request.id, PayoutEventType.TRANSFER_FAILED, None, "system", request.approved_kobo, event_type)
         await self.db.flush()
+        return True
+
+    async def reconcile_request(self, request_id: str) -> PayoutRequest:
+        """Ask Paystack for the real status of one in-flight payout and settle it. This is the
+        safety net for a missed transfer.* webhook (they are at-least-once, never guaranteed)."""
+        from services.payment.providers.registry import get_provider
+
+        request = await self._get_request(request_id, lock=True)
+        if request.status != PayoutStatus.PROCESSING or not request.transfer_ref:
+            return request
+        result = await get_provider("paystack").verify_transfer(request.transfer_ref)
+        if result is None:
+            return request  # Paystack has no such transfer (yet) — leave it for the next pass
+        if result.status == "success":
+            await self._apply_transfer_outcome(request, "transfer.success")
+        elif result.status in _TRANSFER_DEAD_STATUSES:
+            await self._apply_transfer_outcome(request, f"transfer.{result.status}")
+        # pending / received / otp: still in flight
+        return request
+
+    async def reconcile_processing(self, older_than_seconds: int = 120) -> int:
+        """Settle every payout stuck in PROCESSING past `older_than_seconds`. Returns how many
+        changed. One failing request must not block the rest."""
+        cutoff = datetime.now(UTC) - timedelta(seconds=older_than_seconds)
+        ids = [str(i) for i in (await self.db.execute(
+            select(PayoutRequest.id).where(
+                PayoutRequest.status == PayoutStatus.PROCESSING, PayoutRequest.decided_at <= cutoff
+            )
+        )).scalars().all()]
+        changed = 0
+        for request_id in ids:
+            try:
+                before = (await self._get_request(request_id)).status
+                request = await self.reconcile_request(request_id)
+                changed += int(request.status != before)
+            except AppError:
+                logger.warning("payout reconcile failed for %s", request_id, exc_info=True)
+        return changed
+
+    # ── Admin payout PIN ─────────────────────────────────────────────────────
+
+    async def payout_pin_is_set(self, admin_id: str) -> bool:
+        from services.auth.models import User
+
+        admin = await self.db.get(User, uuid.UUID(admin_id))
+        return bool(admin and admin.payout_pin_hash)
+
+    async def set_payout_pin(self, admin_id: str, pin: str, current_password: str) -> None:
+        """Set or change the calling admin's payout PIN. The account password is required so a
+        hijacked session cannot install a PIN of the attacker's choosing."""
+        from core.security import hash_password, verify_password
+        from services.analytics.models import AuditLog
+        from services.auth.models import User
+
+        admin = await self.db.get(User, uuid.UUID(admin_id))
+        if not admin:
+            raise NotFoundException("Admin not found")
+        if not verify_password(current_password, admin.password_hash):
+            raise AppError(403, "INVALID_PASSWORD", "Your account password is incorrect")
+        admin.payout_pin_hash = hash_password(pin)
+        admin.payout_pin_failed_attempts = 0
+        admin.payout_pin_locked_until = None
+        self.db.add(AuditLog(
+            actor_id=uuid.UUID(admin_id), action="payout.pin_set", target_type="user",
+            target_id=admin_id, before=None, after=None,
+        ))
+        await self.db.flush()
+
+    async def verify_payout_pin(self, admin_id: str, pin: str) -> None:
+        """Gate for approving money out. Locks the admin out for 15 minutes after 5 wrong tries.
+        Failures are counted in their own transaction so the request's rollback cannot erase them."""
+        from core.security import verify_password
+        from services.auth.models import User
+
+        admin = await self.db.get(User, uuid.UUID(admin_id))
+        if not admin or not admin.payout_pin_hash:
+            raise AppError(403, "PAYOUT_PIN_NOT_SET", "Set your payout PIN before approving payouts")
+        now = datetime.now(UTC)
+        if admin.payout_pin_locked_until and admin.payout_pin_locked_until > now:
+            raise AppError(429, "PAYOUT_PIN_LOCKED", "Too many wrong PINs. Try again in a few minutes.")
+        if verify_password(pin, admin.payout_pin_hash):
+            if admin.payout_pin_failed_attempts:
+                admin.payout_pin_failed_attempts = 0
+                admin.payout_pin_locked_until = None
+            return
+        await self._record_pin_failure(admin_id)
+        raise AppError(403, "INVALID_PAYOUT_PIN", "Incorrect payout PIN")
+
+    @staticmethod
+    async def _record_pin_failure(admin_id: str) -> None:
+        from core.database import AsyncSessionLocal
+        from services.analytics.models import AuditLog
+        from services.auth.models import User
+
+        async with AsyncSessionLocal() as session:
+            async with session.begin():
+                admin = (await session.execute(
+                    select(User).where(User.id == uuid.UUID(admin_id)).with_for_update()
+                )).scalar_one()
+                admin.payout_pin_failed_attempts += 1
+                if admin.payout_pin_failed_attempts >= _PIN_MAX_ATTEMPTS:
+                    admin.payout_pin_locked_until = datetime.now(UTC) + timedelta(minutes=_PIN_LOCK_MINUTES)
+                    admin.payout_pin_failed_attempts = 0
+                session.add(AuditLog(
+                    actor_id=admin.id, action="payout.pin_failed", target_type="user",
+                    target_id=admin_id, before=None, after=None,
+                ))
+
+    async def admin_names(self, requests: list[PayoutRequest]) -> dict[uuid.UUID, str]:
+        """Names of the admins who decided these requests. Admin portal only — never sent to owners."""
+        from services.auth.models import User
+
+        ids = {r.decided_by for r in requests if r.decided_by}
+        if not ids:
+            return {}
+        rows = (await self.db.execute(select(User.id, User.name, User.email).where(User.id.in_(ids)))).all()
+        return {uid: (name or email or "Admin") for uid, name, email in rows}

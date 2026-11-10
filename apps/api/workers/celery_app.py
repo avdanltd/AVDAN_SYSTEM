@@ -14,6 +14,7 @@ celery_app = Celery(
     include=[
         "workers.tasks.health",
         "workers.tasks.escrow",
+        "workers.tasks.payouts",
         "workers.tasks.notifications",
         "workers.tasks.cleanup",
         "workers.tasks.embeddings",
