@@ -40,8 +40,18 @@ requests it and an admin approves an amount.
      Paystack with reference `wd-{request_id}`; status `PROCESSING` (or `PAID` if Paystack settles
      synchronously). If the Paystack call errors, nothing is committed and the request stays `REQUESTED`.
    - **Rejects with a reason** → full amount returns to Available; the reason is shown to the requester.
+   **Approval is a two-step action (2026-11-10):** "Review & approve" opens a confirm panel (amount,
+   recipient, bank) and the admin must enter their own 4-digit payout PIN (bcrypt, per admin, set
+   with their account password; 5 wrong tries lock it for 15 minutes; failures are audit-logged).
+   `decided_by` / the approving admin's name are returned by admin endpoints only — never to owners.
 3. Paystack webhook `transfer.success` → `PAID`. `transfer.failed`/`transfer.reversed` → `FAILED` and
    the approved amount returns to Available. Webhooks are idempotent (duplicates are no-ops).
+
+**Missed webhooks:** webhooks are at-least-once, not guaranteed. A Celery beat task
+(`reconcile-payouts`, every 5 min) asks Paystack (`GET /transfer/verify/{reference}`) about every
+payout still `PROCESSING` after 2 minutes and settles it the same way the webhook would. Admins can
+also press **Check status** on a request (`POST /admin/payouts/{id}/refresh`). Both paths share
+`_apply_transfer_outcome`, so a late webhook after reconciliation is a harmless no-op.
 
 ## When earnings are credited
 
@@ -74,6 +84,7 @@ requests it and an admin approves an amount.
 - [ ] Paystack: Transfers enabled (Registered Business) — **done by the team 2026-10-28**.
 - [ ] Paystack Settings → Preferences: **Transfer OTP off**, otherwise approval returns `TRANSFER_REQUIRES_OTP`.
 - [ ] Paystack webhook URL set to `https://api.avdanstore.com/payment/webhook/paystack` (handles `transfer.*`).
+- [ ] Accounts on restricted keys (`rk_`) only: set `PAYSTACK_WEBHOOK_SECRET` to the dashboard **webhook signing key**. Paystack then sends `Paystack-Signature` (the legacy `x-paystack-signature` is signed with the deleted `sk_` key). The API accepts both headers and logs a `signature mismatch` line (header kind, signature shape, key prefixes — never keys) if neither verifies.
 - [ ] Paystack balance funded enough to cover approved withdrawals (customer payments settle T+1).
 - [ ] Migration `0018` runs automatically on deploy (`alembic upgrade head` is in the deploy workflows).
 - [ ] Pre-wallet test rows: left untouched. `rider_payouts` is legacy and no longer written.

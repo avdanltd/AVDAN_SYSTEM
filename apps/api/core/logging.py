@@ -16,6 +16,7 @@ SENSITIVE_KEYS = frozenset({
     "avdan_token",
     "avdan_refresh_token",
     "x-paystack-signature",
+    "paystack-signature",
     "secret_key",
 })
 

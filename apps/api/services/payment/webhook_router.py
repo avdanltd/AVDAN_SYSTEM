@@ -13,18 +13,24 @@ webhook_router = APIRouter()
 @webhook_router.post("/paystack")
 async def paystack_webhook(
     request: Request,
+    paystack_signature: str | None = Header(default=None),
     x_paystack_signature: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    if not x_paystack_signature:
-        raise AppError(400, "MISSING_SIGNATURE", "x-paystack-signature header is required")
+    # Accounts that moved to restricted keys are signed with the webhook signing key and send
+    # `Paystack-Signature`; the legacy `x-paystack-signature` is signed with the old secret key.
+    # Accept either — the provider verifies it against every signing key we hold.
+    header_name = "paystack-signature" if paystack_signature else "x-paystack-signature"
+    signature = paystack_signature or x_paystack_signature
+    if not signature:
+        raise AppError(400, "MISSING_SIGNATURE", "paystack-signature header is required")
 
     # Read raw bytes — required for HMAC verification
     payload = await request.body()
 
     # Signature verified FIRST — no processing if invalid
     provider = get_provider("paystack")
-    event = await provider.verify_webhook(payload, x_paystack_signature)
+    event = await provider.verify_webhook(payload, signature, header_name=header_name)
 
     svc = PaymentService(db)
 

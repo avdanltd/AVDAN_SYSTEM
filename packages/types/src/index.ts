@@ -55,6 +55,7 @@ import type { components } from './generated'
 export type WalletSummary = components['schemas']['WalletSummaryResponse']
 export type WalletEntry = components['schemas']['WalletEntryResponse']
 export type PayoutRequest = components['schemas']['PayoutRequestResponse']
+export type PayoutPinStatus = components['schemas']['PayoutPinStatusResponse']
 export type PayoutEvent = components['schemas']['PayoutEventResponse']
 export type DeliveryQuote = components['schemas']['DeliveryQuoteResponse']
 export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'FAILED'
