@@ -5,6 +5,7 @@ export interface Vendor {
   description: string | null
   logo_url: string | null
   rating: number | null
+  review_count?: number
   status: string
   zone_id: string | null
   created_at: string

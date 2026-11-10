@@ -240,14 +240,19 @@ class VendorService:
         if data.logo_url is not None:
             vendor.logo_url = data.logo_url
 
-        if data.address is not None:
+        # Structured fields (street, town/city, state, LGA, landmark) win; the single free-text
+        # `address` is still accepted from older app versions.
+        from core.address import apply_structured_address
+        geocode_query = apply_structured_address(vendor, data)
+        if geocode_query is None and data.address is not None:
             vendor.address = data.address
+            geocode_query = data.address
         if data.lat is not None and data.lng is not None:
             # Sent explicitly (the device's own position): more reliable than looking up an address.
             vendor.lat, vendor.lng = data.lat, data.lng
-        elif data.address is not None:
+        elif geocode_query is not None:
             from core.geocoding import geocode_address
-            coords = await geocode_address(data.address)
+            coords = await geocode_address(geocode_query)
             # Best-effort: a vendor whose address couldn't be geocoded keeps whatever
             # coordinates it had (or none), and falls back to the flat delivery fee.
             if coords:

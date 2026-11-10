@@ -32,6 +32,9 @@ export interface RiderOrder {
     street?: string
     city?: string
     state?: string
+    lga?: string
+    /** A nearby landmark the customer gave, to find the door. */
+    landmark?: string
     /** Customer's contact number, for calling on arrival. */
     phone?: string | null
     [key: string]: unknown

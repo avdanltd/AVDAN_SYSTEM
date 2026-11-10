@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.address import StructuredAddressFields
+
 # ── Product ──────────────────────────────────────────────────────────────────
 
 class ProductResponse(BaseModel):
@@ -40,6 +42,14 @@ class PublicProductResponse(BaseModel):
     vendor_id: str
     vendor_name: str
     vendor_slug: str
+    # Where the vendor is, so customers can pick the ones nearest them (faster delivery).
+    vendor_city: str | None = None
+    vendor_state: str | None = None
+    vendor_rating: float = 0
+    vendor_review_count: int = 0
+    # Average of this product's visible reviews (0 until it has any).
+    rating: float = 0
+    review_count: int = 0
     category_id: str | None
     category_name: str | None
     name: str
@@ -95,9 +105,16 @@ class VendorResponse(BaseModel):
     status: str
     zone_id: str | None
     address: str | None = None
+    street: str | None = None
+    city: str | None = None
+    lga: str | None = None
+    state: str | None = None
+    country: str | None = None
+    landmark: str | None = None
     lat: float | None = None
     lng: float | None = None
     rating: float
+    review_count: int = 0
     created_at: str
 
     model_config = {"from_attributes": True}
@@ -127,7 +144,7 @@ class VendorDetailResponse(VendorResponse):
     payout_account_name: str | None = None
 
 
-class UpdateVendorProfileRequest(BaseModel):
+class UpdateVendorProfileRequest(StructuredAddressFields):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     logo_url: str | None = None

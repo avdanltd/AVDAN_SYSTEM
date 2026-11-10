@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from core.address import StructuredAddressFields
+
 
 class QAInspectionResponse(BaseModel):
     id: str
@@ -45,6 +47,12 @@ class HubResponse(BaseModel):
     lat: float | None
     lng: float | None
     address: str | None = None
+    street: str | None = None
+    city: str | None = None
+    lga: str | None = None
+    state: str | None = None
+    country: str | None = None
+    landmark: str | None = None
     description: str | None = None
 
 
@@ -55,7 +63,7 @@ class CreateHubRequest(BaseModel):
     lng: float | None = None
 
 
-class UpdateMyHubRequest(BaseModel):
+class UpdateMyHubRequest(StructuredAddressFields):
     """What a hub agent can fill in about their own hub. Send coordinates (e.g. from the device's
     location) or leave them out and send an address to have it looked up."""
     address: str | None = Field(default=None, max_length=500)

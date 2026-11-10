@@ -11,6 +11,11 @@ export interface UpdateVendorPayload {
   name?: string
   description?: string
   address?: string
+  street?: string
+  city?: string
+  state?: string
+  lga?: string
+  landmark?: string
   lat?: number
   lng?: number
 }
@@ -21,6 +26,11 @@ export interface VendorMeResponse {
   description: string | null
   logo_url: string | null
   address: string | null
+  street: string | null
+  city: string | null
+  state: string | null
+  lga: string | null
+  landmark: string | null
   lat: number | null
   lng: number | null
   rating: number | null

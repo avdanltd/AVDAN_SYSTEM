@@ -13,6 +13,7 @@ import { useRouter } from 'expo-router'
 import { CreditCard, MapPin, ShieldCheck, Store } from 'lucide-react-native'
 import { z } from 'zod'
 import {
+  AddressFields,
   Button,
   Card,
   EmptyState,
@@ -24,6 +25,7 @@ import {
   useAuthStore,
   useTheme,
 } from '@avdan/mobile'
+import { addressProblem, EMPTY_ADDRESS, type AddressValue } from '@avdan/types'
 
 import { useCheckout, useDeliveryQuote } from '../hooks/use-checkout'
 import { groupByVendor, useCartStore } from '../store/cart.store'
@@ -31,9 +33,6 @@ import type { CustomerOrder } from '../types'
 
 // Mirrors DeliveryAddress on the API.
 const addressSchema = z.object({
-  street: z.string().trim().min(4, 'Enter the street address'),
-  city: z.string().trim().min(2, 'Enter the city'),
-  state: z.string().trim().min(2, 'Enter the state'),
   notes: z.string().trim().max(300, 'Notes are too long').optional(),
   // Who the rider calls on arrival.
   phone: z.string().trim().regex(/^\+?[0-9]{7,15}$/, 'Enter a valid phone number, e.g. +2348012345678'),
@@ -47,9 +46,7 @@ export function Checkout() {
 
   const groups = useMemo(() => groupByVendor(lines), [lines])
 
-  const [street, setStreet] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
+  const [address, setAddress] = useState<AddressValue>(EMPTY_ADDRESS)
   const [notes, setNotes] = useState('')
   const accountPhone = useAuthStore((s) => s.user?.phone)
   const [phone, setPhone] = useState(accountPhone ?? '')
@@ -98,13 +95,17 @@ export function Checkout() {
   }
 
   const handlePlaceOrder = async () => {
-    const parsed = addressSchema.safeParse({ street, city, state, notes: notes || undefined, phone })
-    if (!parsed.success) {
+    const parsed = addressSchema.safeParse({ notes: notes || undefined, phone })
+    const addressIssue = addressProblem(address, { requireAll: true })
+    if (!parsed.success || addressIssue) {
       const next: Record<string, string> = {}
-      for (const issue of parsed.error.issues) {
-        const key = issue.path[0]
-        if (typeof key === 'string' && !next[key]) next[key] = issue.message
+      if (!parsed.success) {
+        for (const issue of parsed.error.issues) {
+          const key = issue.path[0]
+          if (typeof key === 'string' && !next[key]) next[key] = issue.message
+        }
       }
+      if (addressIssue) next.address = addressIssue
       setErrors(next)
       return
     }
@@ -115,9 +116,11 @@ export function Checkout() {
     setErrors({})
 
     const order = await placeOrder(current, {
-      street: parsed.data.street,
-      city: parsed.data.city,
-      state: parsed.data.state,
+      street: address.street.trim(),
+      city: address.city.trim(),
+      state: address.state,
+      lga: address.lga,
+      landmark: address.landmark.trim() || null,
       country: 'Nigeria',
       notes: parsed.data.notes ?? null,
       phone: parsed.data.phone,
@@ -267,60 +270,7 @@ export function Checkout() {
             <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={[styles.label, { color: colors.foreground }]}>Street address</Text>
-            <View style={field('street')}>
-              <TextInput
-                style={[styles.input, { color: colors.foreground }]}
-                value={street}
-                onChangeText={setStreet}
-                onFocus={() => setFocused('street')}
-                onBlur={() => setFocused(null)}
-                placeholder="12 Adeola Odeku Street"
-                placeholderTextColor={colors.subtleForeground}
-              />
-            </View>
-            {errors.street ? (
-              <Text style={[styles.error, { color: colors.destructive }]}>{errors.street}</Text>
-            ) : null}
-          </View>
-
-          <View style={styles.row}>
-            <View style={styles.flex1}>
-              <Text style={[styles.label, { color: colors.foreground }]}>City</Text>
-              <View style={field('city')}>
-                <TextInput
-                  style={[styles.input, { color: colors.foreground }]}
-                  value={city}
-                  onChangeText={setCity}
-                  onFocus={() => setFocused('city')}
-                  onBlur={() => setFocused(null)}
-                  placeholder="Victoria Island"
-                  placeholderTextColor={colors.subtleForeground}
-                />
-              </View>
-              {errors.city ? (
-                <Text style={[styles.error, { color: colors.destructive }]}>{errors.city}</Text>
-              ) : null}
-            </View>
-            <View style={styles.flex1}>
-              <Text style={[styles.label, { color: colors.foreground }]}>State</Text>
-              <View style={field('state')}>
-                <TextInput
-                  style={[styles.input, { color: colors.foreground }]}
-                  value={state}
-                  onChangeText={setState}
-                  onFocus={() => setFocused('state')}
-                  onBlur={() => setFocused(null)}
-                  placeholder="Lagos"
-                  placeholderTextColor={colors.subtleForeground}
-                />
-              </View>
-              {errors.state ? (
-                <Text style={[styles.error, { color: colors.destructive }]}>{errors.state}</Text>
-              ) : null}
-            </View>
-          </View>
+          <AddressFields value={address} onChange={setAddress} error={errors.address} />
 
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.foreground }]}>Delivery location</Text>

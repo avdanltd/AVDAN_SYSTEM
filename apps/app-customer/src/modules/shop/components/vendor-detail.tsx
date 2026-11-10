@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { ReviewsSection } from './reviews-section'
 import { Dimensions, Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Star, Store as StoreIcon } from 'lucide-react-native'
@@ -68,7 +69,9 @@ export function VendorDetail({ slug }: { slug: string }) {
             <View style={styles.ratingRow}>
               <Star size={13} color={colors.accent} fill={colors.accent} />
               <Text style={[styles.rating, { color: colors.mutedForeground }]}>
-                {vendor.rating.toFixed(1)}
+                {(vendor.review_count ?? 0) > 0
+                  ? `${vendor.rating.toFixed(1)} (${vendor.review_count})`
+                  : 'No reviews yet'}
               </Text>
               {vendor.status === 'active' ? (
                 <Badge label="Verified seller" bg={colors.successMuted} fg={colors.success} />
@@ -96,6 +99,8 @@ export function VendorDetail({ slug }: { slug: string }) {
           ))}
         </View>
       )}
+
+      <ReviewsSection target="vendor" id={vendor.id} title="Store reviews" />
     </ScrollView>
   )
 }

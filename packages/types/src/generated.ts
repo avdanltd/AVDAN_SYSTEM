@@ -884,6 +884,118 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin List Reviews */
+        get: operations["admin_list_reviews_admin_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reviews/{review_id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Hide Review
+         * @description Take a review down (abuse, spam, wrong target). It stops counting toward averages.
+         */
+        post: operations["admin_hide_review_admin_reviews__review_id__hide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/reviews/{review_id}/unhide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admin Unhide Review */
+        post: operations["admin_unhide_review_admin_reviews__review_id__unhide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/orders/{order_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Order Reviews
+         * @description What the customer can review on this order and what they already reviewed.
+         */
+        get: operations["get_order_reviews_reviews_orders__order_id__get"];
+        put?: never;
+        /**
+         * Submit Order Reviews
+         * @description Rate the vendor and/or products of an ended order. Each can be rated once.
+         */
+        post: operations["submit_order_reviews_reviews_orders__order_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/products/{product_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Product Reviews */
+        get: operations["list_product_reviews_reviews_products__product_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/vendors/{vendor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vendor Reviews */
+        get: operations["list_vendor_reviews_reviews_vendors__vendor_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/wallet/me": {
         parameters: {
             query?: never;
@@ -2172,6 +2284,35 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /** AdminReviewResponse */
+        AdminReviewResponse: {
+            /** Id */
+            id: string;
+            /** Target Type */
+            target_type: string;
+            /** Rating */
+            rating: number;
+            /** Comment */
+            comment: string | null;
+            /** Status */
+            status: string;
+            /** Order Id */
+            order_id: string;
+            /** Order Outcome */
+            order_outcome: string;
+            /** Customer Name */
+            customer_name: string | null;
+            /** Vendor Name */
+            vendor_name: string | null;
+            /** Product Name */
+            product_name: string | null;
+            /** Hidden Reason */
+            hidden_reason: string | null;
+            /** Hidden By Name */
+            hidden_by_name: string | null;
+            /** Created At */
+            created_at: string;
+        };
         /** AdminVendorResponse */
         AdminVendorResponse: {
             /** Id */
@@ -2190,12 +2331,29 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
             lng?: number | null;
             /** Rating */
             rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
             /** Created At */
             created_at: string;
             /** User Id */
@@ -2431,6 +2589,10 @@ export interface components {
              * @default Nigeria
              */
             country: string;
+            /** Lga */
+            lga?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Notes */
             notes?: string | null;
             /** Phone */
@@ -2533,6 +2695,11 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** HideReviewRequest */
+        HideReviewRequest: {
+            /** Reason */
+            reason: string;
+        };
         /** HubAnalyticsResponse */
         HubAnalyticsResponse: {
             /** Hub Id */
@@ -2568,6 +2735,18 @@ export interface components {
             lng: number | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Description */
             description?: string | null;
         };
@@ -2774,6 +2953,16 @@ export interface components {
             /** Subtotal Kobo */
             subtotal_kobo: number;
         };
+        /** OrderProductReview */
+        OrderProductReview: {
+            /** Product Id */
+            product_id: string;
+            /** Product Name */
+            product_name: string;
+            /** Image Url */
+            image_url: string | null;
+            review: components["schemas"]["ReviewResponse"] | null;
+        };
         /** OrderResponse */
         OrderResponse: {
             /** Id */
@@ -2846,6 +3035,21 @@ export interface components {
             /** Updated At */
             updated_at: string;
         };
+        /**
+         * OrderReviewsResponse
+         * @description What the customer can still review on an order, and what they already did.
+         */
+        OrderReviewsResponse: {
+            /** Eligible */
+            eligible: boolean;
+            /** Reason */
+            reason: string | null;
+            /** Vendor Name */
+            vendor_name: string | null;
+            vendor: components["schemas"]["ReviewResponse"] | null;
+            /** Products */
+            products: components["schemas"]["OrderProductReview"][];
+        };
         /** OrderVolumePoint */
         OrderVolumePoint: {
             /** Period */
@@ -2881,6 +3085,17 @@ export interface components {
         PaginatedAdminProductsResponse: {
             /** Items */
             items: components["schemas"]["AdminProductResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+        };
+        /** PaginatedAdminReviewsResponse */
+        PaginatedAdminReviewsResponse: {
+            /** Items */
+            items: components["schemas"]["AdminReviewResponse"][];
             /** Total */
             total: number;
             /** Page */
@@ -2959,6 +3174,18 @@ export interface components {
             page: number;
             /** Page Size */
             page_size: number;
+        };
+        /** PaginatedReviewsResponse */
+        PaginatedReviewsResponse: {
+            /** Items */
+            items: components["schemas"]["ReviewResponse"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
+            summary: components["schemas"]["ReviewSummary"];
         };
         /** PaginatedUsersResponse */
         PaginatedUsersResponse: {
@@ -3159,6 +3386,15 @@ export interface components {
             /** Image Urls */
             image_urls: string[];
         };
+        /** ProductReviewInput */
+        ProductReviewInput: {
+            /** Rating */
+            rating: number;
+            /** Comment */
+            comment?: string | null;
+            /** Product Id */
+            product_id: string;
+        };
         /**
          * PublicProductResponse
          * @description Extended product response for public listing — includes vendor info.
@@ -3172,6 +3408,30 @@ export interface components {
             vendor_name: string;
             /** Vendor Slug */
             vendor_slug: string;
+            /** Vendor City */
+            vendor_city?: string | null;
+            /** Vendor State */
+            vendor_state?: string | null;
+            /**
+             * Vendor Rating
+             * @default 0
+             */
+            vendor_rating: number;
+            /**
+             * Vendor Review Count
+             * @default 0
+             */
+            vendor_review_count: number;
+            /**
+             * Rating
+             * @default 0
+             */
+            rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
             /** Category Id */
             category_id: string | null;
             /** Category Name */
@@ -3299,6 +3559,48 @@ export interface components {
             /** Refund Amount Kobo */
             refund_amount_kobo?: number | null;
         };
+        /** ReviewInput */
+        ReviewInput: {
+            /** Rating */
+            rating: number;
+            /** Comment */
+            comment?: string | null;
+        };
+        /** ReviewResponse */
+        ReviewResponse: {
+            /** Id */
+            id: string;
+            /** Target Type */
+            target_type: string;
+            /** Product Id */
+            product_id: string | null;
+            /** Product Name */
+            product_name?: string | null;
+            /** Rating */
+            rating: number;
+            /** Comment */
+            comment: string | null;
+            /** Reviewer Name */
+            reviewer_name: string;
+            /**
+             * Verified Purchase
+             * @default true
+             */
+            verified_purchase: boolean;
+            /** Created At */
+            created_at: string;
+        };
+        /** ReviewSummary */
+        ReviewSummary: {
+            /** Average */
+            average: number;
+            /** Count */
+            count: number;
+            /** Distribution */
+            distribution: {
+                [key: string]: number;
+            };
+        };
         /** RiderResponse */
         RiderResponse: {
             /** Id */
@@ -3356,6 +3658,16 @@ export interface components {
             /** Current Password */
             current_password: string;
         };
+        /**
+         * SubmitReviewsRequest
+         * @description Everything the customer rated on one order, sent together. Either part is optional,
+         *     but at least one review is required.
+         */
+        SubmitReviewsRequest: {
+            vendor?: components["schemas"]["ReviewInput"] | null;
+            /** Products */
+            products?: components["schemas"]["ProductReviewInput"][];
+        };
         /** TokenResponse */
         TokenResponse: {
             /** Message */
@@ -3388,6 +3700,18 @@ export interface components {
          *     location) or leave them out and send an address to have it looked up.
          */
         UpdateMyHubRequest: {
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Address */
             address?: string | null;
             /** Description */
@@ -3434,6 +3758,18 @@ export interface components {
         };
         /** UpdateVendorProfileRequest */
         UpdateVendorProfileRequest: {
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** State */
+            state?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Name */
             name?: string | null;
             /** Description */
@@ -3523,12 +3859,29 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
             lng?: number | null;
             /** Rating */
             rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
             /** Created At */
             created_at: string;
             /**
@@ -3564,12 +3917,29 @@ export interface components {
             zone_id: string | null;
             /** Address */
             address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
             /** Lat */
             lat?: number | null;
             /** Lng */
             lng?: number | null;
             /** Rating */
             rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
             /** Created At */
             created_at: string;
         };
@@ -5728,6 +6098,261 @@ export interface operations {
             };
         };
     };
+    admin_list_reviews_admin_reviews_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+                target_type?: string | null;
+                max_rating?: number | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedAdminReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_hide_review_admin_reviews__review_id__hide_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HideReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_unhide_review_admin_reviews__review_id__unhide_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_order_reviews_reviews_orders__order_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submit_order_reviews_reviews_orders__order_id__post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                order_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitReviewsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_product_reviews_reviews_products__product_id__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                product_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vendor_reviews_reviews_vendors__vendor_id__get: {
+        parameters: {
+            query?: {
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path: {
+                vendor_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_my_wallet_wallet_me_get: {
         parameters: {
             query?: never;
@@ -7107,6 +7732,7 @@ export interface operations {
         parameters: {
             query?: never;
             header?: {
+                "paystack-signature"?: string | null;
                 "x-paystack-signature"?: string | null;
             };
             path?: never;

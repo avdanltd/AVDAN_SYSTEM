@@ -76,7 +76,7 @@ export function VendorsList() {
               <View style={styles.ratingRow}>
                 <Star size={12} color={colors.accent} fill={colors.accent} />
                 <Text style={[styles.rating, { color: colors.mutedForeground }]}>
-                  {v.rating.toFixed(1)}
+                  {(v.review_count ?? 0) > 0 ? `${v.rating.toFixed(1)} (${v.review_count})` : 'No reviews yet'}
                 </Text>
               </View>
             </View>

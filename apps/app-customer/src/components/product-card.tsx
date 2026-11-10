@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { formatVendorLocation } from '@avdan/types'
 import { useRouter } from 'expo-router'
-import { ImageOff, Plus } from 'lucide-react-native'
+import { ImageOff, Plus, Star } from 'lucide-react-native'
 import { Card, fonts, formatKobo, radius, spacing, toast, useTheme } from '@avdan/mobile'
 
 import { useCartStore } from '@/modules/shop/store/cart.store'
@@ -47,6 +48,20 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
           <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
             {product.vendor_name}
           </Text>
+          {formatVendorLocation(product.vendor_city, product.vendor_state) ? (
+            <Text style={[styles.vendor, { color: colors.subtleForeground }]} numberOfLines={1}>
+              {formatVendorLocation(product.vendor_city, product.vendor_state)}
+            </Text>
+          ) : null}
+
+          {(product.review_count ?? 0) > 0 ? (
+            <View style={styles.ratingLine}>
+              <Star size={11} color="#F59E0B" fill="#F59E0B" />
+              <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
+                {(product.rating ?? 0).toFixed(1)} ({product.review_count})
+              </Text>
+            </View>
+          ) : null}
 
           <View style={styles.footer}>
             <Text style={[styles.price, { color: colors.foreground }]}>
@@ -108,6 +123,7 @@ const styles = StyleSheet.create({
   // short title doesn't shrink the card and break grid uniformity with its neighbours.
   name: { fontFamily: fonts.sansSemiBold, fontSize: 14, lineHeight: 19, minHeight: 38 },
   vendor: { fontFamily: fonts.sans, fontSize: 12 },
+  ratingLine: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',

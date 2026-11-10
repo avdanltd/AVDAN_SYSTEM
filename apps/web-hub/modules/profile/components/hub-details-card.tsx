@@ -3,7 +3,19 @@
 import { useEffect, useState } from 'react'
 import { LocateFixed, MapPin } from 'lucide-react'
 
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Input, Label, Textarea, toast } from '@avdan/ui'
+import {
+  AddressFields,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Label,
+  Textarea,
+  toast,
+} from '@avdan/ui'
+import { addressFromApi, addressProblem, EMPTY_ADDRESS, type AddressValue } from '@avdan/types'
 
 import { useMyHub, useUpdateMyHub } from '../hooks/use-my-hub'
 
@@ -13,14 +25,15 @@ export function HubDetailsCard() {
   const { data: hub, isLoading, isError } = useMyHub()
   const { mutate: save, isPending } = useUpdateMyHub()
 
-  const [address, setAddress] = useState('')
+  const [address, setAddress] = useState<AddressValue>(EMPTY_ADDRESS)
+  const [addressError, setAddressError] = useState<string | null>(null)
   const [description, setDescription] = useState('')
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
   const [locating, setLocating] = useState(false)
 
   useEffect(() => {
     if (!hub) return
-    setAddress(hub.address ?? '')
+    setAddress(addressFromApi(hub))
     setDescription(hub.description ?? '')
     setCoords(hub.lat !== null && hub.lng !== null ? { lat: hub.lat, lng: hub.lng } : null)
   }, [hub])
@@ -45,8 +58,19 @@ export function HubDetailsCard() {
   }
 
   function handleSave() {
+    const problem = addressProblem(address, { requireAll: false })
+    setAddressError(problem)
+    if (problem) return
     save({
-      address: address.trim(),
+      ...(address.street.trim()
+        ? {
+            street: address.street.trim(),
+            city: address.city.trim(),
+            state: address.state,
+            lga: address.lga,
+            landmark: address.landmark.trim() || undefined,
+          }
+        : {}),
       description: description.trim(),
       // Only send coordinates that changed; otherwise the address is looked up on the server.
       ...(coords && (coords.lat !== hub?.lat || coords.lng !== hub?.lng) ? coords : {}),
@@ -70,15 +94,13 @@ export function HubDetailsCard() {
           </p>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="hub-address">Address</Label>
-              <Input
-                id="hub-address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="e.g. 12 Allen Avenue, Ikeja, Lagos"
-              />
-            </div>
+            {hub.address && !hub.street && (
+              <p className="rounded-md bg-secondary p-2 text-xs text-muted-foreground">
+                Saved address: {hub.address}. Please re-enter it in the boxes below.
+              </p>
+            )}
+            <AddressFields value={address} onChange={setAddress} disabled={isPending} idPrefix="hub" />
+            {addressError && <p className="text-sm text-destructive">{addressError}</p>}
             <div className="space-y-1.5">
               <Label htmlFor="hub-description">Description</Label>
               <Textarea
@@ -87,7 +109,7 @@ export function HubDetailsCard() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
                 maxLength={1000}
-                placeholder="Landmarks and directions, e.g. blue gate beside the pharmacy, ask for Tunde"
+                placeholder="Directions for riders, e.g. blue gate beside the pharmacy, ask for Tunde"
               />
             </div>
             <div className="flex flex-wrap items-center gap-3">

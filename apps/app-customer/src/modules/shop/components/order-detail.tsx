@@ -1,4 +1,5 @@
 import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { OrderReview } from './order-review'
 import { useRouter } from 'expo-router'
 import { Bike, CheckCircle2, CreditCard, MapPin, Navigation, Package, Phone, Receipt } from 'lucide-react-native'
 import {
@@ -337,6 +338,8 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </Text>
         </View>
       </Card>
+
+      <OrderReview orderId={order.id} />
     </ScrollView>
   )
 }

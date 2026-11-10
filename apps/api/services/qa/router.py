@@ -2,17 +2,18 @@
 from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.address import address_fields
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.redis import get_redis
 from services.orders.schemas import OrderItemResponse, OrderResponse, PaginatedOrdersResponse
 from services.qa.schemas import (
-    HubResponse,
-    UpdateMyHubRequest,
     EvidenceUploadResponse,
     HubAnalyticsResponse,
+    HubResponse,
     IncomingDeliveryResponse,
     QAFailRequest,
+    UpdateMyHubRequest,
 )
 from services.qa.service import QAService
 
@@ -203,6 +204,7 @@ def _hub_response(hub: object) -> HubResponse:
         lat=float(h.lat) if h.lat is not None else None,
         lng=float(h.lng) if h.lng is not None else None,
         address=h.address,
+        **address_fields(h),
         description=h.description,
     )
 

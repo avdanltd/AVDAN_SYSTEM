@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { ReviewsSection } from './reviews-section'
+import { formatVendorLocation } from '@avdan/types'
 import { Dimensions, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { ImageOff, Minus, Package, Plus, Store } from 'lucide-react-native'
@@ -153,6 +155,11 @@ export function ProductDetail({ productId }: { productId: string }) {
               <Text style={[styles.vendorName, { color: colors.foreground }]} numberOfLines={1}>
                 {product.vendor_name}
               </Text>
+              {formatVendorLocation(product.vendor_city, product.vendor_state) ? (
+                <Text style={[styles.vendorLabel, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {formatVendorLocation(product.vendor_city, product.vendor_state)}
+                </Text>
+              ) : null}
             </View>
           </Pressable>
 
@@ -164,6 +171,8 @@ export function ProductDetail({ productId }: { productId: string }) {
               </Text>
             </Card>
           ) : null}
+
+          <ReviewsSection target="product" id={product.id} title="Customer reviews" />
         </View>
       </ScrollView>
 

@@ -56,8 +56,17 @@ export type WalletSummary = components['schemas']['WalletSummaryResponse']
 export type WalletEntry = components['schemas']['WalletEntryResponse']
 export type PayoutRequest = components['schemas']['PayoutRequestResponse']
 export type PayoutPinStatus = components['schemas']['PayoutPinStatusResponse']
+export type Review = components['schemas']['ReviewResponse']
+export type OrderReviews = components['schemas']['OrderReviewsResponse']
+export type OrderProductReview = components['schemas']['OrderProductReview']
+export type ReviewPage = components['schemas']['PaginatedReviewsResponse']
+export type SubmitReviewsInput = components['schemas']['SubmitReviewsRequest']
+export type AdminReview = components['schemas']['AdminReviewResponse']
+export type AdminReviewPage = components['schemas']['PaginatedAdminReviewsResponse']
 export type PayoutEvent = components['schemas']['PayoutEventResponse']
 export type DeliveryQuote = components['schemas']['DeliveryQuoteResponse']
 export type PayoutStatus = 'REQUESTED' | 'PROCESSING' | 'PAID' | 'REJECTED' | 'FAILED'
 export type IncomingDelivery = components['schemas']['IncomingDeliveryResponse']
 export type TrackingStage = 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'
+
+export * from './nigeria-locations'
