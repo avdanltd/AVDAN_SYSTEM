@@ -17,6 +17,11 @@ export interface VendorProfile {
   status: string
   zone_id: string | null
   address: string | null
+  street: string | null
+  city: string | null
+  state: string | null
+  lga: string | null
+  landmark: string | null
   lat: number | null
   lng: number | null
   rating: number

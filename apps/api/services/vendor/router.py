@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.address import address_fields
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from services.vendor.schemas import (
@@ -37,6 +38,7 @@ def _vendor_response(vendor: object) -> VendorResponse:
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
         address=v.address,
+        **address_fields(v),
         lat=float(v.lat) if v.lat is not None else None,
         lng=float(v.lng) if v.lng is not None else None,
         rating=float(v.rating),
@@ -78,6 +80,8 @@ def _public_product_response(product: object) -> PublicProductResponse:
         vendor_id=str(p.vendor_id),
         vendor_name=v.name,
         vendor_slug=v.slug,
+        vendor_city=v.city,
+        vendor_state=v.state,
         category_id=str(p.category_id) if p.category_id else None,
         category_name=cat.name if cat else None,
         name=p.name,
@@ -104,6 +108,7 @@ def _vendor_detail_response(vendor: object, public: bool = False) -> VendorDetai
         status=v.status,
         zone_id=str(v.zone_id) if v.zone_id else None,
         address=v.address,
+        **address_fields(v),
         lat=float(v.lat) if v.lat is not None else None,
         lng=float(v.lng) if v.lng is not None else None,
         rating=float(v.rating),

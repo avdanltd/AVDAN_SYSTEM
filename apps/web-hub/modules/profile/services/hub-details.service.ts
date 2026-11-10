@@ -8,11 +8,20 @@ export interface MyHub {
   lat: number | null
   lng: number | null
   address: string | null
+  street: string | null
+  city: string | null
+  state: string | null
+  lga: string | null
+  landmark: string | null
   description: string | null
 }
 
 export interface UpdateMyHubPayload {
-  address?: string
+  street?: string
+  city?: string
+  state?: string
+  lga?: string
+  landmark?: string
   description?: string
   lat?: number
   lng?: number

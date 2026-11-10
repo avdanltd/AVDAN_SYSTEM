@@ -27,7 +27,7 @@ export const vendorService = {
   getProfile: () => apiClient.get<VendorDetail>('/vendors/me'),
 
   updateProfile: (
-    payload: { name?: string; description?: string | null; logo_url?: string | null; address?: string; lat?: number; lng?: number },
+    payload: { name?: string; description?: string | null; logo_url?: string | null; street?: string; city?: string; state?: string; lga?: string; landmark?: string; lat?: number; lng?: number },
   ) => apiClient.patch<VendorDetail>('/vendors/me', payload),
 
   /* ── Orders ─────────────────────────────────────────────────────────────── */

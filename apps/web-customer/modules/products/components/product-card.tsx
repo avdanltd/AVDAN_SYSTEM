@@ -1,5 +1,6 @@
 'use client'
 
+import { formatVendorLocation } from '@avdan/types'
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -123,6 +124,11 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             >
               {product.vendor_name}
             </Link>
+            {formatVendorLocation(product.vendor_city, product.vendor_state) && (
+              <p className="line-clamp-1 text-[11px] text-muted-foreground">
+                {formatVendorLocation(product.vendor_city, product.vendor_state)}
+              </p>
+            )}
 
             {/* Name — reserves 2 lines of height always, so a short title doesn't shrink the
                 card and break grid uniformity with its longer-titled neighbours. */}

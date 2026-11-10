@@ -1,4 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native'
+import { formatVendorLocation } from '@avdan/types'
 import { useRouter } from 'expo-router'
 import { ImageOff, Plus } from 'lucide-react-native'
 import { Card, fonts, formatKobo, radius, spacing, toast, useTheme } from '@avdan/mobile'
@@ -47,6 +48,11 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
           <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
             {product.vendor_name}
           </Text>
+          {formatVendorLocation(product.vendor_city, product.vendor_state) ? (
+            <Text style={[styles.vendor, { color: colors.subtleForeground }]} numberOfLines={1}>
+              {formatVendorLocation(product.vendor_city, product.vendor_state)}
+            </Text>
+          ) : null}
 
           <View style={styles.footer}>
             <Text style={[styles.price, { color: colors.foreground }]}>

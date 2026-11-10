@@ -41,6 +41,7 @@ export {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from './components/ui/dropdown-menu'
+export { AddressFields } from './components/forms/address-fields'
 export {
   Form,
   FormControl,

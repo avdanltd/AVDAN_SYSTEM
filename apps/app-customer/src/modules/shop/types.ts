@@ -15,6 +15,8 @@ export interface Product {
   vendor_id: string
   vendor_name: string
   vendor_slug: string
+  vendor_city?: string | null
+  vendor_state?: string | null
   category_id: string | null
   category_name: string | null
   name: string
@@ -81,6 +83,9 @@ export interface DeliveryAddress {
   city: string
   state: string
   country?: string
+  // Local government area and a nearby landmark, to help the rider find the door.
+  lga?: string | null
+  landmark?: string | null
   notes?: string | null
   // Who the rider calls on arrival.
   phone?: string | null

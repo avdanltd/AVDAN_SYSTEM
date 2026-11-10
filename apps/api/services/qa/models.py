@@ -20,6 +20,14 @@ class AgentHub(BaseModel):
     lng: Mapped[float | None] = mapped_column(Numeric(11, 8), nullable=True)
     # Filled in by the hub itself once they sign in: where it is, in words, and how to find it.
     address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Structured form of the address above (the string is composed from these). All nullable:
+    # rows saved before these existed only have the free-text `address`.
+    street: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    lga: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    landmark: Mapped[str | None] = mapped_column(String(200), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     capacity: Mapped[int] = mapped_column(Integer, default=100, nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)

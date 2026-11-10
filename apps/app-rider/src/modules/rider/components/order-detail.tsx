@@ -191,6 +191,9 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           <Text style={[styles.addressText, { color: colors.foreground }]}>
             {formatAddress(order.delivery_address)}
           </Text>
+          {order.delivery_address.landmark ? (
+            <Text style={{ color: colors.mutedForeground }}>Landmark: {order.delivery_address.landmark}</Text>
+          ) : null}
           <Button
             label="Open in Maps"
             variant="outline"

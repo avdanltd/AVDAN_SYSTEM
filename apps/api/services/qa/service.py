@@ -21,18 +21,21 @@ class QAService:
 
     async def update_my_hub(self, agent_user_id: str, data) -> AgentHub:  # type: ignore[no-untyped-def]
         """A hub agent fills in their own hub's address, description and map position."""
+        from core.address import apply_structured_address
         from core.geocoding import geocode_address
 
         hub = await self.get_hub_for_agent(agent_user_id)
-        if data.address is not None:
+        geocode_query = apply_structured_address(hub, data)
+        if geocode_query is None and data.address is not None:
             hub.address = data.address.strip() or None
+            geocode_query = hub.address
         if data.description is not None:
             hub.description = data.description.strip() or None
         if data.lat is not None and data.lng is not None:
             hub.lat, hub.lng = data.lat, data.lng
-        elif data.address and data.address.strip():
+        elif geocode_query:
             # No coordinates sent: place the hub from its address (best effort).
-            found = await geocode_address(data.address)
+            found = await geocode_address(geocode_query)
             if found:
                 hub.lat, hub.lng = found
         await self.db.flush()

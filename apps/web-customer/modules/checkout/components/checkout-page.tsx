@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
+  AddressFields,
   Button,
   Card,
   CardContent,
@@ -50,11 +51,12 @@ export function CheckoutPage() {
   const form = useForm<CheckoutInput>({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      delivery_address: { street: '', city: '', state: '', notes: '', lat: undefined, lng: undefined },
+      delivery_address: { street: '', city: '', state: '', lga: '', landmark: '', notes: '', lat: undefined, lng: undefined },
       contact_phone: user?.phone ?? '',
     },
   })
 
+  const addressValues = form.watch('delivery_address')
   const lat = form.watch('delivery_address.lat')
   const lng = form.watch('delivery_address.lng')
   const { data: quote, isFetching: quoting } = useDeliveryQuote(vendorId, lat, lng, items)
@@ -199,48 +201,33 @@ export function CheckoutPage() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="delivery_address.street"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Street Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. 12 Adeola Hopewell Street" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                  <AddressFields
+                    idPrefix="checkout"
+                    value={{
+                      street: addressValues.street ?? '',
+                      city: addressValues.city ?? '',
+                      state: addressValues.state ?? '',
+                      lga: addressValues.lga ?? '',
+                      landmark: addressValues.landmark ?? '',
+                    }}
+                    onChange={(next) => {
+                      for (const key of ['street', 'city', 'state', 'lga', 'landmark'] as const) {
+                        if (next[key] !== (addressValues[key] ?? '')) {
+                          form.setValue(`delivery_address.${key}`, next[key], {
+                            shouldValidate: form.formState.isSubmitted,
+                          })
+                        }
+                      }
+                    }}
                   />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="delivery_address.city"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>City</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Lagos" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="delivery_address.state"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>State</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g. Lagos" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  {(['street', 'city', 'state', 'lga'] as const).map((key) => {
+                    const message = form.formState.errors.delivery_address?.[key]?.message
+                    return message ? (
+                      <p key={key} className="text-sm text-destructive">
+                        {message}
+                      </p>
+                    ) : null
+                  })}
 
                   <div className="space-y-2">
                     <Label>Delivery Location</Label>
@@ -277,7 +264,7 @@ export function CheckoutPage() {
                         <FormLabel>Delivery Notes (optional)</FormLabel>
                         <FormControl>
                           <Textarea
-                            placeholder="Landmark, gate code, floor number…"
+                            placeholder="Gate code, floor number, anything else the rider should know…"
                             className="resize-none"
                             rows={3}
                             {...field}
