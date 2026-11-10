@@ -794,6 +794,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/payouts/pin": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admin Payout Pin Status */
+        get: operations["admin_payout_pin_status_admin_payouts_pin_get"];
+        /** Admin Set Payout Pin */
+        put: operations["admin_set_payout_pin_admin_payouts_pin_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/payouts/{request_id}": {
         parameters: {
             query?: never;
@@ -822,6 +840,27 @@ export interface paths {
         put?: never;
         /** Admin Approve Payout Request */
         post: operations["admin_approve_payout_request_admin_payouts__request_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/payouts/{request_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Refresh Payout Request
+         * @description Ask Paystack for the transfer's real status and settle the payout — for when the webhook
+         *     never arrived.
+         */
+        post: operations["admin_refresh_payout_request_admin_payouts__request_id__refresh_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2166,6 +2205,8 @@ export interface components {
         ApprovePayoutRequest: {
             /** Approved Kobo */
             approved_kobo: number;
+            /** Pin */
+            pin: string;
             /** Note */
             note?: string | null;
         };
@@ -2980,6 +3021,11 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /** PayoutPinStatusResponse */
+        PayoutPinStatusResponse: {
+            /** Is Set */
+            is_set: boolean;
+        };
         /** PayoutRequestResponse */
         PayoutRequestResponse: {
             /** Id */
@@ -3002,6 +3048,8 @@ export interface components {
             } | null;
             /** Decided By */
             decided_by: string | null;
+            /** Decided By Name */
+            decided_by_name?: string | null;
             /** Decided At */
             decided_at: string | null;
             /** Decision Note */
@@ -3300,6 +3348,13 @@ export interface components {
             token: string;
             /** Password */
             password: string;
+        };
+        /** SetPayoutPinRequest */
+        SetPayoutPinRequest: {
+            /** Pin */
+            pin: string;
+            /** Current Password */
+            current_password: string;
         };
         /** TokenResponse */
         TokenResponse: {
@@ -5455,6 +5510,76 @@ export interface operations {
             };
         };
     };
+    admin_payout_pin_status_admin_payouts_pin_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutPinStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_set_payout_pin_admin_payouts_pin_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetPayoutPinRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutPinStatusResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     admin_get_payout_request_admin_payouts__request_id__get: {
         parameters: {
             query?: never;
@@ -5508,6 +5633,41 @@ export interface operations {
                 "application/json": components["schemas"]["ApprovePayoutRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PayoutRequestResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_refresh_payout_request_admin_payouts__request_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {

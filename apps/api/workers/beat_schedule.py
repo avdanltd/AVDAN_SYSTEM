@@ -14,3 +14,9 @@ celery_app.conf.beat_schedule["purge-location-partitions"] = {
     "task": "workers.tasks.cleanup.purge_old_rider_partitions",
     "schedule": crontab(hour=2, minute=0),
 }
+
+# Wallet payouts: webhooks can be missed — every 5 minutes ask Paystack about transfers still in flight
+celery_app.conf.beat_schedule["reconcile-payouts"] = {
+    "task": "workers.tasks.payouts.reconcile_processing_payouts",
+    "schedule": crontab(minute="*/5"),
+}

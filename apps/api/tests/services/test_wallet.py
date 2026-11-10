@@ -48,6 +48,13 @@ class FakeProvider:
         self.calls.append((recipient, amount, ref))
         return SimpleNamespace(status=self.status, transfer_ref=ref)
 
+    verify_status: str | None = "pending"  # what Paystack reports on verify; None = unknown reference
+
+    async def verify_transfer(self, ref: str):  # type: ignore[no-untyped-def]
+        if self.verify_status is None:
+            return None
+        return SimpleNamespace(status=self.verify_status, transfer_ref=ref)
+
 
 @pytest.fixture
 def fake_provider(monkeypatch):  # type: ignore[no-untyped-def]
@@ -183,6 +190,86 @@ def test_failed_transfer_returns_money_to_available(fake_provider) -> None:  # t
         summary = await svc.my_summary("rider", uid)
         assert (summary["available_kobo"], summary["requested_kobo"], summary["paid_out_kobo"]) == (80_000, 0, 0)
         assert (await svc.admin_get_request(str(req.id)))[0].status == PayoutStatus.FAILED
+    run(body)
+
+
+async def _processing_request(db, s, svc):  # type: ignore[no-untyped-def]
+    await svc.credit_vendor_for_order(s.order)
+    req = await svc.request_withdrawal("vendor", str(s.vendor_user.id), 600_000)
+    return await svc.approve(str(req.id), str(s.admin.id), 600_000, None)
+
+
+def test_reconcile_settles_paid_transfer_whose_webhook_never_came(fake_provider) -> None:  # type: ignore[no-untyped-def]
+    async def body(db):  # type: ignore[no-untyped-def]
+        s = await _seed(db)
+        svc = WalletService(db)
+        req = await _processing_request(db, s, svc)
+        assert req.status == PayoutStatus.PROCESSING
+
+        fake_provider.verify_status = "pending"  # still in flight: nothing changes
+        assert (await svc.reconcile_request(str(req.id))).status == PayoutStatus.PROCESSING
+        fake_provider.verify_status = None  # Paystack doesn't know it yet: nothing changes
+        assert (await svc.reconcile_request(str(req.id))).status == PayoutStatus.PROCESSING
+
+        fake_provider.verify_status = "success"
+        assert (await svc.reconcile_request(str(req.id))).status == PayoutStatus.PAID
+        await svc.reconcile_request(str(req.id))  # idempotent; a late webhook is a no-op too
+        await svc.handle_transfer_webhook("transfer.success", f"wd-{req.id}")
+        summary = await svc.my_summary("vendor", str(s.vendor_user.id))
+        assert (summary["requested_kobo"], summary["paid_out_kobo"]) == (0, 600_000)
+        _, events, _ = await svc.admin_get_request(str(req.id))
+        assert [e.event for e in events].count("TRANSFER_SUCCESS") == 1
+    run(body)
+
+
+def test_reconcile_returns_money_when_paystack_says_failed(fake_provider) -> None:  # type: ignore[no-untyped-def]
+    async def body(db):  # type: ignore[no-untyped-def]
+        s = await _seed(db)
+        svc = WalletService(db)
+        req = await _processing_request(db, s, svc)
+        fake_provider.verify_status = "reversed"
+        assert (await svc.reconcile_request(str(req.id))).status == PayoutStatus.FAILED
+        summary = await svc.my_summary("vendor", str(s.vendor_user.id))
+        assert (summary["available_kobo"], summary["requested_kobo"]) == (900_000, 0)
+    run(body)
+
+
+def test_admin_payout_pin_set_verify_and_lockout(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from datetime import UTC, datetime, timedelta
+
+    from core.security import hash_password
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        s = await _seed(db)
+        s.admin.password_hash = hash_password("hunter2!")
+        svc = WalletService(db)
+        admin_id = str(s.admin.id)
+
+        with pytest.raises(AppError) as unset:
+            await svc.verify_payout_pin(admin_id, "1234")
+        assert unset.value.code == "PAYOUT_PIN_NOT_SET"
+
+        with pytest.raises(AppError) as bad_pw:
+            await svc.set_payout_pin(admin_id, "1234", "wrong-password")
+        assert bad_pw.value.code == "INVALID_PASSWORD"
+
+        await svc.set_payout_pin(admin_id, "1234", "hunter2!")
+        assert await svc.payout_pin_is_set(admin_id)
+        await svc.verify_payout_pin(admin_id, "1234")
+
+        failures: list[str] = []
+
+        async def fake_failure(aid: str) -> None:
+            failures.append(aid)
+        monkeypatch.setattr(WalletService, "_record_pin_failure", staticmethod(fake_failure))
+        with pytest.raises(AppError) as wrong:
+            await svc.verify_payout_pin(admin_id, "9999")
+        assert wrong.value.code == "INVALID_PAYOUT_PIN" and failures == [admin_id]
+
+        s.admin.payout_pin_locked_until = datetime.now(UTC) + timedelta(minutes=5)
+        with pytest.raises(AppError) as locked:
+            await svc.verify_payout_pin(admin_id, "1234")  # even the right PIN is refused while locked
+        assert locked.value.code == "PAYOUT_PIN_LOCKED"
     run(body)
 
 

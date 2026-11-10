@@ -10,8 +10,10 @@ from services.wallet.schemas import (
     PaginatedPayoutRequestsResponse,
     PaginatedWalletEntriesResponse,
     PayoutEventResponse,
+    PayoutPinStatusResponse,
     PayoutRequestResponse,
     RejectPayoutRequest,
+    SetPayoutPinRequest,
     WalletEntryResponse,
     WalletSummaryResponse,
 )
@@ -32,7 +34,10 @@ def _request_resp(
     names: dict | None = None,
     events: list[PayoutRequestEvent] | None = None,
     summary: dict | None = None,
+    admin_names: dict | None = None,
 ) -> PayoutRequestResponse:
+    """`admin_names` is passed only by admin routes. Who approved a payout is internal: owners
+    get neither the admin's id nor their name."""
     return PayoutRequestResponse(
         id=str(r.id),
         owner_type=r.owner_type,
@@ -42,7 +47,8 @@ def _request_resp(
         approved_kobo=r.approved_kobo,
         status=r.status,
         destination=r.destination,
-        decided_by=str(r.decided_by) if r.decided_by else None,
+        decided_by=str(r.decided_by) if (admin_names is not None and r.decided_by) else None,
+        decided_by_name=(admin_names or {}).get(r.decided_by) if r.decided_by else None,
         decided_at=_iso(r.decided_at),
         decision_note=r.decision_note,
         paid_at=_iso(r.paid_at),
@@ -132,10 +138,30 @@ async def admin_list_payout_requests(
     svc = WalletService(db)
     requests, total, pending_count, pending_kobo = await svc.admin_list_requests(status, owner_type, page, page_size)
     names = await svc.owner_names(requests)
+    admins = await svc.admin_names(requests)
     return PaginatedPayoutRequestsResponse(
-        items=[_request_resp(r, names) for r in requests], total=total, page=page, page_size=page_size,
+        items=[_request_resp(r, names, admin_names=admins) for r in requests],
+        total=total, page=page, page_size=page_size,
         pending_count=pending_count, pending_kobo=pending_kobo,
     )
+
+
+@admin_router.get("/pin", response_model=PayoutPinStatusResponse)
+async def admin_payout_pin_status(
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> PayoutPinStatusResponse:
+    return PayoutPinStatusResponse(is_set=await WalletService(db).payout_pin_is_set(current_user.user_id))
+
+
+@admin_router.put("/pin", response_model=PayoutPinStatusResponse)
+async def admin_set_payout_pin(
+    data: SetPayoutPinRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> PayoutPinStatusResponse:
+    await WalletService(db).set_payout_pin(current_user.user_id, data.pin, data.current_password)
+    return PayoutPinStatusResponse(is_set=True)
 
 
 @admin_router.get("/{request_id}", response_model=PayoutRequestResponse)
@@ -146,7 +172,9 @@ async def admin_get_payout_request(
 ) -> PayoutRequestResponse:
     svc = WalletService(db)
     request, events, summary = await svc.admin_get_request(request_id)
-    return _request_resp(request, await svc.owner_names([request]), events, summary)
+    return _request_resp(
+        request, await svc.owner_names([request]), events, summary, admin_names=await svc.admin_names([request])
+    )
 
 
 @admin_router.post("/{request_id}/approve", response_model=PayoutRequestResponse)
@@ -157,8 +185,23 @@ async def admin_approve_payout_request(
     db: AsyncSession = Depends(get_db),
 ) -> PayoutRequestResponse:
     svc = WalletService(db)
+    # The PIN is checked before anything is touched; a wrong PIN never reaches Paystack.
+    await svc.verify_payout_pin(current_user.user_id, data.pin)
     request = await svc.approve(request_id, current_user.user_id, data.approved_kobo, data.note)
-    return _request_resp(request, await svc.owner_names([request]))
+    return _request_resp(request, await svc.owner_names([request]), admin_names=await svc.admin_names([request]))
+
+
+@admin_router.post("/{request_id}/refresh", response_model=PayoutRequestResponse)
+async def admin_refresh_payout_request(
+    request_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> PayoutRequestResponse:
+    """Ask Paystack for the transfer's real status and settle the payout — for when the webhook
+    never arrived."""
+    svc = WalletService(db)
+    request = await svc.reconcile_request(request_id)
+    return _request_resp(request, await svc.owner_names([request]), admin_names=await svc.admin_names([request]))
 
 
 @admin_router.post("/{request_id}/reject", response_model=PayoutRequestResponse)
@@ -170,4 +213,4 @@ async def admin_reject_payout_request(
 ) -> PayoutRequestResponse:
     svc = WalletService(db)
     request = await svc.reject(request_id, current_user.user_id, data.note)
-    return _request_resp(request, await svc.owner_names([request]))
+    return _request_resp(request, await svc.owner_names([request]), admin_names=await svc.admin_names([request]))

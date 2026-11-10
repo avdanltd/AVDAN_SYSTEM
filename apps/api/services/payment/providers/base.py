@@ -72,11 +72,16 @@ class PaymentProvider(ABC):
     ) -> TransferResult: ...
 
     @abstractmethod
+    async def verify_transfer(self, reference: str) -> TransferResult | None:
+        """Ask the provider for a transfer's current status by the reference we sent. Returns None
+        when the provider has no transfer with that reference."""
+
+    @abstractmethod
     async def refund(self, payment_ref: str, amount_kobo: int) -> RefundResult: ...
 
     @abstractmethod
     async def verify_webhook(
-        self, payload: bytes, signature: str
+        self, payload: bytes, signature: str, header_name: str = ""
     ) -> WebhookEvent: ...
 
     @abstractmethod

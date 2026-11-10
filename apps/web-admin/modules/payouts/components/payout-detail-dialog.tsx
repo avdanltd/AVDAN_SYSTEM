@@ -17,7 +17,14 @@ import {
   Textarea,
 } from '@avdan/ui'
 import { formatDate, formatKobo } from '@/lib/format'
-import { useApprovePayout, usePayout, useRejectPayout } from '../hooks/use-payouts'
+import {
+  useApprovePayout,
+  usePayout,
+  usePayoutPinStatus,
+  useRefreshPayout,
+  useRejectPayout,
+  useSetPayoutPin,
+} from '../hooks/use-payouts'
 import { STATUS_LABEL, STATUS_VARIANT } from './status'
 
 const EVENT_LABEL: Record<string, string> = {
@@ -32,6 +39,7 @@ export function PayoutDetailDialog({ id, onClose }: { id: string | null; onClose
   const { data: request, isLoading, isError } = usePayout(id)
   const approve = useApprovePayout()
   const reject = useRejectPayout()
+  const refresh = useRefreshPayout()
 
   // Reset the form per request by keying it on the id (see render below).
   return (
@@ -97,13 +105,43 @@ export function PayoutDetailDialog({ id, onClose }: { id: string | null; onClose
               </p>
             </div>
 
+            {request.decided_by_name && (
+              <p className="text-sm text-muted-foreground">
+                {request.status === 'REJECTED' ? 'Rejected' : 'Approved'} by{' '}
+                <span className="font-medium text-foreground">{request.decided_by_name}</span>
+                {request.decided_at ? ` · ${formatDate(request.decided_at)}` : ''}
+              </p>
+            )}
+
+            {request.status === 'PROCESSING' && (
+              <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3 text-sm">
+                <p className="text-muted-foreground">
+                  Sent to Paystack and waiting for the bank. If the money has already arrived, check
+                  with Paystack to update this.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={refresh.isPending}
+                  onClick={() => refresh.mutate(request.id)}
+                >
+                  {refresh.isPending ? 'Checking…' : 'Check status'}
+                </Button>
+              </div>
+            )}
+
             {request.status === 'REQUESTED' && (
               <DecisionForm
                 key={request.id}
                 requestedKobo={request.requested_kobo}
+                recipient={`${String(request.destination?.account_name ?? '—')} · ${String(request.destination?.bank_name ?? '—')} ${String(request.destination?.account_number_masked ?? '')}`}
+                ownerName={request.owner_name ?? '—'}
                 busy={approve.isPending || reject.isPending}
-                onApprove={(approvedKobo, note) =>
-                  approve.mutate({ id: request.id, approvedKobo, note }, { onSuccess: onClose })
+                onApprove={(approvedKobo, note, pin, onFail) =>
+                  approve.mutate(
+                    { id: request.id, approvedKobo, note, pin },
+                    { onSuccess: onClose, onError: onFail },
+                  )
                 }
                 onReject={(note) => reject.mutate({ id: request.id, note }, { onSuccess: onClose })}
               />
@@ -148,31 +186,90 @@ export function PayoutDetailDialog({ id, onClose }: { id: string | null; onClose
 
 function DecisionForm({
   requestedKobo,
+  recipient,
+  ownerName,
   busy,
   onApprove,
   onReject,
 }: {
   requestedKobo: number
+  recipient: string
+  ownerName: string
   busy: boolean
-  onApprove: (approvedKobo: number, note: string | null) => void
+  onApprove: (approvedKobo: number, note: string | null, pin: string, onFail: () => void) => void
   onReject: (note: string) => void
 }) {
   const [amount, setAmount] = useState(String(requestedKobo / 100))
   const [note, setNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [pin, setPin] = useState('')
+  const pinStatus = usePayoutPinStatus()
 
-  function approve() {
-    const kobo = Math.round(Number(amount) * 100)
-    if (!Number.isFinite(kobo) || kobo <= 0) return setError('Enter an amount to approve.')
-    if (kobo > requestedKobo) return setError('Cannot approve more than was requested.')
+  const approvedKobo = Math.round(Number(amount) * 100)
+
+  function startApprove() {
+    if (!Number.isFinite(approvedKobo) || approvedKobo <= 0) return setError('Enter an amount to approve.')
+    if (approvedKobo > requestedKobo) return setError('Cannot approve more than was requested.')
     setError(null)
-    onApprove(kobo, note.trim() || null)
+    setConfirming(true)
+  }
+
+  function confirmApprove() {
+    if (!/^\d{4}$/.test(pin)) return setError('Enter your 4-digit payout PIN.')
+    setError(null)
+    onApprove(approvedKobo, note.trim() || null, pin, () => setPin(''))
   }
 
   function rejectRequest() {
     if (note.trim().length < 3) return setError('A reason is required to reject (shown to the requester).')
     setError(null)
     onReject(note.trim())
+  }
+
+  if (confirming) {
+    return (
+      <div className="space-y-3 rounded-md border border-border p-3">
+        <p className="text-sm font-semibold text-foreground">Confirm this payout</p>
+        <div className="rounded-md bg-secondary/50 p-3 text-sm">
+          <p className="text-2xl font-semibold tabular-nums text-foreground">{formatKobo(approvedKobo)}</p>
+          <p className="text-muted-foreground">
+            to <span className="font-medium text-foreground">{ownerName}</span>
+          </p>
+          <p className="text-muted-foreground">{recipient}</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          This sends real money to their bank and cannot be undone. Your name is recorded as the
+          approving admin.
+        </p>
+        {pinStatus.data && !pinStatus.data.is_set ? (
+          <PinSetup />
+        ) : (
+          <div className="space-y-1.5">
+            <Label htmlFor="payout-pin">Your payout PIN</Label>
+            <Input
+              id="payout-pin"
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={4}
+              placeholder="••••"
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+            />
+          </div>
+        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" disabled={busy} onClick={() => setConfirming(false)}>
+            Back
+          </Button>
+          <Button disabled={busy || !pinStatus.data?.is_set} onClick={confirmApprove}>
+            {busy ? 'Sending…' : `Send ${formatKobo(approvedKobo)}`}
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -207,10 +304,50 @@ function DecisionForm({
         <Button variant="destructive" disabled={busy} onClick={rejectRequest}>
           Reject
         </Button>
-        <Button disabled={busy} onClick={approve}>
-          {busy ? 'Working…' : 'Approve & send'}
+        <Button disabled={busy} onClick={startApprove}>
+          Review & approve
         </Button>
       </div>
+    </div>
+  )
+}
+
+function PinSetup() {
+  const setPinMutation = useSetPayoutPin()
+  const [pin, setPin] = useState('')
+  const [password, setPassword] = useState('')
+  const valid = /^\d{4}$/.test(pin) && password.length > 0
+
+  return (
+    <div className="space-y-2 rounded-md border border-dashed border-border p-3">
+      <p className="text-sm text-foreground">
+        Set a 4-digit payout PIN first. You&apos;ll enter it every time you approve a payout.
+      </p>
+      <Input
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        maxLength={4}
+        placeholder="New 4-digit PIN"
+        aria-label="New payout PIN"
+        value={pin}
+        onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+      />
+      <Input
+        type="password"
+        autoComplete="current-password"
+        placeholder="Your account password"
+        aria-label="Your account password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
+      <Button
+        size="sm"
+        disabled={!valid || setPinMutation.isPending}
+        onClick={() => setPinMutation.mutate({ pin, currentPassword: password })}
+      >
+        {setPinMutation.isPending ? 'Saving…' : 'Save PIN'}
+      </Button>
     </div>
   )
 }

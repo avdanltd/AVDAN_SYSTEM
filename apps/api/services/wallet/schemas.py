@@ -37,11 +37,21 @@ class CreatePayoutRequest(BaseModel):
 
 class ApprovePayoutRequest(BaseModel):
     approved_kobo: int = Field(gt=0)
+    pin: str = Field(pattern=r"^\d{4}$")  # the approving admin's own payout PIN
     note: str | None = Field(default=None, max_length=500)
 
 
 class RejectPayoutRequest(BaseModel):
     note: str = Field(min_length=3, max_length=500)
+
+
+class SetPayoutPinRequest(BaseModel):
+    pin: str = Field(pattern=r"^\d{4}$")
+    current_password: str = Field(min_length=1)
+
+
+class PayoutPinStatusResponse(BaseModel):
+    is_set: bool
 
 
 class PayoutEventResponse(BaseModel):
@@ -63,7 +73,8 @@ class PayoutRequestResponse(BaseModel):
     approved_kobo: int | None
     status: str
     destination: dict | None
-    decided_by: str | None
+    decided_by: str | None  # admin portal only — always None for vendors and riders
+    decided_by_name: str | None = None  # admin portal only
     decided_at: str | None
     decision_note: str | None
     paid_at: str | None

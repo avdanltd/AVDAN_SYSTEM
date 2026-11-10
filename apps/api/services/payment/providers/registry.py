@@ -11,7 +11,10 @@ _REGISTRY: dict[str, PaymentProvider] = {}
 
 def _build_registry() -> dict[str, PaymentProvider]:
     return {
-        "paystack": PaystackProvider(secret_key=settings.paystack_secret_key),
+        "paystack": PaystackProvider(
+            secret_key=settings.paystack_secret_key,
+            webhook_secret=settings.paystack_webhook_secret,
+        ),
     }
 
 

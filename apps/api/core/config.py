@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     # Payment
     paystack_secret_key: str = ""
     paystack_public_key: str = ""
+    # Once an account uses restricted keys (rk_) only, Paystack signs webhooks with a separate
+    # "webhook signing" key from Settings > API Keys & Webhooks. Put it here. Blank = verify with
+    # PAYSTACK_SECRET_KEY only (legacy accounts that still have an sk_ key).
+    paystack_webhook_secret: str = ""
     payment_callback_url: str = "http://localhost:3000/checkout/success"
     # Where Paystack sends a MOBILE customer after checkout. A custom scheme hands control back
     # to the app via deep link; the web URL above cannot, because the app is not a browser tab.
