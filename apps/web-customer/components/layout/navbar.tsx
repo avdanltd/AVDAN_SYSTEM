@@ -36,6 +36,7 @@ import {
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { NotificationBell } from '@/modules/notifications/components/notification-bell'
 import { DeliveryCodeBadge } from '@/modules/orders/components/delivery-code-badge'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { useCartStore } from '@/modules/cart/store/cart.store'
@@ -545,11 +546,7 @@ export function Navbar() {
 
             {isAuthenticated ? (
               <>
-                <Link href={ROUTES.notifications}>
-                  <Button variant="ghost" size="icon" aria-label="Notifications">
-                    <Bell className="h-5 w-5" />
-                  </Button>
-                </Link>
+                <NotificationBell />
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>

@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 import secrets
 import uuid
+from datetime import UTC
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +89,44 @@ class OrderService:
             quote.update(method="direct", total_km=round(direct, 2))
 
         quote["fee_kobo"] = base_fee_kobo + int(per_km_kobo * quote["total_km"]) + special_fee_kobo
+        return self._apply_delivery_promo(quote, config)
+
+    @staticmethod
+    def _apply_delivery_promo(quote: dict, config: dict) -> dict:
+        """Take the active promo (if any) off the distance part of the fee.
+
+        `regular_fee_kobo` is what the fee would be without the promo — the rider's cut is
+        computed from it, so a discount never reduces rider pay. Special/bulky charges are
+        excluded from the discount.
+        """
+        from datetime import datetime
+
+        regular = int(quote["fee_kobo"])
+        quote["regular_fee_kobo"] = regular
+        quote["discount_kobo"] = 0
+        quote["promo_label"] = None
+        quote["promo_percent"] = 0.0
+        promo = config.get("delivery_promo") or {}
+        if not promo.get("enabled"):
+            return quote
+        ends_at = promo.get("ends_at")
+        if ends_at:
+            try:
+                end = datetime.fromisoformat(str(ends_at).replace("Z", "+00:00"))
+                if end.tzinfo is None:
+                    end = end.replace(tzinfo=UTC)
+                if end <= datetime.now(UTC):
+                    return quote
+            except ValueError:
+                return quote
+        percent = max(0.0, min(float(promo.get("percent", 0) or 0), 100.0))
+        discountable = max(regular - int(quote.get("special_fee_kobo", 0) or 0), 0)
+        discount = int(discountable * percent / 100)
+        if discount > 0:
+            quote["discount_kobo"] = discount
+            quote["fee_kobo"] = regular - discount
+            quote["promo_label"] = str(promo.get("label") or "Delivery discount")
+            quote["promo_percent"] = percent
         return quote
 
     async def quote_delivery_for_vendor(
@@ -193,11 +232,14 @@ class OrderService:
         delivery_quote = await self.quote_delivery(
             vendor, delivery_address, [(products_by_id[i.product_id], i.quantity) for i in data.items]
         )
+        # Customer pays the discounted fee; the rider's share comes from the full (undiscounted)
+        # fee, so the promo is paid out of AVDAN's delivery cut, never the rider's.
         delivery_fee_kobo = delivery_quote["fee_kobo"]
+        regular_fee_kobo = delivery_quote.get("regular_fee_kobo", delivery_fee_kobo)
         delivery_commission = float(
             (await AnalyticsService(self.db).get_config()).get("delivery_commission_percent", 0) or 0
         )
-        rider_fee_kobo = delivery_fee_kobo - int(delivery_fee_kobo * delivery_commission / 100)
+        rider_fee_kobo = regular_fee_kobo - int(regular_fee_kobo * delivery_commission / 100)
 
         # Create order
         order = Order(

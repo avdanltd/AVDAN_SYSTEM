@@ -53,6 +53,8 @@ export interface Vendor {
   state?: string | null
   /** The vendor's own on/off switch; undefined on older responses means open. */
   is_open?: boolean
+  /** Straight-line km from the customer; only present when listed nearest-first. */
+  distance_km?: number | null
   rating: number
   /** 0 = nobody has reviewed this vendor yet (then `rating` is meaningless). */
   review_count?: number
@@ -141,7 +143,7 @@ export interface VerifyPaymentResult {
   status: string
 }
 
-export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'popular'
+export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'nearest'
 
 /**
  * A line in the cart.

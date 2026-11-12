@@ -341,9 +341,24 @@ export function CheckoutPage() {
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Delivery fee</span>
                 <span>
-                  {deliveryFeeKobo === null ? (quoting ? 'Calculating…' : 'Share your location to see it') : formatPrice(deliveryFeeKobo)}
+                  {deliveryFeeKobo === null ? (
+                    quoting ? 'Calculating…' : 'Share your location to see it'
+                  ) : (
+                    <>
+                      {quote && quote.discount_kobo > 0 && (
+                        <span className="mr-2 line-through opacity-70">{formatPrice(quote.regular_fee_kobo)}</span>
+                      )}
+                      {formatPrice(deliveryFeeKobo)}
+                    </>
+                  )}
                 </span>
               </div>
+              {quote && quote.discount_kobo > 0 && deliveryFeeKobo !== null && (
+                <p className="-mt-1 rounded-md bg-success-muted px-2 py-1 text-xs font-medium text-success">
+                  {quote.promo_label ?? 'Delivery discount'}: {quote.promo_percent}% off your delivery fee — you
+                  save {formatPrice(quote.discount_kobo)}.
+                </p>
+              )}
               {quote && quote.special_fee_kobo > 0 && deliveryFeeKobo !== null && (
                 <p className="-mt-1 text-xs text-muted-foreground">
                   Includes {formatPrice(quote.special_fee_kobo)} special delivery charge for bulky items in your cart.

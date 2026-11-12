@@ -101,18 +101,25 @@ export function WalletPanel({
   const available = summary?.available_kobo ?? 0
   const min = summary?.min_withdrawal_kobo ?? 0
 
+  // A chosen date range makes the tiles show that period; withdrawal limits keep using `available`.
+  const period = range && range.preset !== 'all' ? (summary?.period ?? null) : null
   const tiles: { label: string; value: number; note: string; highlight?: boolean }[] = [
-    { label: 'Ongoing', value: summary?.ongoing_kobo ?? 0, note: 'Orders in progress' },
+    { label: 'Ongoing', value: (period ?? summary)?.ongoing_kobo ?? 0, note: 'Orders in progress' },
     ...(showClearing
       ? [{
           label: 'Delivered',
-          value: (summary?.clearing_kobo ?? 0) + (summary?.on_hold_kobo ?? 0),
+          value: period ? period.clearing_kobo : (summary?.clearing_kobo ?? 0) + (summary?.on_hold_kobo ?? 0),
           note: 'Clearing dispute window',
         }]
       : []),
-    { label: 'Available', value: available, note: 'Ready to withdraw', highlight: true },
-    { label: 'Requested', value: summary?.requested_kobo ?? 0, note: 'Awaiting approval / bank' },
-    { label: 'Paid out', value: summary?.paid_out_kobo ?? 0, note: 'Collected to your bank' },
+    {
+      label: 'Available',
+      value: period ? period.available_kobo : available,
+      note: period ? 'Net movement' : 'Ready to withdraw',
+      highlight: true,
+    },
+    { label: 'Requested', value: (period ?? summary)?.requested_kobo ?? 0, note: 'Awaiting approval / bank' },
+    { label: 'Paid out', value: (period ?? summary)?.paid_out_kobo ?? 0, note: 'Collected to your bank' },
   ]
 
   const openDialog = () => {

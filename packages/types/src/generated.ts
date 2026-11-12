@@ -1182,7 +1182,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Vendors */
+        /**
+         * List Vendors
+         * @description Public vendor list. `state` / `lga` narrow by location; `near_lat` + `near_lng` order
+         *     nearest-first and fill in each vendor's `distance_km`.
+         */
         get: operations["list_vendors_vendors_get"];
         put?: never;
         post?: never;
@@ -2004,6 +2008,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notifications/subscribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Subscribe
+         * @description Public: add an email to the newsletter list. Subscribing twice is fine.
+         */
+        post: operations["subscribe_notifications_subscribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/notifications": {
         parameters: {
             query?: never;
@@ -2393,6 +2417,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -2673,6 +2699,23 @@ export interface components {
              * @default 0
              */
             special_fee_kobo: number;
+            /**
+             * Regular Fee Kobo
+             * @default 0
+             */
+            regular_fee_kobo: number;
+            /**
+             * Discount Kobo
+             * @default 0
+             */
+            discount_kobo: number;
+            /** Promo Label */
+            promo_label?: string | null;
+            /**
+             * Promo Percent
+             * @default 0
+             */
+            promo_percent: number;
             /**
              * Min Order Kobo
              * @default 0
@@ -3733,6 +3776,11 @@ export interface components {
             /** Products */
             products?: components["schemas"]["ProductReviewInput"][];
         };
+        /** SubscribeRequest */
+        SubscribeRequest: {
+            /** Email */
+            email: string;
+        };
         /** TokenResponse */
         TokenResponse: {
             /** Message */
@@ -3945,6 +3993,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -4008,6 +4058,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -4070,6 +4122,23 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /**
+         * WalletPeriodSummary
+         * @description The same cards, but only for activity inside the chosen date range. Balances and
+         *     withdrawal limits always use the all-time fields, never these.
+         */
+        WalletPeriodSummary: {
+            /** Ongoing Kobo */
+            ongoing_kobo: number;
+            /** Clearing Kobo */
+            clearing_kobo: number;
+            /** Available Kobo */
+            available_kobo: number;
+            /** Requested Kobo */
+            requested_kobo: number;
+            /** Paid Out Kobo */
+            paid_out_kobo: number;
+        };
         /** WalletSummaryResponse */
         WalletSummaryResponse: {
             /** Ongoing Kobo */
@@ -4090,6 +4159,7 @@ export interface components {
             min_withdrawal_kobo: number;
             /** Has Payout Account */
             has_payout_account: boolean;
+            period?: components["schemas"]["WalletPeriodSummary"] | null;
         };
     };
     responses: never;
@@ -6430,7 +6500,10 @@ export interface operations {
     };
     get_my_wallet_wallet_me_get: {
         parameters: {
-            query?: never;
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+            };
             header?: {
                 authorization?: string | null;
             };
@@ -6714,6 +6787,10 @@ export interface operations {
                 min_price_kobo?: number | null;
                 max_price_kobo?: number | null;
                 sort?: string;
+                state?: string | null;
+                lga?: string | null;
+                near_lat?: number | null;
+                near_lng?: number | null;
             };
             header?: never;
             path?: never;
@@ -6885,6 +6962,10 @@ export interface operations {
             query?: {
                 zone_id?: string | null;
                 search?: string | null;
+                state?: string | null;
+                lga?: string | null;
+                near_lat?: number | null;
+                near_lng?: number | null;
                 page?: number;
                 page_size?: number;
             };
@@ -8688,6 +8769,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedDisputesResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    subscribe_notifications_subscribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubscribeRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

@@ -230,6 +230,12 @@ export function Checkout() {
                     : 'Share your location to see it'}
             </Text>
           </View>
+          {quote && quote.discount_kobo > 0 ? (
+            <Text style={[styles.sumName, { color: colors.success, fontWeight: '700' }]}>
+              {quote.promo_label ?? 'Delivery discount'}: {quote.promo_percent}% off your delivery fee (regular{' '}
+              {formatKobo(quote.regular_fee_kobo)}) — you save {formatKobo(quote.discount_kobo)}.
+            </Text>
+          ) : null}
           {!placedOrder && quote && quote.special_fee_kobo > 0 ? (
             <Text style={[styles.sumName, { color: colors.mutedForeground }]}>
               Includes {formatKobo(quote.special_fee_kobo)} special delivery charge for bulky items in your cart.

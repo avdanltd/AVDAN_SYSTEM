@@ -19,7 +19,7 @@ export interface Notification {
 
 export const notificationsService = {
   getNotifications: (params?: Record<string, string>) =>
-    apiClient.get<PaginatedResponse<Notification>>('/notifications', params),
+    apiClient.get<PaginatedResponse<Notification> & { unread_count: number }>('/notifications', params),
   // Backend route is POST /notifications/{id}/read, not PATCH.
   markRead: (id: string) =>
     apiClient.post<Notification>(`/notifications/${id}/read`),

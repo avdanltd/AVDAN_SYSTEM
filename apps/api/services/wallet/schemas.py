@@ -1,6 +1,17 @@
 from pydantic import BaseModel, Field
 
 
+class WalletPeriodSummary(BaseModel):
+    """The same cards, but only for activity inside the chosen date range. Balances and
+    withdrawal limits always use the all-time fields, never these."""
+
+    ongoing_kobo: int  # orders placed in the range that are still in progress
+    clearing_kobo: int  # orders delivered in the range, still inside the dispute window (incl. disputed)
+    available_kobo: int  # net wallet movement in the range
+    requested_kobo: int  # withdrawal requests made in the range that are pending / in flight
+    paid_out_kobo: int  # withdrawals paid in the range
+
+
 class WalletSummaryResponse(BaseModel):
     # Money states, in the order a naira travels through them.
     ongoing_kobo: int  # orders still in progress (paid, not yet delivered)
@@ -12,6 +23,7 @@ class WalletSummaryResponse(BaseModel):
     lifetime_earned_kobo: int
     min_withdrawal_kobo: int
     has_payout_account: bool
+    period: WalletPeriodSummary | None = None
 
 
 class WalletEntryResponse(BaseModel):

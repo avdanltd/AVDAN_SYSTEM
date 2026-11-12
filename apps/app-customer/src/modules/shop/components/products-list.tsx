@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Dimensions, FlatList, StyleSheet } from 'react-native'
 import { Card, EmptyState, Skeleton, spacing, useTheme } from '@avdan/mobile'
 import { ShoppingBag } from 'lucide-react-native'
 
 import { ProductCard } from '@/components/product-card'
 import { useProducts } from '../hooks/use-shop'
+import { LocationFilter, type LocationValue } from './location-filter'
 
 const GUTTER = spacing.lg
 const GAP = spacing.md
@@ -12,7 +13,16 @@ const CARD_W = (Dimensions.get('window').width - GUTTER * 2 - GAP) / 2
 
 export function ProductsList() {
   const { colors } = useTheme()
-  const { data, isLoading } = useProducts({ sort: 'newest', pageSize: 40 })
+  const [where, setWhere] = useState<LocationValue>({})
+  const near = where.nearLat != null && where.nearLng != null
+  const { data, isLoading } = useProducts({
+    sort: near ? 'nearest' : 'newest',
+    pageSize: 40,
+    state: where.state,
+    lga: where.lga,
+    nearLat: where.nearLat,
+    nearLng: where.nearLng,
+  })
   const products = useMemo(() => data?.items ?? [], [data])
 
   if (isLoading) {
@@ -35,6 +45,7 @@ export function ProductsList() {
 
   return (
     <FlatList
+      ListHeaderComponent={<LocationFilter value={where} onChange={setWhere} />}
       data={products}
       numColumns={2}
       keyExtractor={(p) => p.id}
@@ -45,7 +56,7 @@ export function ProductsList() {
       ListEmptyComponent={
         <EmptyState
           icon={<ShoppingBag size={30} color={colors.subtleForeground} />}
-          title="No products yet"
+          title={where.state || where.lga || near ? 'Nothing here yet' : 'No products yet'}
           description="Vendors haven't listed anything here yet. Check back soon."
         />
       }

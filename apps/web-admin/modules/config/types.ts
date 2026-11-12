@@ -4,6 +4,14 @@
 // `delivery_fee_per_km_kobo`, `max_delivery_radius_km`) that don't exist in the backend config
 // dict at all, so the form always silently fell back to its own hardcoded defaults and every
 // save was a no-op.
+export interface DeliveryPromo {
+  enabled: boolean
+  percent: number
+  label: string
+  /** ISO timestamp the promo stops applying; null = runs until switched off. */
+  ends_at: string | null
+}
+
 export interface PlatformConfig {
   commission_rate_percent: number
   delivery_fee_structure: {
@@ -11,6 +19,8 @@ export interface PlatformConfig {
     per_km_kobo: number
     road_factor: number
   }
+  /** Time-boxed discount on the distance part of the delivery fee (not special/bulky charges). */
+  delivery_promo?: DeliveryPromo
   /** Percent of each delivery fee AVDAN keeps; the rider gets the rest. */
   delivery_commission_percent: number
   min_withdrawal_kobo: number

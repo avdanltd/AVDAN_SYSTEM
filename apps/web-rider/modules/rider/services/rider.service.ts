@@ -47,7 +47,8 @@ export const riderService = {
   failOrder: (orderId: string) =>
     apiClient.post<{ order_id: string; status: string }>(`/dispatch/me/orders/${orderId}/fail`),
 
-  getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
+  getWallet: (range: { date_from?: string; date_to?: string } = {}) =>
+    apiClient.get<WalletSummary>('/wallet/me', range as Record<string, string>),
 
   getWalletEntries: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
     apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', {

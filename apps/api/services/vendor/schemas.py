@@ -115,6 +115,8 @@ class VendorResponse(BaseModel):
     landmark: str | None = None
     lat: float | None = None
     lng: float | None = None
+    # Straight-line km from the caller's location; only set when the list was asked nearest-first.
+    distance_km: float | None = None
     rating: float
     review_count: int = 0
     created_at: str

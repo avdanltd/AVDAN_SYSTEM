@@ -1,14 +1,17 @@
+import { useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Star, Store as StoreIcon } from 'lucide-react-native'
 import { Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { useVendors } from '../hooks/use-shop'
+import { LocationFilter, type LocationValue } from './location-filter'
 
 export function VendorsList() {
   const { colors } = useTheme()
   const router = useRouter()
-  const { data, isLoading, isError, refetch } = useVendors()
+  const [where, setWhere] = useState<LocationValue>({})
+  const { data, isLoading, isError, refetch } = useVendors(where)
   const vendors = data?.items ?? []
 
   if (isLoading) {
@@ -36,13 +39,18 @@ export function VendorsList() {
     )
   }
 
+  const filtered = Boolean(where.state || where.lga || where.nearLat != null)
+
   if (vendors.length === 0) {
     return (
       <View style={styles.centered}>
+        <LocationFilter value={where} onChange={setWhere} />
         <EmptyState
           icon={<StoreIcon size={30} color={colors.subtleForeground} />}
-          title="No stores yet"
-          description="Sellers will appear here once they join AVDAN."
+          title={filtered ? 'No stores here' : 'No stores yet'}
+          description={
+            filtered ? 'No sellers in that area yet. Try another place.' : 'Sellers will appear here once they join AVDAN.'
+          }
         />
       </View>
     )
@@ -50,6 +58,7 @@ export function VendorsList() {
 
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+      <LocationFilter value={where} onChange={setWhere} />
       {vendors.map((v) => (
         <Pressable
           key={v.id}
@@ -68,6 +77,9 @@ export function VendorsList() {
               <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
                 {v.name}
               </Text>
+              {v.distance_km != null ? (
+                <Text style={[styles.desc, { color: colors.mutedForeground }]}>{v.distance_km} km away</Text>
+              ) : null}
               {v.description ? (
                 <Text style={[styles.desc, { color: colors.mutedForeground }]} numberOfLines={2}>
                   {v.description}

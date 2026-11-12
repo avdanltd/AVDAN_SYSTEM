@@ -21,3 +21,11 @@ class Notification(BaseModel):
     content: Mapped[dict] = mapped_column(JSONB, nullable=False)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class NewsletterSubscriber(BaseModel):
+    """Email addresses from the storefront's "Stay in the loop" box. One row per address."""
+
+    __tablename__ = "newsletter_subscribers"
+
+    email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)

@@ -257,7 +257,10 @@ const WALLET_KEYS = ['vendor-wallet', 'vendor-wallet-entries', 'vendor-wallet-re
 
 export function useWallet(range: WalletRangeValue) {
   const params = useMemo(() => walletRangeParams(range), [range])
-  const summary = useQuery({ queryKey: ['vendor-wallet'], queryFn: () => vendorService.getWallet() })
+  const summary = useQuery({
+    queryKey: ['vendor-wallet', params],
+    queryFn: () => vendorService.getWallet(params),
+  })
   const entries = useQuery({
     queryKey: ['vendor-wallet-entries', params],
     queryFn: () => vendorService.getWalletEntries(params),

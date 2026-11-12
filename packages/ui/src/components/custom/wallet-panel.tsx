@@ -109,6 +109,10 @@ export function WalletPanel({
 
   const available = summary?.available_kobo ?? 0
   const min = summary?.min_withdrawal_kobo ?? 0
+  // With a date range chosen the cards show that period's activity; withdrawal limits below
+  // always use the real (all-time) available balance.
+  const period = range && range.preset !== 'all' ? (summary?.period ?? null) : null
+  const sub = (text: string) => (period ? `${text} · selected period` : text)
 
   const openDialog = () => {
     setAmount(available > 0 ? String(available / 100) : '')
@@ -182,70 +186,6 @@ export function WalletPanel({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-        <StatsCard
-          title="Ongoing"
-          value={summary ? formatMoney(summary.ongoing_kobo) : '—'}
-          loading={loading}
-          subtitle="Orders in progress"
-        />
-        {showClearing && (
-          <StatsCard
-            title="Delivered"
-            value={summary ? formatMoney(summary.clearing_kobo + summary.on_hold_kobo) : '—'}
-            loading={loading}
-            subtitle="Clearing the dispute window"
-          />
-        )}
-        <StatsCard
-          title="Available"
-          value={summary ? formatMoney(available) : '—'}
-          loading={loading}
-          subtitle="Ready to withdraw"
-          tone="accent"
-        />
-        <StatsCard
-          title="Requested"
-          value={summary ? formatMoney(summary.requested_kobo) : '—'}
-          loading={loading}
-          subtitle="Waiting for approval or bank"
-        />
-        <StatsCard
-          title="Paid out"
-          value={summary ? formatMoney(summary.paid_out_kobo) : '—'}
-          loading={loading}
-          subtitle="Collected to your bank"
-        />
-      </div>
-
-      <Card className="shadow-card">
-        <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="font-display text-sm font-semibold text-foreground">Withdraw funds</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Request any amount up to your available balance (minimum {summary ? formatMoney(min) : '—'}).
-              An AVDAN admin reviews each request and sends the approved amount to your saved bank account.
-            </p>
-            {summary && !summary.has_payout_account && (
-              <p className="mt-2 text-sm font-medium text-destructive">
-                Add a payout bank account first.{' '}
-                {onSetupAccount && (
-                  <button type="button" className="underline" onClick={onSetupAccount}>
-                    Set it up
-                  </button>
-                )}
-              </p>
-            )}
-          </div>
-          <Button
-            onClick={openDialog}
-            disabled={loading || !summary?.has_payout_account || available < min}
-          >
-            Request withdrawal
-          </Button>
-        </CardContent>
-      </Card>
-
       {range && onRangeChange && (
         <Card className="shadow-card">
           <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-end">
@@ -301,6 +241,75 @@ export function WalletPanel({
           </CardContent>
         </Card>
       )}
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <StatsCard
+          title="Ongoing"
+          value={summary ? formatMoney((period ?? summary).ongoing_kobo) : '—'}
+          loading={loading}
+          subtitle={sub('Orders in progress')}
+        />
+        {showClearing && (
+          <StatsCard
+            title="Delivered"
+            value={
+              summary
+                ? formatMoney(period ? period.clearing_kobo : summary.clearing_kobo + summary.on_hold_kobo)
+                : '—'
+            }
+            loading={loading}
+            subtitle={sub('Clearing the dispute window')}
+          />
+        )}
+        <StatsCard
+          title="Available"
+          value={summary ? formatMoney(period ? period.available_kobo : available) : '—'}
+          loading={loading}
+          subtitle={period ? 'Net wallet movement · selected period' : 'Ready to withdraw'}
+          tone="accent"
+        />
+        <StatsCard
+          title="Requested"
+          value={summary ? formatMoney((period ?? summary).requested_kobo) : '—'}
+          loading={loading}
+          subtitle={sub('Waiting for approval or bank')}
+        />
+        <StatsCard
+          title="Paid out"
+          value={summary ? formatMoney((period ?? summary).paid_out_kobo) : '—'}
+          loading={loading}
+          subtitle={sub('Collected to your bank')}
+        />
+      </div>
+
+      <Card className="shadow-card">
+        <CardContent className="flex flex-col gap-3 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="font-display text-sm font-semibold text-foreground">Withdraw funds</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Request any amount up to your available balance (minimum {summary ? formatMoney(min) : '—'}).
+              An AVDAN admin reviews each request and sends the approved amount to your saved bank account.
+            </p>
+            {summary && !summary.has_payout_account && (
+              <p className="mt-2 text-sm font-medium text-destructive">
+                Add a payout bank account first.{' '}
+                {onSetupAccount && (
+                  <button type="button" className="underline" onClick={onSetupAccount}>
+                    Set it up
+                  </button>
+                )}
+              </p>
+            )}
+          </div>
+          <Button
+            onClick={openDialog}
+            disabled={loading || !summary?.has_payout_account || available < min}
+          >
+            Request withdrawal
+          </Button>
+        </CardContent>
+      </Card>
+
 
       <section className="space-y-3">
         <h2 className="font-display text-sm font-semibold text-foreground">Withdrawal requests</h2>

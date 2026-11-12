@@ -22,11 +22,124 @@ import {
   Skeleton,
   Badge,
   ConfirmDialog,
+  Switch,
+  Input as TextInput,
 } from '@avdan/ui'
 import { usePlatformConfig } from '../hooks/use-platform-config'
 import { useUpdateConfig } from '../hooks/use-update-config'
 import { useAuditLog } from '../hooks/use-audit-log'
 import { formatDate } from '@/lib/format'
+import type { DeliveryPromo } from '../types'
+
+const DEFAULT_PROMO: DeliveryPromo = { enabled: false, percent: 10, label: 'Launch offer', ends_at: null }
+
+/** ISO → the value a <input type="datetime-local"> wants (viewer's local time). */
+function toLocalInput(iso: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/**
+ * Delivery-fee promotion: switch a percentage off the delivery fee on/off, with an optional end
+ * date. AVDAN funds it from its own delivery cut — the rider's share is still worked out on the
+ * full fee — and special/bulky charges are never discounted.
+ */
+function PromotionsCard() {
+  const { data: config } = usePlatformConfig()
+  const { mutate: updateConfig, isPending } = useUpdateConfig()
+  const saved = config?.delivery_promo ?? DEFAULT_PROMO
+  const [promo, setPromo] = useState<DeliveryPromo>(saved)
+  const [endsLocal, setEndsLocal] = useState('')
+
+  useEffect(() => {
+    setPromo(saved)
+    setEndsLocal(toLocalInput(saved.ends_at))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config?.delivery_promo])
+
+  const commission = config?.delivery_commission_percent ?? 20
+  const percentValid = promo.percent >= 0 && promo.percent <= 100
+
+  function save(next: DeliveryPromo) {
+    const ends = endsLocal ? new Date(endsLocal).toISOString() : null
+    updateConfig({ delivery_promo: { ...next, ends_at: ends } })
+  }
+
+  return (
+    <Card className="shadow-card">
+      <CardHeader>
+        <CardTitle className="font-display">Promotions</CardTitle>
+        <CardDescription>
+          Delivery-fee discount shown to every customer at checkout. Switch it off any time.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+          <div>
+            <p className="text-sm font-medium text-foreground">
+              {promo.enabled ? 'Promotion is ON' : 'Promotion is OFF'}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {promo.enabled ? 'New orders get the discount.' : 'Customers pay the normal delivery fee.'}
+            </p>
+          </div>
+          <Switch
+            checked={promo.enabled}
+            disabled={isPending || !percentValid}
+            onCheckedChange={(enabled) => {
+              const next = { ...promo, enabled }
+              setPromo(next)
+              save(next)
+            }}
+            aria-label="Delivery discount promotion on or off"
+          />
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Discount on delivery fee (%)
+            <TextInput
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={promo.percent}
+              onChange={(e) => setPromo({ ...promo, percent: Number(e.target.value) })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Label customers see
+            <TextInput
+              maxLength={60}
+              value={promo.label}
+              onChange={(e) => setPromo({ ...promo, label: e.target.value })}
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-sm font-medium">
+            Ends (optional)
+            <TextInput type="datetime-local" value={endsLocal} onChange={(e) => setEndsLocal(e.target.value)} />
+          </label>
+        </div>
+
+        <p className="text-xs text-muted-foreground">
+          With the usual {commission}% delivery commission, a {promo.percent}% discount leaves AVDAN{' '}
+          {Math.max(commission - promo.percent, 0)}% of the delivery fee and the rider keeps their normal{' '}
+          {100 - commission}%. Special charges for bulky products are not discounted. Leave the end date
+          empty to run until you switch it off; it stops by itself at the end time.
+        </p>
+
+        <div>
+          <Button type="button" disabled={isPending || !percentValid} onClick={() => save(promo)}>
+            {isPending ? 'Saving…' : 'Save promotion'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
 const configSchema = z.object({
   commission_rate_percent: z.coerce.number().min(0).max(100),
@@ -293,6 +406,8 @@ export function ConfigPage() {
           )}
         </CardContent>
       </Card>
+
+      <PromotionsCard />
 
       {/* Audit Log */}
       <Card className="shadow-card">
