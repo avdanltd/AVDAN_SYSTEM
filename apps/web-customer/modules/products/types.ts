@@ -37,5 +37,9 @@ export interface ProductsParams {
   search?: string
   min_price_kobo?: number
   max_price_kobo?: number
-  sort?: 'newest' | 'price_asc' | 'price_desc' | 'popular'
+  sort?: 'newest' | 'price_asc' | 'price_desc' | 'popular' | 'nearest'
+  state?: string
+  lga?: string
+  near_lat?: string
+  near_lng?: string
 }

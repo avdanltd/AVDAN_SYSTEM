@@ -233,6 +233,28 @@ class AnalyticsService:
 
     async def update_config(self, updates: dict, admin_id: str) -> dict:
         old_config = await self.get_config()
+        if "delivery_promo" in updates:
+            from core.exceptions import ValidationException
+
+            promo = updates["delivery_promo"] or {}
+            try:
+                percent = float(promo.get("percent", 0))
+            except (TypeError, ValueError) as exc:
+                raise ValidationException("Promo percent must be a number") from exc
+            if not 0 <= percent <= 100:
+                raise ValidationException("Promo percent must be between 0 and 100")
+            ends_at = promo.get("ends_at")
+            if ends_at:
+                from datetime import datetime
+
+                try:
+                    datetime.fromisoformat(str(ends_at).replace("Z", "+00:00"))
+                except ValueError as exc:
+                    raise ValidationException("Promo end date is not valid") from exc
+            updates = {**updates, "delivery_promo": {
+                "enabled": bool(promo.get("enabled")), "percent": percent,
+                "label": str(promo.get("label") or "Delivery discount")[:60], "ends_at": ends_at or None,
+            }}
         new_config = {**old_config, **updates}
 
         result = await self.db.execute(

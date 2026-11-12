@@ -1,12 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { ROUTES } from '@/config/routes'
 import { useVendors } from '../hooks/use-vendors'
 import { VendorGrid } from './vendor-grid'
+import { LocationFilter, nearParams, type LocationValue } from '@/modules/location/components/location-filter'
 
 export function VendorsPage() {
-  const { data, isLoading, error } = useVendors({ status: 'active' })
+  const [location, setLocation] = useState<LocationValue>({})
+  const { data, isLoading, error } = useVendors({
+    status: 'active',
+    ...(location.state ? { state: location.state } : {}),
+    ...(location.lga ? { lga: location.lga } : {}),
+    ...nearParams(location.near),
+  })
 
   return (
     <div className="space-y-6">
@@ -24,6 +32,8 @@ export function VendorsPage() {
           </p>
         )}
       </div>
+
+      <LocationFilter value={location} onChange={(patch) => setLocation((cur) => ({ ...cur, ...patch }))} />
 
       <VendorGrid
         vendors={data?.items}

@@ -13,6 +13,12 @@ export const productsService = {
     if (params?.min_price_kobo) query.min_price_kobo = String(params.min_price_kobo)
     if (params?.max_price_kobo) query.max_price_kobo = String(params.max_price_kobo)
     if (params?.sort) query.sort = params.sort
+    if (params?.state) query.state = params.state
+    if (params?.lga) query.lga = params.lga
+    if (params?.near_lat && params?.near_lng) {
+      query.near_lat = params.near_lat
+      query.near_lng = params.near_lng
+    }
     return apiClient.get<PaginatedResponse<ProductListing>>('/products', Object.keys(query).length ? query : undefined)
   },
   getProduct: (id: string) => apiClient.get<ProductDetail>(`/products/${id}`),

@@ -11,6 +11,7 @@ import { ProductGrid } from './product-grid'
 import { ProductFilters, type FilterState } from './product-filters'
 import { ProductPagination } from './product-pagination'
 import type { ProductsParams } from '../types'
+import { LocationFilter, nearParams } from '@/modules/location/components/location-filter'
 
 const LIMIT = 12
 
@@ -21,9 +22,16 @@ function buildParams(searchParams: URLSearchParams): ProductsParams & { page: nu
   const minPrice = searchParams.get('min_price') ?? undefined
   const maxPrice = searchParams.get('max_price') ?? undefined
   const availableOnly = searchParams.get('available') === '1'
+  const state = searchParams.get('state') ?? undefined
+  const lga = searchParams.get('lga') ?? undefined
+  const near = searchParams.get('near') ?? undefined
 
   return {
-    sort,
+    // Customers who share their location get the closest vendors' products first.
+    sort: near && sort === 'popular' ? 'nearest' : sort,
+    state,
+    lga,
+    ...nearParams(near),
     page,
     limit: LIMIT,
     category_id: categoryId,
@@ -105,6 +113,15 @@ export function ProductsPage() {
       <h1 className="text-2xl font-bold tracking-tight text-foreground">
         {selectedCategory ? selectedCategory.name : 'All Products'}
       </h1>
+
+      <LocationFilter
+        value={{
+          state: searchParams.get('state') ?? undefined,
+          lga: searchParams.get('lga') ?? undefined,
+          near: searchParams.get('near') ?? undefined,
+        }}
+        onChange={(patch) => setParams(patch as Record<string, string | undefined>)}
+      />
 
       <ProductFilters
         filters={filters}

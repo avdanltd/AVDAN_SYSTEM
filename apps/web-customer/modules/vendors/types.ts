@@ -11,6 +11,8 @@ export interface Vendor {
   state?: string | null
   /** The vendor's own on/off switch; undefined on older responses means open. */
   is_open?: boolean
+  /** Straight-line km from the customer; only present when listed nearest-first. */
+  distance_km?: number | null
   zone_id: string | null
   created_at: string
 }

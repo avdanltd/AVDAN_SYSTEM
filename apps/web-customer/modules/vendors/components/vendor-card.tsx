@@ -62,7 +62,10 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
           {formatVendorLocation(vendor.city, vendor.state) && (
             <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="line-clamp-1">{formatVendorLocation(vendor.city, vendor.state)}</span>
+              <span className="line-clamp-1">
+                {formatVendorLocation(vendor.city, vendor.state)}
+                {vendor.distance_km != null ? ` · ${vendor.distance_km} km away` : ''}
+              </span>
             </p>
           )}
 

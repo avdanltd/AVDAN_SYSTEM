@@ -175,7 +175,70 @@ class WalletService:
         )
         return list(result.scalars().all())
 
-    async def get_summary(self, owner_type: str, owner_id: uuid.UUID, *, has_account: bool) -> dict:
+    async def _period_summary(
+        self, owner_type: str, owner_id: uuid.UUID, rate: float, date_from: datetime | None, date_to: datetime | None
+    ) -> dict:
+        """The summary cards restricted to a date range. Orders are placed in the range (ongoing)
+        or last changed in it (delivered/clearing); wallet money and withdrawals by their own dates."""
+        column = Order.vendor_id if owner_type == WalletOwner.VENDOR else Order.rider_id
+
+        def window(col) -> list:
+            out = []
+            if date_from:
+                out.append(col >= date_from)
+            if date_to:
+                out.append(col <= date_to)
+            return out
+
+        def amount(o: Order) -> int:
+            if owner_type == WalletOwner.VENDOR:
+                return o.vendor_total_kobo if o.vendor_total_kobo is not None else o.total_kobo - int(o.total_kobo * rate / 100)
+            return o.delivery_fee_kobo if o.rider_fee_kobo is None else o.rider_fee_kobo
+
+        async def orders(states: list[str], col) -> int:
+            rows = (await self.db.execute(
+                select(Order).where(column == owner_id, Order.status.in_(states), *window(col))
+            )).scalars().all()
+            return sum(amount(o) for o in rows)
+
+        ongoing = await orders(_ONGOING_STATES, Order.created_at)
+        clearing = 0
+        if owner_type == WalletOwner.VENDOR:
+            clearing = await orders([*_VENDOR_CLEARING_STATES, OrderStatus.DISPUTED], Order.updated_at)
+
+        available = int((await self.db.execute(
+            select(func.coalesce(func.sum(WalletEntry.amount_kobo), 0)).where(
+                WalletEntry.owner_type == owner_type, WalletEntry.owner_id == owner_id,
+                *window(WalletEntry.created_at),
+            )
+        )).scalar_one())
+
+        reqs = (await self.db.execute(
+            select(PayoutRequest).where(
+                PayoutRequest.owner_type == owner_type, PayoutRequest.owner_id == owner_id,
+                PayoutRequest.status.in_([PayoutStatus.REQUESTED, PayoutStatus.PROCESSING]),
+                *window(PayoutRequest.created_at),
+            )
+        )).scalars().all()
+        requested = sum(
+            r.requested_kobo if r.status == PayoutStatus.REQUESTED else (r.approved_kobo or 0) for r in reqs
+        )
+        paid_rows = (await self.db.execute(
+            select(PayoutRequest).where(
+                PayoutRequest.owner_type == owner_type, PayoutRequest.owner_id == owner_id,
+                PayoutRequest.status == PayoutStatus.PAID,
+                *window(func.coalesce(PayoutRequest.paid_at, PayoutRequest.decided_at, PayoutRequest.created_at)),
+            )
+        )).scalars().all()
+        return {
+            "ongoing_kobo": ongoing, "clearing_kobo": clearing, "available_kobo": available,
+            "requested_kobo": requested, "paid_out_kobo": sum((r.approved_kobo or 0) for r in paid_rows),
+        }
+
+    async def get_summary(
+        self, owner_type: str, owner_id: uuid.UUID, *, has_account: bool,
+        date_from: datetime | None = None, date_to: datetime | None = None,
+    ) -> dict:
         from services.analytics.service import AnalyticsService
 
         config = await AnalyticsService(self.db).get_config()
@@ -234,12 +297,19 @@ class WalletService:
             "lifetime_earned_kobo": lifetime,
             "min_withdrawal_kobo": int(config["min_withdrawal_kobo"]),
             "has_payout_account": has_account,
+            "period": (
+                await self._period_summary(owner_type, owner_id, rate, date_from, date_to)
+                if (date_from or date_to) else None
+            ),
         }
 
-    async def my_summary(self, owner_type: str, user_id: str) -> dict:
+    async def my_summary(
+        self, owner_type: str, user_id: str, date_from: datetime | None = None, date_to: datetime | None = None
+    ) -> dict:
         owner = await self._get_owner(owner_type, user_id)
         return await self.get_summary(
-            owner_type, owner.id, has_account=bool(owner.paystack_recipient_code)  # type: ignore[attr-defined]
+            owner_type, owner.id, has_account=bool(owner.paystack_recipient_code),  # type: ignore[attr-defined]
+            date_from=date_from, date_to=date_to,
         )
 
     async def list_entries(

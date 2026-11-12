@@ -23,7 +23,7 @@ class NotificationService:
 
         total_result = await self.db.execute(
             select(func.count()).select_from(Notification).where(
-                Notification.user_id == user_uuid
+                Notification.user_id == user_uuid, Notification.channel == "in_app"
             )
         )
         total = total_result.scalar_one()
@@ -31,6 +31,7 @@ class NotificationService:
         unread_result = await self.db.execute(
             select(func.count()).select_from(Notification).where(
                 Notification.user_id == user_uuid,
+                Notification.channel == "in_app",
                 Notification.read_at.is_(None),
             )
         )
@@ -39,7 +40,9 @@ class NotificationService:
         offset = (page - 1) * page_size
         result = await self.db.execute(
             select(Notification)
-            .where(Notification.user_id == user_uuid)
+            # Each event is also logged as an email/push delivery row; the inbox shows only the
+            # in-app one, or every message would appear two or three times.
+            .where(Notification.user_id == user_uuid, Notification.channel == "in_app")
             .order_by(Notification.created_at.desc())
             .offset(offset)
             .limit(page_size)

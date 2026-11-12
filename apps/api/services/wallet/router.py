@@ -81,10 +81,12 @@ def _entry_resp(e: WalletEntry) -> WalletEntryResponse:
 
 @router.get("/me", response_model=WalletSummaryResponse)
 async def get_my_wallet(
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     current_user: CurrentUser = Depends(require_role("vendor", "rider")),
     db: AsyncSession = Depends(get_db),
 ) -> WalletSummaryResponse:
-    return WalletSummaryResponse(**await WalletService(db).my_summary(current_user.role, current_user.user_id))
+    return WalletSummaryResponse(**await WalletService(db).my_summary(current_user.role, current_user.user_id, date_from, date_to))
 
 
 @router.get("/me/entries", response_model=PaginatedWalletEntriesResponse)

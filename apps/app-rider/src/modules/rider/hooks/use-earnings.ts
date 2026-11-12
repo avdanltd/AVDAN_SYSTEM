@@ -10,7 +10,10 @@ const WALLET_KEYS = ['rider-wallet', 'rider-wallet-entries', 'rider-wallet-reque
 
 export function useWallet(range: WalletRangeValue) {
   const params = useMemo(() => walletRangeParams(range), [range])
-  const summary = useQuery({ queryKey: ['rider-wallet'], queryFn: () => riderService.getWallet() })
+  const summary = useQuery({
+    queryKey: ['rider-wallet', params],
+    queryFn: () => riderService.getWallet(params),
+  })
   const entries = useQuery({
     queryKey: ['rider-wallet-entries', params],
     queryFn: () => riderService.getWalletEntries(params),
