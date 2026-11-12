@@ -50,25 +50,44 @@ _TRIGGERS: dict[tuple[str | None, str], list[dict]] = {
 
 
 @celery_app.task(name="workers.tasks.notifications.send_otp_email_task")
-def send_otp_email_task(email: str, name: str, otp: str) -> None:
-    from services.notification.emails import build_otp_email, send_email_via_resend
+def send_otp_email_task(email: str, name: str, otp: str, role: str = "customer") -> None:
+    from services.notification.emails import (
+        build_otp_email,
+        contact_email_for,
+        send_email_via_resend,
+    )
     subject = "Verify your AVDAN Account"
-    html = build_otp_email(name, otp)
-    send_email_via_resend(email, subject, html)
+    html = build_otp_email(name, otp, role)
+    send_email_via_resend(email, subject, html, reply_to=contact_email_for(role))
 
 
 @celery_app.task(name="workers.tasks.notifications.send_invite_email_task")
 def send_invite_email_task(email: str, name: str, role: str, link: str, valid_hours: int) -> None:
-    from services.notification.emails import build_invite_email, send_email_via_resend
+    from services.notification.emails import (
+        build_invite_email,
+        contact_email_for,
+        send_email_via_resend,
+    )
     html = build_invite_email(name, role, link, valid_hours)
-    send_email_via_resend(email, "Welcome to AVDAN — set up your account", html)
+    send_email_via_resend(
+        email, "Welcome to AVDAN — set up your account", html, reply_to=contact_email_for(role)
+    )
 
 
 @celery_app.task(name="workers.tasks.notifications.send_password_reset_email_task")
-def send_password_reset_email_task(email: str, name: str, link: str, valid_minutes: int) -> None:
-    from services.notification.emails import build_password_reset_email, send_email_via_resend
+def send_password_reset_email_task(
+    email: str, name: str, link: str, valid_minutes: int, role: str = "customer"
+) -> None:
+    from services.notification.emails import (
+        build_password_reset_email,
+        contact_email_for,
+        send_email_via_resend,
+    )
     send_email_via_resend(
-        email, "Reset your AVDAN password", build_password_reset_email(name, link, valid_minutes)
+        email,
+        "Reset your AVDAN password",
+        build_password_reset_email(name, link, valid_minutes, role),
+        reply_to=contact_email_for(role),
     )
 
 
@@ -186,16 +205,19 @@ async def _dispatch_async(
                 if email:
                     from services.notification.emails import (
                         build_order_status_email,
+                        contact_email_for,
                         send_email_via_resend,
                     )
                     subject = f"AVDAN Order Update: {trigger['title']}"
-                    html = build_order_status_email(name, order_id, trigger["title"], trigger["body"])
+                    html = build_order_status_email(name, order_id, trigger["title"], trigger["body"], role)
                     db.add(Notification(
                         user_id=user_id,
                         type=to_state.lower(),
                         channel="email",
                         content=content,
-                        sent_at=now if send_email_via_resend(email, subject, html) else None,
+                        sent_at=now if send_email_via_resend(
+                            email, subject, html, reply_to=contact_email_for(role)
+                        ) else None,
                     ))
 
                 await _push(db, user_id, to_state.lower(), trigger["title"], trigger["body"], content, now)

@@ -15,7 +15,8 @@ import {
 
 import { statusLabel } from '@/constants/status'
 import { useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
-import { AvdanMark, Badge, Button, Card, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme } from '@avdan/mobile'
+import { AvdanMark, Badge, Button, Card, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport } from '@avdan/mobile'
+import { CONTACT_EMAILS } from '@avdan/types'
 
 function NavRow({
   icon,
@@ -219,6 +220,8 @@ export function Profile() {
         onPress={confirmLogout}
         loading={isPending}
       />
+
+      <ContactSupport email={CONTACT_EMAILS.business} />
 
       <View style={styles.footer}>
         <AvdanMark size={26} />

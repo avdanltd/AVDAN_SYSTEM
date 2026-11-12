@@ -1,4 +1,5 @@
 "use client"
+import { CONTACT_EMAILS } from '@avdan/types'
 import Link from 'next/link'
 import { Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -23,7 +24,7 @@ const companyLinks = [
 
 const supportLinks = [
   { label: 'Help Center', href: '#' },
-  { label: 'Contact Us', href: '#' },
+  { label: 'Contact Us', href: `mailto:${CONTACT_EMAILS.customer}` },
   { label: 'Raise a Dispute', href: '#' },
 ]
 
@@ -106,6 +107,18 @@ export function Footer() {
               Customer care:{' '}
               <a href={`tel:${CARE_LINE.replace(/\s/g, '')}`} className="font-medium text-foreground hover:underline">
                 {CARE_LINE}
+              </a>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Email:{' '}
+              <a href={`mailto:${CONTACT_EMAILS.customer}`} className="font-medium text-foreground hover:underline">
+                {CONTACT_EMAILS.customer}
+              </a>
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Vendors, riders &amp; investors:{' '}
+              <a href={`mailto:${CONTACT_EMAILS.business}`} className="font-medium text-foreground hover:underline">
+                {CONTACT_EMAILS.business}
               </a>
             </p>
             <div className="mt-4 flex flex-wrap gap-3">

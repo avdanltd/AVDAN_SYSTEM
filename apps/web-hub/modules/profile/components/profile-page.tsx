@@ -24,7 +24,9 @@ import {
   AvatarFallback,
   Separator,
   Badge,
+  ContactSupport,
 } from '@avdan/ui'
+import { CONTACT_EMAILS } from '@avdan/types'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useUpdateProfile } from '../hooks/use-update-profile'
 import { ChangePasswordCard } from './change-password-card'
@@ -199,6 +201,7 @@ export function ProfilePage() {
       </Card>
       <HubDetailsCard />
       <ChangePasswordCard />
+      <ContactSupport email={CONTACT_EMAILS.business} audience="Hub agents" />
     </div>
   )
 }

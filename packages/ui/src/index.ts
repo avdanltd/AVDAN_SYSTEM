@@ -123,3 +123,4 @@ export { toast } from './components/feedback/toast'
 // ─── Utils ────────────────────────────────────────────────────────────────────
 export { cn } from './lib/utils'
 export { downloadCsv } from './lib/download-csv'
+export { ContactSupport } from './components/custom/contact-support'
