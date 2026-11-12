@@ -70,3 +70,4 @@ export type IncomingDelivery = components['schemas']['IncomingDeliveryResponse']
 export type TrackingStage = 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'
 
 export * from './nigeria-locations'
+export * from './wallet-export'

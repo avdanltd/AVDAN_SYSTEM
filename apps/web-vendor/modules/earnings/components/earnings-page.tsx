@@ -1,16 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, WalletPanel } from '@avdan/ui'
+import { DEFAULT_WALLET_RANGE, type WalletRangeValue } from '@avdan/types'
 
 import { ROUTES } from '@/config/routes'
 import { formatDateTime, formatPrice } from '@/lib/format'
-import { useRequestWithdrawal, useWallet } from '../hooks/use-wallet'
+import { useRequestWithdrawal, useWallet, useWalletExport } from '../hooks/use-wallet'
 
 export function EarningsPage() {
   const router = useRouter()
-  const { summary, entries, requests, refetchAll } = useWallet()
+  const [range, setRange] = useState<WalletRangeValue>(DEFAULT_WALLET_RANGE)
+  const { summary, entries, requests, refetchAll } = useWallet(range)
   const withdraw = useRequestWithdrawal()
+  const exportCsv = useWalletExport(range)
 
   return (
     <div className="space-y-6">
@@ -36,6 +40,10 @@ export function EarningsPage() {
         formatMoney={formatPrice}
         formatDate={formatDateTime}
         onSetupAccount={() => router.push(ROUTES.profile)}
+        range={range}
+        onRangeChange={setRange}
+        onExport={() => exportCsv.mutate()}
+        exporting={exportCsv.isPending}
       />
 
       <Card className="shadow-card">

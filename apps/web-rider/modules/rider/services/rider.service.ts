@@ -49,11 +49,36 @@ export const riderService = {
 
   getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
 
-  getWalletEntries: () =>
-    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', { page_size: '20' }),
+  getWalletEntries: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
+    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', {
+      ...range,
+      page: String(page),
+      page_size: String(pageSize),
+    }),
 
-  getPayoutRequests: () =>
-    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', { page_size: '20' }),
+  getPayoutRequests: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
+    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', {
+      ...range,
+      page: String(page),
+      page_size: String(pageSize),
+    }),
+
+  /** Every row in the range (for the CSV), fetched 100 at a time. */
+  async exportWallet(range: { date_from?: string; date_to?: string }) {
+    const requests: PayoutRequest[] = []
+    const entries: WalletEntry[] = []
+    for (let page = 1; page <= 50; page += 1) {
+      const res = await riderService.getPayoutRequests(range, 100, page)
+      requests.push(...res.items)
+      if (requests.length >= res.total || res.items.length === 0) break
+    }
+    for (let page = 1; page <= 50; page += 1) {
+      const res = await riderService.getWalletEntries(range, 100, page)
+      entries.push(...res.items)
+      if (entries.length >= res.total || res.items.length === 0) break
+    }
+    return { requests, entries }
+  },
 
   requestWithdrawal: (amountKobo: number) =>
     apiClient.post<PayoutRequest>('/wallet/me/payout-requests', { amount_kobo: amountKobo }),

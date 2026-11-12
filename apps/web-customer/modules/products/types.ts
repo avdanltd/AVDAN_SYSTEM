@@ -5,6 +5,8 @@ export interface ProductListing {
   vendor_slug: string
   vendor_city?: string | null
   vendor_state?: string | null
+  /** False when the vendor has switched their store off (browse only, no orders). */
+  vendor_is_open?: boolean
   /** Average of visible reviews; 0 with review_count 0 means "no reviews yet". */
   rating?: number
   review_count?: number

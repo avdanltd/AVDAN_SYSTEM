@@ -231,6 +231,13 @@
   50% { transform: translateY(-10px) translateX(4px); }
 }
 
+/* Attention blink for status the user must not forget (store closed, delivery code waiting).
+   Fades hard between full and faint so it reads as blinking, not as a gentle pulse. */
+@keyframes avdan-blink {
+  0%, 45% { opacity: 1; }
+  55%, 100% { opacity: 0.25; }
+}
+
 @keyframes avdan-glow-pulse {
   0%, 100% { opacity: 0.35; }
   50% { opacity: 0.6; }
@@ -258,6 +265,10 @@
   animation: avdan-float-slow 6s ease-in-out infinite;
 }
 
+.avdan-animate-blink {
+  animation: avdan-blink 1.1s ease-in-out infinite;
+}
+
 .avdan-animate-glow-pulse {
   animation: avdan-glow-pulse 5s ease-in-out infinite;
 }
@@ -274,6 +285,7 @@
   .avdan-animate-fade-up,
   .avdan-animate-float-slow,
   .avdan-animate-glow-pulse,
+  .avdan-animate-blink,
   .avdan-animate-celebrate,
   .avdan-animate-celebrate-ring {
     animation: none !important;

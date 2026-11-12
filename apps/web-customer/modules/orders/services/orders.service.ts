@@ -35,7 +35,15 @@ export interface Order {
   events?: OrderEvent[]
 }
 
+export interface PendingDeliveryCode {
+  order_id: string
+  vendor_name: string | null
+  delivery_code: string
+}
+
 export const ordersService = {
+  /** Orders on the road whose handover code the customer still has to give the rider. */
+  getPendingDeliveryCodes: () => apiClient.get<PendingDeliveryCode[]>('/orders/pending-delivery-codes'),
   getOrders: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<Order>>('/orders', params),
   getOrder: (id: string) => apiClient.get<Order>(`/orders/${id}`),
