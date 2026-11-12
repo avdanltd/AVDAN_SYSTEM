@@ -1,4 +1,7 @@
+import re
+
 from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
@@ -10,6 +13,31 @@ from services.notification.schemas import (
 from services.notification.service import NotificationService
 
 router = APIRouter()
+
+
+class SubscribeRequest(BaseModel):
+    email: str = Field(min_length=5, max_length=254)
+
+    @field_validator("email")
+    @classmethod
+    def _looks_like_email(cls, v: str) -> str:
+        v = v.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]{2,}", v):
+            raise ValueError("Enter a valid email address")
+        return v
+
+
+@router.post("/subscribe", status_code=201)
+async def subscribe(data: SubscribeRequest, db: AsyncSession = Depends(get_db)) -> dict:
+    """Public: add an email to the newsletter list. Subscribing twice is fine."""
+    from sqlalchemy.dialects.postgresql import insert
+
+    from services.notification.models import NewsletterSubscriber
+
+    await db.execute(
+        insert(NewsletterSubscriber).values(email=data.email).on_conflict_do_nothing(index_elements=["email"])
+    )
+    return {"subscribed": True}
 
 
 def _notif_resp(n: object) -> NotificationResponse:

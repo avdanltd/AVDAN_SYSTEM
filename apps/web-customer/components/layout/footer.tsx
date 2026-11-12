@@ -1,7 +1,9 @@
 "use client"
 import { CONTACT_EMAILS } from '@avdan/types'
+import { useState, type FormEvent } from 'react'
 import Link from 'next/link'
-import { Logo } from '@avdan/ui'
+import { Logo, toast } from '@avdan/ui'
+import { apiClient } from '@/lib/api-client'
 import { ROUTES } from '@/config/routes'
 
 const shopLinks = [
@@ -155,22 +157,7 @@ export function Footer() {
               <p className="text-sm font-semibold text-foreground">Stay in the loop</p>
               <p className="text-sm text-muted-foreground">Get deals and new vendor alerts in your inbox.</p>
             </div>
-            <form
-              onSubmit={(e) => e.preventDefault()}
-              className="flex gap-2 sm:w-80"
-            >
-              <input
-                type="email"
-                placeholder="you@example.com"
-                className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-              <button
-                type="submit"
-                className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              >
-                Subscribe
-              </button>
-            </form>
+            <NewsletterForm />
           </div>
         </div>
 
@@ -188,5 +175,47 @@ export function Footer() {
         </div>
       </div>
     </footer>
+  )
+}
+
+/** The "Stay in the loop" box: saves the address on our list and tells the visitor it worked. */
+function NewsletterForm() {
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function onSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (busy) return
+    setBusy(true)
+    try {
+      await apiClient.post('/notifications/subscribe', { email: email.trim() })
+      toast.success("You're subscribed — thanks for joining AVDAN!")
+      setEmail('')
+    } catch {
+      toast.error('Could not subscribe. Check the email address and try again.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="flex gap-2 sm:w-80">
+      <input
+        type="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        aria-label="Email address"
+        className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+      />
+      <button
+        type="submit"
+        disabled={busy}
+        className="h-10 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
+      >
+        {busy ? 'Subscribing…' : 'Subscribe'}
+      </button>
+    </form>
   )
 }

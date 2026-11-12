@@ -11,7 +11,10 @@ export function useWallet(range: WalletRangeValue) {
   // "Last 24 hours" etc. are measured from now, so the params are fixed per preset/date change
   // (not per render) — otherwise the query key would change every render.
   const params = useMemo(() => walletRangeParams(range), [range])
-  const summary = useQuery({ queryKey: ['vendor-wallet'], queryFn: earningsService.getWallet })
+  const summary = useQuery({
+    queryKey: ['vendor-wallet', params],
+    queryFn: () => earningsService.getWallet(params),
+  })
   const entries = useQuery({
     queryKey: ['vendor-wallet-entries', params],
     queryFn: () => earningsService.getEntries(params),

@@ -66,7 +66,8 @@ export const riderService = {
 
   getPayoutAccount: () => apiClient.get<PayoutAccount>('/dispatch/me/payout-account'),
 
-  getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
+  getWallet: (range: { date_from?: string; date_to?: string } = {}) =>
+    apiClient.get<WalletSummary>('/wallet/me', range as Record<string, string>),
 
   getWalletEntries: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
     apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', {
