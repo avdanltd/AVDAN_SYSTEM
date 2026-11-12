@@ -89,6 +89,7 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
   const images = product.image_urls?.length > 0 ? product.image_urls : []
   const currentImage = images[activeImage] ?? null
   const inStock = product.available && product.stock_qty > 0
+  const storeClosed = product.vendor_is_open === false
 
   return (
     <>
@@ -229,12 +230,12 @@ export function ProductDetailPage({ productId }: ProductDetailPageProps) {
             <div className="flex gap-3">
               <Button
                 size="lg"
-                disabled={!inStock}
+                disabled={!inStock || storeClosed}
                 onClick={handleAddToCart}
                 className="flex-1 gap-2"
               >
                 <ShoppingCart className="h-4 w-4" />
-                {inStock ? 'Add to Cart' : 'Out of Stock'}
+                {storeClosed ? 'Store closed' : inStock ? 'Add to Cart' : 'Out of Stock'}
               </Button>
               <Button variant="outline" size="lg" asChild>
                 <Link href={ROUTES.vendor(product.vendor_slug)}>

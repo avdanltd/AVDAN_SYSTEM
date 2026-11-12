@@ -8,6 +8,7 @@ import type {
   InitiatePaymentResult,
   PaginatedOrders,
   PaginatedProducts,
+  PendingDeliveryCode,
   Product,
   ProductSort,
   Vendor,
@@ -74,6 +75,10 @@ export const shopService = {
     }),
 
   getOrder: (id: string) => apiClient.get<CustomerOrder>(`/orders/${id}`),
+
+  /** Orders on the road whose handover code the customer still has to give the rider. */
+  getPendingDeliveryCodes: () =>
+    apiClient.get<PendingDeliveryCode[]>('/orders/pending-delivery-codes'),
 
   createOrder: (payload: {
     vendor_id: string

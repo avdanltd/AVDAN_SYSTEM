@@ -13,6 +13,7 @@ from services.vendor.schemas import (
     ProductResponse,
     PublicProductResponse,
     SavePayoutAccountRequest,
+    SetStoreOpenRequest,
     UpdateProductAvailabilityRequest,
     UpdateProductRequest,
     UpdateVendorProfileRequest,
@@ -36,6 +37,7 @@ def _vendor_response(vendor: object) -> VendorResponse:
         description=v.description,
         logo_url=v.logo_url,
         status=v.status,
+        is_open=v.is_open,
         zone_id=str(v.zone_id) if v.zone_id else None,
         address=v.address,
         **address_fields(v),
@@ -83,6 +85,7 @@ def _public_product_response(product: object) -> PublicProductResponse:
         vendor_slug=v.slug,
         vendor_city=v.city,
         vendor_state=v.state,
+        vendor_is_open=v.is_open,
         vendor_rating=float(v.rating),
         vendor_review_count=v.review_count,
         rating=float(p.rating),
@@ -227,6 +230,17 @@ async def update_my_vendor(
 ) -> VendorResponse:
     svc = VendorService(db)
     vendor = await svc.update_vendor_profile(current_user.user_id, data)
+    return _vendor_response(vendor)
+
+
+@router.patch("/me/open", response_model=VendorResponse)
+async def set_store_open(
+    data: SetStoreOpenRequest,
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> VendorResponse:
+    """Open or close the store. A closed store stays listed but cannot take new orders."""
+    vendor = await VendorService(db).set_store_open(current_user.user_id, data.is_open)
     return _vendor_response(vendor)
 
 

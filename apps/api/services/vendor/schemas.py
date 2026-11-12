@@ -45,6 +45,7 @@ class PublicProductResponse(BaseModel):
     # Where the vendor is, so customers can pick the ones nearest them (faster delivery).
     vendor_city: str | None = None
     vendor_state: str | None = None
+    vendor_is_open: bool = True
     vendor_rating: float = 0
     vendor_review_count: int = 0
     # Average of this product's visible reviews (0 until it has any).
@@ -103,6 +104,7 @@ class VendorResponse(BaseModel):
     description: str | None
     logo_url: str | None
     status: str
+    is_open: bool = True
     zone_id: str | None
     address: str | None = None
     street: str | None = None
@@ -142,6 +144,10 @@ class VendorDetailResponse(VendorResponse):
     has_payout_account: bool = False
     payout_bank_name: str | None = None
     payout_account_name: str | None = None
+
+
+class SetStoreOpenRequest(BaseModel):
+    is_open: bool
 
 
 class UpdateVendorProfileRequest(StructuredAddressFields):

@@ -21,6 +21,7 @@ import {
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
+import { StoreStatusToggle } from '@/modules/profile/components/store-status-toggle'
 import { SidebarContent } from './sidebar'
 
 function MenuIcon() {
@@ -72,6 +73,7 @@ export function Navbar() {
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <StoreStatusToggle />
         <ThemeToggle />
 
         <Link href={ROUTES.notifications}>

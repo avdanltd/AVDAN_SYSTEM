@@ -1,21 +1,31 @@
 'use client'
 
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { WalletPanel } from '@avdan/ui'
+import { DEFAULT_WALLET_RANGE, type WalletRangeValue } from '@avdan/types'
 
 import { ROUTES } from '@/config/routes'
 import { formatKobo } from '@/lib/format'
-import { useRequestWithdrawal, useWallet } from '../hooks/use-earnings'
+import { useRequestWithdrawal, useWallet, useWalletExport } from '../hooks/use-earnings'
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })
+  return new Date(iso).toLocaleString('en-NG', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 export function EarningsPage() {
   const router = useRouter()
-  const { summary, entries, requests, refetchAll } = useWallet()
+  const [range, setRange] = useState<WalletRangeValue>(DEFAULT_WALLET_RANGE)
+  const { summary, entries, requests, refetchAll } = useWallet(range)
   const withdraw = useRequestWithdrawal()
+  const exportCsv = useWalletExport(range)
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
@@ -48,6 +58,10 @@ export function EarningsPage() {
         formatMoney={formatKobo}
         formatDate={formatDate}
         onSetupAccount={() => router.push(ROUTES.payoutAccount)}
+        range={range}
+        onRangeChange={setRange}
+        onExport={() => exportCsv.mutate()}
+        exporting={exportCsv.isPending}
       />
     </div>
   )

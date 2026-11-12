@@ -13,6 +13,7 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
   const add = useCartStore((s) => s.add)
 
   const soldOut = !product.available || product.stock_qty === 0
+  const storeClosed = product.vendor_is_open === false
   const image = product.image_urls?.[0]
 
   const handleAdd = () => {
@@ -80,7 +81,7 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
                 </Text>
               ) : null}
             </Text>
-            {!soldOut ? (
+            {!soldOut && !storeClosed ? (
               <Pressable
                 onPress={handleAdd}
                 hitSlop={8}

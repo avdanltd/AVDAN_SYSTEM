@@ -47,6 +47,7 @@ export { ForgotPasswordScreen } from './components/forgot-password'
 export { ChangePasswordScreen } from './components/change-password'
 export { ConfirmDialog } from './components/confirm-dialog'
 export { AddressFields } from './components/address-fields'
+export { Blink } from './components/blink'
 export { StarRating } from './components/star-rating'
 export { WalletPanel, type WalletPanelProps } from './components/wallet-panel'
 

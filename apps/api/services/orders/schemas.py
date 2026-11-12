@@ -107,6 +107,12 @@ class OrderDetailResponse(OrderResponse):
     events: list[OrderEventResponse] = []
 
 
+class PendingDeliveryCode(BaseModel):
+    order_id: str
+    vendor_name: str | None = None
+    delivery_code: str
+
+
 class PaginatedOrdersResponse(BaseModel):
     items: list[OrderResponse]
     total: int

@@ -30,6 +30,9 @@ export const vendorService = {
     payload: { name?: string; description?: string | null; logo_url?: string | null; street?: string; city?: string; state?: string; lga?: string; landmark?: string; lat?: number; lng?: number },
   ) => apiClient.patch<VendorDetail>('/vendors/me', payload),
 
+  setStoreOpen: (isOpen: boolean) =>
+    apiClient.patch<VendorDetail>('/vendors/me/open', { is_open: isOpen }),
+
   /* ── Orders ─────────────────────────────────────────────────────────────── */
   // The backend's status filter takes a single value, so the app pulls a page and splits it
   // into active/completed client-side rather than firing one request per status.
@@ -91,11 +94,36 @@ export const vendorService = {
 
   getWallet: () => apiClient.get<WalletSummary>('/wallet/me'),
 
-  getWalletEntries: () =>
-    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', { page_size: '20' }),
+  getWalletEntries: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
+    apiClient.get<PaginatedResponse<WalletEntry>>('/wallet/me/entries', {
+      ...range,
+      page: String(page),
+      page_size: String(pageSize),
+    }),
 
-  getPayoutRequests: () =>
-    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', { page_size: '20' }),
+  getPayoutRequests: (range: { date_from?: string; date_to?: string } = {}, pageSize = 20, page = 1) =>
+    apiClient.get<PaginatedResponse<PayoutRequest>>('/wallet/me/payout-requests', {
+      ...range,
+      page: String(page),
+      page_size: String(pageSize),
+    }),
+
+  /** Every row in the range (for the CSV), fetched 100 at a time. */
+  async exportWallet(range: { date_from?: string; date_to?: string }) {
+    const requests: PayoutRequest[] = []
+    const entries: WalletEntry[] = []
+    for (let page = 1; page <= 50; page += 1) {
+      const res = await vendorService.getPayoutRequests(range, 100, page)
+      requests.push(...res.items)
+      if (requests.length >= res.total || res.items.length === 0) break
+    }
+    for (let page = 1; page <= 50; page += 1) {
+      const res = await vendorService.getWalletEntries(range, 100, page)
+      entries.push(...res.items)
+      if (entries.length >= res.total || res.items.length === 0) break
+    }
+    return { requests, entries }
+  },
 
   requestWithdrawal: (amountKobo: number) =>
     apiClient.post<PayoutRequest>('/wallet/me/payout-requests', { amount_kobo: amountKobo }),

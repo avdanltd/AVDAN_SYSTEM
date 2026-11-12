@@ -58,6 +58,7 @@ export function ProductDetail({ productId }: { productId: string }) {
   }
 
   const soldOut = !product.available || product.stock_qty === 0
+  const storeClosed = product.vendor_is_open === false
   const images = product.image_urls ?? []
   const max = Math.max(product.stock_qty, 1)
 
@@ -206,9 +207,9 @@ export function ProductDetail({ productId }: { productId: string }) {
         ) : null}
         <View style={styles.flex1}>
           <Button
-            label={soldOut ? 'Sold out' : 'Add to cart'}
+            label={storeClosed ? 'Store closed' : soldOut ? 'Sold out' : 'Add to cart'}
             onPress={handleAdd}
-            disabled={soldOut}
+            disabled={soldOut || storeClosed}
             size="lg"
           />
         </View>

@@ -1,7 +1,15 @@
 'use client'
 
 import * as React from 'react'
-import type { PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
+import {
+  WALLET_RANGE_LABELS,
+  payoutStamp,
+  type PayoutRequest,
+  type WalletEntry,
+  type WalletRangePreset,
+  type WalletRangeValue,
+  type WalletSummary,
+} from '@avdan/types'
 
 import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
@@ -59,6 +67,12 @@ export interface WalletPanelProps {
   formatDate: (iso: string) => string
   /** Called when the owner has no bank account saved and tries to withdraw. */
   onSetupAccount?: () => void
+  /** Date filter for the two history tables. Omit to hide the filter bar. */
+  range?: WalletRangeValue
+  onRangeChange?: (range: WalletRangeValue) => void
+  /** Downloads the filtered history as a CSV. Omit to hide the button. */
+  onExport?: () => void
+  exporting?: boolean
 }
 
 export function WalletPanel({
@@ -74,6 +88,10 @@ export function WalletPanel({
   formatMoney,
   formatDate,
   onSetupAccount,
+  range,
+  onRangeChange,
+  onExport,
+  exporting = false,
 }: WalletPanelProps) {
   const [open, setOpen] = React.useState(false)
   const [amount, setAmount] = React.useState('')
@@ -125,9 +143,19 @@ export function WalletPanel({
     {
       key: 'status',
       header: 'Status',
-      cell: (r) => (
-        <Badge variant={STATUS_VARIANT[r.status] ?? 'outline'}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
-      ),
+      cell: (r) => {
+        const stamp = payoutStamp(r)
+        return (
+          <div className="space-y-1">
+            <Badge variant={STATUS_VARIANT[r.status] ?? 'outline'}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
+            {stamp && (
+              <p className="text-xs text-muted-foreground">
+                {stamp.label} {formatDate(stamp.at)}
+              </p>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'note',
@@ -217,6 +245,62 @@ export function WalletPanel({
           </Button>
         </CardContent>
       </Card>
+
+      {range && onRangeChange && (
+        <Card className="shadow-card">
+          <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:flex-wrap sm:items-end">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Date range">
+              {(Object.keys(WALLET_RANGE_LABELS) as WalletRangePreset[]).map((preset) => (
+                <Button
+                  key={preset}
+                  type="button"
+                  size="sm"
+                  variant={range.preset === preset ? 'default' : 'outline'}
+                  onClick={() => onRangeChange({ ...range, preset })}
+                >
+                  {WALLET_RANGE_LABELS[preset]}
+                </Button>
+              ))}
+            </div>
+            {range.preset === 'custom' && (
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="wallet-from" className="text-xs">From</Label>
+                  <Input
+                    id="wallet-from"
+                    type="date"
+                    value={range.customFrom}
+                    max={range.customTo || undefined}
+                    onChange={(e) => onRangeChange({ ...range, customFrom: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="wallet-to" className="text-xs">To</Label>
+                  <Input
+                    id="wallet-to"
+                    type="date"
+                    value={range.customTo}
+                    min={range.customFrom || undefined}
+                    onChange={(e) => onRangeChange({ ...range, customTo: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+            {onExport && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="sm:ml-auto"
+                onClick={onExport}
+                disabled={exporting || loading}
+              >
+                {exporting ? 'Preparing…' : 'Download CSV'}
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <section className="space-y-3">
         <h2 className="font-display text-sm font-semibold text-foreground">Withdrawal requests</h2>

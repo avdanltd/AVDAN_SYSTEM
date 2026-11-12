@@ -1,14 +1,17 @@
 import { useState } from 'react'
 import { RefreshControl, ScrollView, StyleSheet } from 'react-native'
 import { useRouter } from 'expo-router'
+import { DEFAULT_WALLET_RANGE, type WalletRangeValue } from '@avdan/types'
 import { WalletPanel, spacing, useTheme } from '@avdan/mobile'
 
-import { useRequestWithdrawal, useWallet } from '../hooks/use-earnings'
+import { useRequestWithdrawal, useWallet, useWalletExport } from '../hooks/use-earnings'
 
 export function Earnings() {
   const { colors } = useTheme()
   const router = useRouter()
-  const { summary, entries, requests, refetchAll } = useWallet()
+  const [range, setRange] = useState<WalletRangeValue>(DEFAULT_WALLET_RANGE)
+  const { summary, entries, requests, refetchAll } = useWallet(range)
+  const exportCsv = useWalletExport(range)
   const withdraw = useRequestWithdrawal()
   const [refreshing, setRefreshing] = useState(false)
 
@@ -40,6 +43,10 @@ export function Earnings() {
         }}
         submitting={withdraw.isPending}
         onSetupAccount={() => router.push('/profile/payout')}
+        range={range}
+        onRangeChange={setRange}
+        onExport={() => exportCsv.mutate()}
+        exporting={exportCsv.isPending}
       />
     </ScrollView>
   )

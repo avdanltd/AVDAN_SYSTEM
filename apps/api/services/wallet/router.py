@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,10 +91,14 @@ async def get_my_wallet(
 async def list_my_wallet_entries(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     current_user: CurrentUser = Depends(require_role("vendor", "rider")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedWalletEntriesResponse:
-    entries, total = await WalletService(db).list_entries(current_user.role, current_user.user_id, page, page_size)
+    entries, total = await WalletService(db).list_entries(
+        current_user.role, current_user.user_id, page, page_size, date_from, date_to
+    )
     return PaginatedWalletEntriesResponse(
         items=[_entry_resp(e) for e in entries], total=total, page=page, page_size=page_size
     )
@@ -112,11 +118,13 @@ async def request_withdrawal(
 async def list_my_payout_requests(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
+    date_from: datetime | None = Query(default=None),
+    date_to: datetime | None = Query(default=None),
     current_user: CurrentUser = Depends(require_role("vendor", "rider")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedPayoutRequestsResponse:
     requests, total = await WalletService(db).list_my_requests(
-        current_user.role, current_user.user_id, page, page_size
+        current_user.role, current_user.user_id, page, page_size, date_from, date_to
     )
     return PaginatedPayoutRequestsResponse(
         items=[_request_resp(r) for r in requests], total=total, page=page, page_size=page_size,

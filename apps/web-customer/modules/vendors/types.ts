@@ -7,6 +7,10 @@ export interface Vendor {
   rating: number | null
   review_count?: number
   status: string
+  city?: string | null
+  state?: string | null
+  /** The vendor's own on/off switch; undefined on older responses means open. */
+  is_open?: boolean
   zone_id: string | null
   created_at: string
 }

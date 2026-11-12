@@ -225,6 +225,13 @@ class VendorService:
         )
         return result.scalar_one()
 
+    async def set_store_open(self, user_id: str, is_open: bool) -> Vendor:
+        vendor = await self._get_vendor_for_user(user_id)
+        vendor.is_open = is_open
+        await self.db.commit()
+        await self.db.refresh(vendor)
+        return vendor
+
     async def update_vendor_profile(
         self, user_id: str, data: UpdateVendorProfileRequest
     ) -> Vendor:

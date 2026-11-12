@@ -36,6 +36,7 @@ import {
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { DeliveryCodeBadge } from '@/modules/orders/components/delivery-code-badge'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { useCartStore } from '@/modules/cart/store/cart.store'
 import { CartDrawer } from '@/modules/cart/components/cart-drawer'
@@ -362,6 +363,7 @@ function MobileNav({ isAuthenticated, user, onNav, onLogout, isPending }: Mobile
           <div className="pt-2 border-t border-border mt-2">
             <Link href={ROUTES.orders} onClick={onNav} className={linkClass}>
               <Package className="h-4 w-4" /> My Orders
+              <DeliveryCodeBadge className="ml-auto" />
             </Link>
             <Link href={ROUTES.notifications} onClick={onNav} className={linkClass}>
               <Bell className="h-4 w-4" /> Notifications
@@ -553,7 +555,7 @@ export function Navbar() {
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
-                      className="h-9 w-9 rounded-full p-0"
+                      className="relative h-9 w-9 rounded-full p-0"
                       aria-label="Account menu"
                     >
                       <Avatar className="h-8 w-8">
@@ -561,6 +563,7 @@ export function Navbar() {
                           {getUserInitials(user?.name)}
                         </AvatarFallback>
                       </Avatar>
+                      <DeliveryCodeBadge showCount={false} className="absolute right-0 top-0" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-48">
@@ -575,7 +578,10 @@ export function Navbar() {
                       <Link href={ROUTES.profile}>Profile</Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href={ROUTES.orders}>My Orders</Link>
+                      <Link href={ROUTES.orders} className="flex w-full items-center justify-between gap-2">
+                        My Orders
+                        <DeliveryCodeBadge />
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem

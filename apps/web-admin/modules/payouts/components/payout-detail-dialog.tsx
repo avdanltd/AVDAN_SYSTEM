@@ -16,6 +16,7 @@ import {
   Skeleton,
   Textarea,
 } from '@avdan/ui'
+import { payoutStamp } from '@avdan/types'
 import { formatDate, formatKobo } from '@/lib/format'
 import {
   useApprovePayout,
@@ -110,6 +111,13 @@ export function PayoutDetailDialog({ id, onClose }: { id: string | null; onClose
                 {request.status === 'REJECTED' ? 'Rejected' : 'Approved'} by{' '}
                 <span className="font-medium text-foreground">{request.decided_by_name}</span>
                 {request.decided_at ? ` · ${formatDate(request.decided_at)}` : ''}
+              </p>
+            )}
+
+            {(request.status === 'PAID' || request.status === 'PROCESSING') && payoutStamp(request) && (
+              <p className="text-sm text-muted-foreground">
+                {request.status === 'PAID' ? 'Paid to bank' : 'Sending to bank since'}{' '}
+                <span className="font-medium text-foreground">{formatDate(payoutStamp(request)!.at)}</span>
               </p>
             )}
 
