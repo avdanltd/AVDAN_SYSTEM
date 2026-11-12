@@ -101,7 +101,7 @@ export function Footer() {
               <Logo size="md" />
             </Link>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              Shop from top local vendors. Fast delivery across Lagos.
+              Shop from local vendors. Experience trust, speed, and convenience with AVDAN
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
               Customer care:{' '}
@@ -115,12 +115,15 @@ export function Footer() {
                 {CONTACT_EMAILS.customer}
               </a>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Vendors, riders &amp; investors:{' '}
-              <a href={`mailto:${CONTACT_EMAILS.business}`} className="font-medium text-foreground hover:underline">
-                {CONTACT_EMAILS.business}
-              </a>
-            </p>
+            <div className="mt-3 text-sm text-muted-foreground">
+              <p className="font-semibold text-foreground">For Business:</p>
+              <p>
+                Vendors, Riders &amp; Investors:{' '}
+                <a href={`mailto:${CONTACT_EMAILS.business}`} className="font-medium text-foreground hover:underline">
+                  {CONTACT_EMAILS.business}
+                </a>
+              </p>
+            </div>
             <div className="mt-4 flex flex-wrap gap-3">
               {socialLinks.map(({ label, href, path }) => (
                 <a

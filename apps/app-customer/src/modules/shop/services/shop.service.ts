@@ -16,6 +16,13 @@ import type {
   VerifyPaymentResult,
 } from '../types'
 
+export interface LocationQuery {
+  state?: string
+  lga?: string
+  nearLat?: number
+  nearLng?: number
+}
+
 export interface ProductQuery {
   page?: number
   pageSize?: number
@@ -23,6 +30,10 @@ export interface ProductQuery {
   vendorId?: string
   search?: string
   sort?: ProductSort
+  state?: string
+  lga?: string
+  nearLat?: number
+  nearLng?: number
 }
 
 function productParams(q: ProductQuery): Record<string, string> {
@@ -34,6 +45,12 @@ function productParams(q: ProductQuery): Record<string, string> {
   if (q.vendorId) p.vendor_id = q.vendorId
   if (q.search) p.search = q.search
   if (q.sort) p.sort = q.sort
+  if (q.state) p.state = q.state
+  if (q.lga) p.lga = q.lga
+  if (q.nearLat != null && q.nearLng != null) {
+    p.near_lat = String(q.nearLat)
+    p.near_lng = String(q.nearLng)
+  }
   return p
 }
 
@@ -51,10 +68,15 @@ export const shopService = {
 
   getCategories: () => apiClient.get<Category[]>('/categories'),
 
-  getVendors: (page = 1, pageSize = 20) =>
+  getVendors: (page = 1, pageSize = 20, where: LocationQuery = {}) =>
     apiClient.get<{ items: Vendor[]; total: number }>('/vendors', {
       page: String(page),
       page_size: String(pageSize),
+      ...(where.state ? { state: where.state } : {}),
+      ...(where.lga ? { lga: where.lga } : {}),
+      ...(where.nearLat != null && where.nearLng != null
+        ? { near_lat: String(where.nearLat), near_lng: String(where.nearLng) }
+        : {}),
     }),
 
   getVendor: (slug: string) => apiClient.get<VendorDetail>(`/vendors/${slug}`),

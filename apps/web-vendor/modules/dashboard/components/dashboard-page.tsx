@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { ShoppingBag, TrendingUp, Clock, Star } from 'lucide-react'
@@ -21,6 +22,16 @@ import { dashboardService } from '../services/dashboard.service'
 import { ordersService } from '@/modules/orders/services/orders.service'
 import type { VendorOrder } from '@/modules/orders/types'
 import { formatPrice, formatRelativeTime } from '@/lib/format'
+
+// Quick filters over the recent-orders list, so a long list stays easy to scan.
+const ORDER_FILTERS = [
+  { label: 'All', status: undefined },
+  { label: 'Paid', status: 'PAID' },
+  { label: 'Pending', status: 'PENDING' },
+  { label: 'Release pending', status: 'PAYMENT_RELEASE_PENDING' },
+  { label: 'Cancelled', status: 'CANCELLED' },
+  { label: 'Completed', status: 'COMPLETED' },
+] as const
 
 const recentOrdersColumns: Column<VendorOrder>[] = [
   {
@@ -52,6 +63,7 @@ const recentOrdersColumns: Column<VendorOrder>[] = [
 ]
 
 export function DashboardPage() {
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined)
   const {
     data: stats,
     isLoading: statsLoading,
@@ -68,8 +80,9 @@ export function DashboardPage() {
     isError: ordersError,
     refetch: refetchOrders,
   } = useQuery({
-    queryKey: ['vendor-orders', { limit: '5', sort: 'created_at:desc' }],
-    queryFn: () => ordersService.getOrders({ limit: '5', sort: 'created_at:desc' }),
+    queryKey: ['vendor-orders', { page_size: '10', status: statusFilter ?? 'all' }],
+    queryFn: () =>
+      ordersService.getOrders({ page_size: '10', ...(statusFilter ? { status: statusFilter } : {}) }),
   })
 
   const recentOrders = recentData?.items ?? []
@@ -132,6 +145,20 @@ export function DashboardPage() {
           </Link>
         </CardHeader>
         <CardContent className="p-0">
+          <div className="flex flex-wrap gap-2 border-b border-border px-4 pb-3" role="group" aria-label="Filter orders by status">
+            {ORDER_FILTERS.map((f) => (
+              <Button
+                key={f.label}
+                type="button"
+                size="sm"
+                variant={statusFilter === f.status ? 'default' : 'outline'}
+                aria-pressed={statusFilter === f.status}
+                onClick={() => setStatusFilter(f.status)}
+              >
+                {f.label}
+              </Button>
+            ))}
+          </div>
           {ordersError ? (
             <EmptyState
               icon={<ShoppingBag className="h-6 w-6" />}
@@ -143,8 +170,12 @@ export function DashboardPage() {
           ) : !ordersLoading && recentOrders.length === 0 ? (
             <EmptyState
               icon={<ShoppingBag className="h-6 w-6" />}
-              title="No orders yet"
-              description="New orders will appear here when customers place them."
+              title={statusFilter ? 'No orders with this status' : 'No orders yet'}
+              description={
+                statusFilter
+                  ? 'Try another filter, or choose All.'
+                  : 'New orders will appear here when customers place them.'
+              }
               className="py-10"
             />
           ) : (

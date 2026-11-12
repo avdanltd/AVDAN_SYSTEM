@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useSession } from '@avdan/mobile'
 
-import { shopService, type ProductQuery } from '../services/shop.service'
+import { shopService, type LocationQuery, type ProductQuery } from '../services/shop.service'
 
 export function useCategories() {
   return useQuery({
@@ -26,10 +26,10 @@ export function useProduct(id: string) {
   })
 }
 
-export function useVendors() {
+export function useVendors(where: LocationQuery = {}) {
   return useQuery({
-    queryKey: ['vendors'],
-    queryFn: () => shopService.getVendors(),
+    queryKey: ['vendors', where],
+    queryFn: () => shopService.getVendors(1, 20, where),
     staleTime: 5 * 60_000,
   })
 }

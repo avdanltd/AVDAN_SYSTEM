@@ -12,6 +12,9 @@ DEFAULT_PLATFORM_CONFIG: dict = {
     "commission_rate_percent": 10,
     # Share of every delivery fee AVDAN keeps; the rider is paid the rest. Snapshotted per order.
     "delivery_commission_percent": 20,
+    # Time-boxed discount on the distance-based delivery fee (never on special/bulky charges).
+    # AVDAN funds it out of its own delivery cut; the rider's share is computed on the full fee.
+    "delivery_promo": {"enabled": False, "percent": 10, "label": "Launch offer", "ends_at": None},
     "delivery_fee_structure": {
         "base_fee_kobo": 50000,
         "per_km_kobo": 10000,

@@ -1182,7 +1182,11 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Vendors */
+        /**
+         * List Vendors
+         * @description Public vendor list. `state` / `lga` narrow by location; `near_lat` + `near_lng` order
+         *     nearest-first and fill in each vendor's `distance_km`.
+         */
         get: operations["list_vendors_vendors_get"];
         put?: never;
         post?: never;
@@ -2393,6 +2397,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -2673,6 +2679,23 @@ export interface components {
              * @default 0
              */
             special_fee_kobo: number;
+            /**
+             * Regular Fee Kobo
+             * @default 0
+             */
+            regular_fee_kobo: number;
+            /**
+             * Discount Kobo
+             * @default 0
+             */
+            discount_kobo: number;
+            /** Promo Label */
+            promo_label?: string | null;
+            /**
+             * Promo Percent
+             * @default 0
+             */
+            promo_percent: number;
             /**
              * Min Order Kobo
              * @default 0
@@ -3945,6 +3968,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -4008,6 +4033,8 @@ export interface components {
             lat?: number | null;
             /** Lng */
             lng?: number | null;
+            /** Distance Km */
+            distance_km?: number | null;
             /** Rating */
             rating: number;
             /**
@@ -6714,6 +6741,10 @@ export interface operations {
                 min_price_kobo?: number | null;
                 max_price_kobo?: number | null;
                 sort?: string;
+                state?: string | null;
+                lga?: string | null;
+                near_lat?: number | null;
+                near_lng?: number | null;
             };
             header?: never;
             path?: never;
@@ -6885,6 +6916,10 @@ export interface operations {
             query?: {
                 zone_id?: string | null;
                 search?: string | null;
+                state?: string | null;
+                lga?: string | null;
+                near_lat?: number | null;
+                near_lng?: number | null;
                 page?: number;
                 page_size?: number;
             };

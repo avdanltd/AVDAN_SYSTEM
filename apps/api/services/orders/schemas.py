@@ -145,5 +145,11 @@ class DeliveryQuoteResponse(BaseModel):
     hub_name: str | None = None
     # Part of fee_kobo that comes from products with a special delivery fee (0 = none).
     special_fee_kobo: int = 0
+    # Delivery promotion: fee_kobo is already net of discount_kobo; regular_fee_kobo is the
+    # price without it. discount_kobo = 0 when no promo applies.
+    regular_fee_kobo: int = 0
+    discount_kobo: int = 0
+    promo_label: str | None = None
+    promo_percent: float = 0.0
     # Smallest order subtotal (kobo) the platform accepts; 0 = no minimum.
     min_order_kobo: int = 0

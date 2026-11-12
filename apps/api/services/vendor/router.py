@@ -147,7 +147,11 @@ async def list_products(
     search: str | None = Query(default=None),
     min_price_kobo: int | None = Query(default=None, ge=0),
     max_price_kobo: int | None = Query(default=None, ge=0),
-    sort: str = Query(default="newest", pattern="^(newest|price_asc|price_desc|popular)$"),
+    sort: str = Query(default="newest", pattern="^(newest|price_asc|price_desc|popular|nearest)$"),
+    state: str | None = Query(default=None, max_length=50),
+    lga: str | None = Query(default=None, max_length=100),
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lng: float | None = Query(default=None, ge=-180, le=180),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedProductsResponse:
     svc = VendorService(db)
@@ -160,6 +164,10 @@ async def list_products(
         min_price_kobo=min_price_kobo,
         max_price_kobo=max_price_kobo,
         sort=sort,
+        state=state,
+        lga=lga,
+        near_lat=near_lat,
+        near_lng=near_lng,
     )
     return PaginatedProductsResponse(
         items=[_public_product_response(p) for p in products],
@@ -187,14 +195,30 @@ async def get_product(
 async def list_vendors(
     zone_id: str | None = Query(default=None),
     search: str | None = Query(default=None),
+    state: str | None = Query(default=None, max_length=50),
+    lga: str | None = Query(default=None, max_length=100),
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lng: float | None = Query(default=None, ge=-180, le=180),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedVendorsResponse:
+    """Public vendor list. `state` / `lga` narrow by location; `near_lat` + `near_lng` order
+    nearest-first and fill in each vendor's `distance_km`."""
+    from services.orders.service import _haversine_km
+
     svc = VendorService(db)
-    vendors, total = await svc.list_vendors(zone_id=zone_id, search=search, page=page, page_size=page_size)
+    vendors, total = await svc.list_vendors(
+        zone_id=zone_id, search=search, page=page, page_size=page_size,
+        state=state, lga=lga, near_lat=near_lat, near_lng=near_lng,
+    )
+    items = [_vendor_response(v) for v in vendors]
+    if near_lat is not None and near_lng is not None:
+        for resp in items:
+            if resp.lat is not None and resp.lng is not None:
+                resp.distance_km = round(_haversine_km(near_lat, near_lng, resp.lat, resp.lng), 1)
     return PaginatedVendorsResponse(
-        items=[_vendor_response(v) for v in vendors],
+        items=items,
         total=total,
         page=page,
         page_size=page_size,

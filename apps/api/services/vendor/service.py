@@ -24,6 +24,26 @@ class VendorService:
 
     # ── Public products ───────────────────────────────────────────────────────
 
+    @staticmethod
+    def _location_where(state: str | None, lga: str | None) -> list:
+        """Case-insensitive state / LGA match on the vendor's address."""
+        out = []
+        if state:
+            out.append(func.lower(Vendor.state) == state.strip().lower())
+        if lga:
+            out.append(func.lower(Vendor.lga) == lga.strip().lower())
+        return out
+
+    @staticmethod
+    def _distance_expr(lat: float, lng: float):
+        """Squared planar distance to the vendor, in degrees — only used to ORDER vendors by
+        nearness (exact km for display is computed in Python). Vendors with no coordinates sort last."""
+        import math
+
+        dlat = Vendor.lat - lat
+        dlng = (Vendor.lng - lng) * math.cos(math.radians(lat))
+        return dlat * dlat + dlng * dlng
+
     async def list_products(
         self,
         page: int,
@@ -34,6 +54,10 @@ class VendorService:
         min_price_kobo: int | None = None,
         max_price_kobo: int | None = None,
         sort: str = "newest",
+        state: str | None = None,
+        lga: str | None = None,
+        near_lat: float | None = None,
+        near_lng: float | None = None,
     ) -> tuple[list[Product], int]:
         from services.categories.models import Category
 
@@ -81,9 +105,15 @@ class VendorService:
             q = q.where(Product.price_kobo <= max_price_kobo)
             cq = cq.where(Product.price_kobo <= max_price_kobo)
 
+        for cond in self._location_where(state, lga):
+            q = q.where(cond)
+            cq = cq.where(cond)
+
         total = (await self.db.execute(cq)).scalar_one()
 
-        if sort == "price_asc":
+        if sort == "nearest" and near_lat is not None and near_lng is not None:
+            q = q.order_by(self._distance_expr(near_lat, near_lng).asc().nulls_last(), Product.created_at.desc())
+        elif sort == "price_asc":
             q = q.order_by(Product.price_kobo.asc())
         elif sort == "price_desc":
             q = q.order_by(Product.price_kobo.desc())
@@ -150,6 +180,10 @@ class VendorService:
         page: int,
         page_size: int,
         search: str | None = None,
+        state: str | None = None,
+        lga: str | None = None,
+        near_lat: float | None = None,
+        near_lng: float | None = None,
     ) -> tuple[list[Vendor], int]:
         query = select(Vendor).where(Vendor.status == "active")
         count_query = select(func.count()).select_from(Vendor).where(Vendor.status == "active")
@@ -163,11 +197,18 @@ class VendorService:
             query = query.where(Vendor.name.ilike(pattern))
             count_query = count_query.where(Vendor.name.ilike(pattern))
 
+        for cond in self._location_where(state, lga):
+            query = query.where(cond)
+            count_query = count_query.where(cond)
+
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
 
         offset = (page - 1) * page_size
-        query = query.order_by(Vendor.rating.desc(), Vendor.created_at.desc())
+        if near_lat is not None and near_lng is not None:
+            query = query.order_by(self._distance_expr(near_lat, near_lng).asc().nulls_last(), Vendor.rating.desc())
+        else:
+            query = query.order_by(Vendor.rating.desc(), Vendor.created_at.desc())
         query = query.offset(offset).limit(page_size)
 
         result = await self.db.execute(query)
