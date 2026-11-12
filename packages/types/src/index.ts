@@ -71,3 +71,12 @@ export type TrackingStage = 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'
 
 export * from './nigeria-locations'
 export * from './wallet-export'
+
+/**
+ * Where people reach AVDAN. Customers use hello@; vendors, riders, hub agents and investors use
+ * info@. The API uses the same two addresses in email footers and Reply-To.
+ */
+export const CONTACT_EMAILS = {
+  customer: 'hello@avdanstore.com',
+  business: 'info@avdanstore.com',
+} as const

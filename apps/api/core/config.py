@@ -42,6 +42,10 @@ class Settings(BaseSettings):
     resend_api_key: str = ""
     # email_from: str = "AVDAN <noreply@avdanstore.com>"
     email_from: str = "AVDAN <noreply@johnedeh.com>"
+    # Where people reach AVDAN. Customers write to hello@; vendors, riders, hub agents and
+    # investors write to info@. Shown in email footers and used as the Reply-To.
+    support_email_customer: str = "hello@avdanstore.com"
+    support_email_business: str = "info@avdanstore.com"
 
 
     # Object storage — Cloudflare R2 (S3-compatible)

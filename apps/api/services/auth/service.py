@@ -51,7 +51,7 @@ class AuthService:
         
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
-            send_otp_email_task.delay(user.email, user.name, otp)
+            send_otp_email_task.delay(user.email, user.name, otp, user.role)
             
         return user, otp
 
@@ -80,7 +80,7 @@ class AuthService:
         
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
-            send_otp_email_task.delay(user.email, user.name, otp)
+            send_otp_email_task.delay(user.email, user.name, otp, user.role)
             
         return user, otp
 
@@ -104,7 +104,7 @@ class AuthService:
         
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
-            send_otp_email_task.delay(user.email, user.name, otp)
+            send_otp_email_task.delay(user.email, user.name, otp, user.role)
             
         return otp
 
@@ -324,7 +324,9 @@ class AuthService:
         await self.redis.setex(f"pwreset_user:{user.id}", ttl, key)
         from workers.tasks.notifications import send_password_reset_email_task
         link = f"{self._app_url(user.role).rstrip('/')}/reset-password?token={token}"
-        send_password_reset_email_task.delay(user.email, user.name or "", link, settings.reset_ttl_minutes)
+        send_password_reset_email_task.delay(
+            user.email, user.name or "", link, settings.reset_ttl_minutes, user.role
+        )
 
     async def _user_for_reset_token(self, token: str) -> User:
         user_id = await self.redis.get(self._reset_key(token))

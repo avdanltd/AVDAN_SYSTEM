@@ -21,7 +21,9 @@ import {
   FormMessage,
   Input,
   Separator,
+  ContactSupport,
 } from '@avdan/ui'
+import { CONTACT_EMAILS } from '@avdan/types'
 
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
@@ -153,6 +155,7 @@ export function ProfilePage() {
       >
         {isLoggingOut ? 'Signing out…' : 'Sign Out'}
       </Button>
+      <ContactSupport email={CONTACT_EMAILS.business} audience="Riders" />
     </div>
   )
 }

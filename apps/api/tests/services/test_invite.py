@@ -179,7 +179,7 @@ def test_forgot_password_flow(sent, monkeypatch) -> None:  # type: ignore[no-unt
         await svc.accept_invite(_token_from(sent[0][3]), "first-password")
 
         await svc.request_password_reset(user.email)
-        email, _name, link, _mins = resets[0]
+        email, _name, link, _mins, _role = resets[0]
         assert email == user.email and "/reset-password?token=" in link and "rider." in link
         token = _token_from(link)
 

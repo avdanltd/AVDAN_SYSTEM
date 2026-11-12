@@ -24,7 +24,9 @@ import {
   useSession,
   useLogout,
   useTheme,
+  ContactSupport,
 } from '@avdan/mobile'
+import { CONTACT_EMAILS } from '@avdan/types'
 
 function NavRow({
   icon,
@@ -144,6 +146,8 @@ export function Profile() {
           logout()
         }}
       />
+
+      <ContactSupport email={CONTACT_EMAILS.customer} />
 
       <View style={styles.footer}>
         <AvdanMark size={26} />

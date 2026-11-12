@@ -20,7 +20,17 @@ COLOR_BG = "#F3F4F6"
 COLOR_WHITE = "#FFFFFF"
 LOGO_URL = "https://api.avdanstore.com/static/logo.png"
 
-def _wrap_in_template(content_html: str, preview_text: str = "AVDAN Notification") -> str:
+def contact_email_for(role: str | None) -> str:
+    """Customers get the customer inbox; every other audience (vendors, riders, hub agents,
+    admins, investors) gets the business inbox."""
+    if role is None or role == "customer":
+        return settings.support_email_customer
+    return settings.support_email_business
+
+
+def _wrap_in_template(
+    content_html: str, preview_text: str = "AVDAN Notification", role: str | None = "customer"
+) -> str:
     """Wraps body content inside the standard AVDAN HTML brand email template wrapper."""
     return f"""<!DOCTYPE html>
 <html>
@@ -115,6 +125,7 @@ def _wrap_in_template(content_html: str, preview_text: str = "AVDAN Notification
       </div>
       <div class="footer">
         <p>&copy; 2026 AVDAN. All rights reserved.</p>
+        <p>Questions? Write to <a href="mailto:{contact_email_for(role)}">{contact_email_for(role)}</a></p>
         <p>You received this email because you registered on avdanstore.com</p>
       </div>
     </div>
@@ -123,7 +134,7 @@ def _wrap_in_template(content_html: str, preview_text: str = "AVDAN Notification
 </html>
 """
 
-def build_otp_email(name: str, otp: str) -> str:
+def build_otp_email(name: str, otp: str, role: str | None = "customer") -> str:
     """Builds the OTP verification email HTML content."""
     content = f"""
     <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hello {name},</h2>
@@ -137,9 +148,11 @@ def build_otp_email(name: str, otp: str) -> str:
     
     <p style="color: #4B5563; font-size: 14px;">This code is valid for 10 minutes. If you did not request this code, please ignore this email or contact support if you have concerns.</p>
     """
-    return _wrap_in_template(content, preview_text=f"Your AVDAN verification code is {otp}")
+    return _wrap_in_template(content, preview_text=f"Your AVDAN verification code is {otp}", role=role)
 
-def build_password_reset_email(name: str, link: str, valid_minutes: int) -> str:
+def build_password_reset_email(
+    name: str, link: str, valid_minutes: int, role: str | None = "customer"
+) -> str:
     """"Forgot password" email: a button to choose a new password."""
     who = html_escape(name or "there")
     safe_link = html_escape(link, quote=True)
@@ -154,7 +167,7 @@ def build_password_reset_email(name: str, link: str, valid_minutes: int) -> str:
     <p style="color: #4B5563; font-size: 14px;">This link is valid for {valid_minutes} minutes and can be used once. If you didn't ask for this, you can ignore this email; your password stays the same.</p>
     <p style="color: #4B5563; font-size: 14px;">Button not working? Paste this address into your browser:<br>{safe_link}</p>
     """
-    return _wrap_in_template(content, preview_text="Reset your AVDAN password")
+    return _wrap_in_template(content, preview_text="Reset your AVDAN password", role=role)
 
 
 _ROLE_LABELS = {
@@ -181,10 +194,12 @@ def build_invite_email(name: str, role: str, link: str, valid_hours: int) -> str
     <p style="color: #4B5563; font-size: 14px;">This link is valid for {valid_hours} hours and can be used once. If it has expired, ask your AVDAN administrator to send you a new one.</p>
     <p style="color: #4B5563; font-size: 14px;">Button not working? Paste this address into your browser:<br>{safe_link}</p>
     """
-    return _wrap_in_template(content, preview_text="Create your AVDAN password")
+    return _wrap_in_template(content, preview_text="Create your AVDAN password", role=role)
 
 
-def build_order_status_email(name: str, order_id: str, title: str, status_message: str) -> str:
+def build_order_status_email(
+    name: str, order_id: str, title: str, status_message: str, role: str | None = "customer"
+) -> str:
     """Builds an HTML email for order status notifications."""
     content = f"""
     <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hi {name},</h2>
@@ -203,20 +218,25 @@ def build_order_status_email(name: str, order_id: str, title: str, status_messag
       <a href="https://avdanstore.com/orders/{order_id}" class="button">Track Your Order</a>
     </div>
     """
-    return _wrap_in_template(content, preview_text=f"Order Update: {title}")
+    return _wrap_in_template(content, preview_text=f"Order Update: {title}", role=role)
 
-def send_email_via_resend(to_email: str, subject: str, html_content: str) -> bool:
+def send_email_via_resend(
+    to_email: str, subject: str, html_content: str, reply_to: str | None = None
+) -> bool:
     """Invokes the Resend API client to deliver an email."""
     if not settings.resend_api_key:
         logger.warning("Resend API key is not configured. Email to %s suppressed.", to_email)
         return False
     try:
-        r = resend.Emails.send({
+        payload: dict = {
             "from": settings.email_from,
             "to": to_email,
             "subject": subject,
-            "html": html_content
-        })
+            "html": html_content,
+        }
+        if reply_to:
+            payload["reply_to"] = reply_to
+        r = resend.Emails.send(payload)
         logger.info("Resend successfully sent email to %s: response id %s", to_email, r.get("id"))
         return True
     except Exception as e:

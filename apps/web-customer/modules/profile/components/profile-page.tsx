@@ -23,7 +23,9 @@ import {
   Separator,
   UserStatusBadge,
   toast,
+  ContactSupport,
 } from '@avdan/ui'
+import { CONTACT_EMAILS } from '@avdan/types'
 import { Loader2, User } from 'lucide-react'
 import { apiClient } from '@/lib/api-client'
 import { useSession } from '@/modules/auth/hooks/use-session'
@@ -180,6 +182,7 @@ export function ProfilePage() {
         </Card>
       </div>
       <ChangePasswordCard />
+      <ContactSupport email={CONTACT_EMAILS.customer} />
     </div>
   )
 }
