@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Star } from 'lucide-react'
+import { MapPin, Star } from 'lucide-react'
+import { formatVendorLocation } from '@avdan/types'
 import { Card, Avatar, AvatarFallback, AvatarImage, Badge, cn } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import type { Vendor } from '../types'
@@ -51,12 +52,19 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
               variant="secondary"
               className={cn(
                 'shrink-0 text-xs',
-                vendor.status === 'active' && 'bg-success-muted text-success',
+                vendor.status === 'active' && vendor.is_open !== false && 'bg-success-muted text-success',
+                vendor.status === 'active' && vendor.is_open === false && 'bg-destructive/10 text-destructive',
               )}
             >
-              {vendor.status === 'active' ? 'Open' : vendor.status}
+              {vendor.status !== 'active' ? vendor.status : vendor.is_open === false ? 'Closed' : 'Open'}
             </Badge>
           </div>
+          {formatVendorLocation(vendor.city, vendor.state) && (
+            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="line-clamp-1">{formatVendorLocation(vendor.city, vendor.state)}</span>
+            </p>
+          )}
 
           {vendor.description && (
             <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">

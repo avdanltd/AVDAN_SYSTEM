@@ -14,6 +14,7 @@ from services.orders.schemas import (
     OrderItemResponse,
     OrderResponse,
     PaginatedOrdersResponse,
+    PendingDeliveryCode,
     RejectOrderRequest,
 )
 from services.orders.service import OrderService
@@ -187,6 +188,25 @@ async def list_my_orders(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/pending-delivery-codes", response_model=list[PendingDeliveryCode])
+async def pending_delivery_codes(
+    current_user: CurrentUser = Depends(require_role("customer")),
+    db: AsyncSession = Depends(get_db),
+) -> list[PendingDeliveryCode]:
+    """Delivery codes the customer still has to give a rider. Powers the in-app pop-up and the
+    badge on My Orders — the code is the customer's own secret, so only they can read it."""
+    orders = await OrderService(db).list_pending_delivery_codes(current_user.user_id)
+    vendor_names = await _vendor_names(db, orders)
+    return [
+        PendingDeliveryCode(
+            order_id=str(o.id),
+            vendor_name=vendor_names.get(o.vendor_id),
+            delivery_code=o.delivery_code,  # type: ignore[arg-type]
+        )
+        for o in orders
+    ]
 
 
 @router.get("/{order_id}", response_model=OrderDetailResponse)

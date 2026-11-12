@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { Banknote, Clock } from 'lucide-react'
-import type { PayoutRequest } from '@avdan/types'
+import { payoutStamp, type PayoutRequest } from '@avdan/types'
 
 import { Badge, Column, DataTable, StatsCard, Tabs, TabsList, TabsTrigger } from '@avdan/ui'
 import { formatDate, formatKobo } from '@/lib/format'
@@ -59,7 +59,19 @@ export function PayoutsPage() {
     {
       key: 'status',
       header: 'Status',
-      cell: (r) => <Badge variant={STATUS_VARIANT[r.status] ?? 'outline'}>{STATUS_LABEL[r.status] ?? r.status}</Badge>,
+      cell: (r) => {
+        const stamp = payoutStamp(r)
+        return (
+          <div className="space-y-1">
+            <Badge variant={STATUS_VARIANT[r.status] ?? 'outline'}>{STATUS_LABEL[r.status] ?? r.status}</Badge>
+            {stamp && (
+              <p className="text-xs text-muted-foreground">
+                {stamp.label} {formatDate(stamp.at)}
+              </p>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'created',

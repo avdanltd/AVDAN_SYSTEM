@@ -9,7 +9,15 @@ import {
   TextInput,
   View,
 } from 'react-native'
-import type { PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
+import {
+  WALLET_RANGE_LABELS,
+  payoutStamp,
+  type PayoutRequest,
+  type WalletEntry,
+  type WalletRangePreset,
+  type WalletRangeValue,
+  type WalletSummary,
+} from '@avdan/types'
 
 import { fonts, radius, spacing } from '../theme/tokens'
 import { useTheme } from '../theme/context'
@@ -44,6 +52,12 @@ export interface WalletPanelProps {
   onRequestWithdrawal: (amountKobo: number) => Promise<void>
   submitting: boolean
   onSetupAccount?: () => void
+  /** Date filter for the history lists. Omit to hide the filter. */
+  range?: WalletRangeValue
+  onRangeChange?: (range: WalletRangeValue) => void
+  /** Shares the filtered history as CSV text. Omit to hide the button. */
+  onExport?: () => void
+  exporting?: boolean
 }
 
 /**
@@ -62,6 +76,10 @@ export function WalletPanel({
   onRequestWithdrawal,
   submitting,
   onSetupAccount,
+  range,
+  onRangeChange,
+  onExport,
+  exporting = false,
 }: WalletPanelProps) {
   const { colors, shadowModal } = useTheme()
   const [open, setOpen] = useState(false)
@@ -166,6 +184,65 @@ export function WalletPanel({
         />
       </Card>
 
+      {range && onRangeChange ? (
+        <Card style={styles.withdrawCard}>
+          <View style={styles.chips}>
+            {(Object.keys(WALLET_RANGE_LABELS) as WalletRangePreset[]).map((preset) => {
+              const active = range.preset === preset
+              return (
+                <Pressable
+                  key={preset}
+                  onPress={() => onRangeChange({ ...range, preset })}
+                  style={[
+                    styles.chip,
+                    {
+                      borderColor: active ? colors.primary : colors.border,
+                      backgroundColor: active ? colors.primaryMuted : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.chipText, { color: active ? colors.primary : colors.mutedForeground }]}
+                  >
+                    {WALLET_RANGE_LABELS[preset]}
+                  </Text>
+                </Pressable>
+              )
+            })}
+          </View>
+          {range.preset === 'custom' ? (
+            <View style={styles.dateRow}>
+              {(['customFrom', 'customTo'] as const).map((key) => (
+                <TextInput
+                  key={key}
+                  value={range[key]}
+                  onChangeText={(v) => onRangeChange({ ...range, [key]: v.trim() })}
+                  placeholder={key === 'customFrom' ? 'From YYYY-MM-DD' : 'To YYYY-MM-DD'}
+                  placeholderTextColor={colors.subtleForeground}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={10}
+                  style={[
+                    styles.input,
+                    styles.dateInput,
+                    { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background },
+                  ]}
+                />
+              ))}
+            </View>
+          ) : null}
+          {onExport ? (
+            <Button
+              label={exporting ? 'Preparing…' : 'Download CSV'}
+              variant="outline"
+              onPress={onExport}
+              loading={exporting}
+              disabled={exporting || loading}
+            />
+          ) : null}
+        </Card>
+      ) : null}
+
       <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Withdrawal requests</Text>
       {requests.length === 0 ? (
         <Text style={[styles.body, { color: colors.mutedForeground }]}>No withdrawal requests yet.</Text>
@@ -188,8 +265,16 @@ export function WalletPanel({
               {r.decision_note ? (
                 <Text style={[styles.rowDate, { color: colors.mutedForeground }]}>{r.decision_note}</Text>
               ) : null}
+              {(() => {
+                const stamp = payoutStamp(r)
+                return stamp ? (
+                  <Text style={[styles.rowDate, { color: colors.foreground }]}>
+                    {stamp.label} {formatDateTime(stamp.at)}
+                  </Text>
+                ) : null
+              })()}
               <Text style={[styles.rowDate, { color: colors.subtleForeground }]}>
-                {formatDateTime(r.created_at)}
+                Requested {formatDateTime(r.created_at)}
               </Text>
             </Card>
           )
@@ -281,6 +366,11 @@ const styles = StyleSheet.create({
   rowLabel: { fontFamily: fonts.sansMedium, fontSize: 14, flexShrink: 1 },
   rowAmount: { fontFamily: fonts.display, fontSize: 16 },
   rowDate: { fontFamily: fonts.sans, fontSize: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
+  chip: { borderWidth: 1, borderRadius: radius.md, paddingHorizontal: spacing.sm, paddingVertical: 6 },
+  chipText: { fontFamily: fonts.sansMedium, fontSize: 12.5 },
+  dateRow: { flexDirection: 'row', gap: spacing.sm },
+  dateInput: { flex: 1 },
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',

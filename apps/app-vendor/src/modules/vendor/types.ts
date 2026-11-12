@@ -15,6 +15,7 @@ export interface VendorProfile {
   description: string | null
   logo_url: string | null
   status: string
+  is_open: boolean
   zone_id: string | null
   address: string | null
   street: string | null

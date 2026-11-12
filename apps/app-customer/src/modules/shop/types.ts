@@ -17,6 +17,8 @@ export interface Product {
   vendor_slug: string
   vendor_city?: string | null
   vendor_state?: string | null
+  /** False when the vendor has switched their store off (browse only, no orders). */
+  vendor_is_open?: boolean
   /** Average of visible reviews; review_count 0 = none yet. */
   rating?: number
   review_count?: number
@@ -47,6 +49,10 @@ export interface Vendor {
   description: string | null
   logo_url: string | null
   status: string
+  city?: string | null
+  state?: string | null
+  /** The vendor's own on/off switch; undefined on older responses means open. */
+  is_open?: boolean
   rating: number
   /** 0 = nobody has reviewed this vendor yet (then `rating` is meaningless). */
   review_count?: number
@@ -153,4 +159,11 @@ export interface CartLine {
   stockQty: number
   vendorId: string
   vendorName: string
+}
+
+/** Mirrors PendingDeliveryCode in services/orders/schemas.py. */
+export interface PendingDeliveryCode {
+  order_id: string
+  vendor_name: string | null
+  delivery_code: string
 }

@@ -124,6 +124,8 @@ class OrderService:
         vendor = vendor_result.scalar_one_or_none()
         if not vendor:
             raise NotFoundException("Vendor not found or not active")
+        if not vendor.is_open:
+            raise ValidationException(f"{vendor.name} is closed right now and isn't taking orders.")
 
         # Validate all products and snapshot prices
         product_ids = [uuid.UUID(item.product_id) for item in data.items]
@@ -242,6 +244,20 @@ class OrderService:
 
         await self.db.flush()
         return await self._load_order_with_items(str(order.id))
+
+    async def list_pending_delivery_codes(self, customer_id: str) -> list[Order]:
+        """The customer's own orders that are on the road — i.e. the rider is waiting for the code."""
+        result = await self.db.execute(
+            select(Order)
+            .where(
+                Order.customer_id == uuid.UUID(customer_id),
+                Order.status == "OUT_FOR_DELIVERY",
+                Order.delivery_code.is_not(None),
+            )
+            .order_by(Order.updated_at.desc())
+            .limit(20)
+        )
+        return list(result.scalars().all())
 
     async def list_customer_orders(
         self, customer_id: str, page: int, page_size: int

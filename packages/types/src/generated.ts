@@ -1230,6 +1230,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vendors/me/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set Store Open
+         * @description Open or close the store. A closed store stays listed but cannot take new orders.
+         */
+        patch: operations["set_store_open_vendors_me_open_patch"];
+        trace?: never;
+    };
     "/vendors/me/products": {
         parameters: {
             query?: never;
@@ -1382,6 +1402,27 @@ export interface paths {
          *     before the order exists, using the same calculation that prices the real order.
          */
         get: operations["delivery_quote_orders_delivery_quote_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/orders/pending-delivery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pending Delivery Codes
+         * @description Delivery codes the customer still has to give a rider. Powers the in-app pop-up and the
+         *     badge on My Orders — the code is the customer's own secret, so only they can read it.
+         */
+        get: operations["pending_delivery_codes_orders_pending_delivery_codes_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2327,6 +2368,11 @@ export interface components {
             logo_url: string | null;
             /** Status */
             status: string;
+            /**
+             * Is Open
+             * @default true
+             */
+            is_open: boolean;
             /** Zone Id */
             zone_id: string | null;
             /** Address */
@@ -3294,6 +3340,15 @@ export interface components {
             /** Owner Lifetime Earned Kobo */
             owner_lifetime_earned_kobo?: number | null;
         };
+        /** PendingDeliveryCode */
+        PendingDeliveryCode: {
+            /** Order Id */
+            order_id: string;
+            /** Vendor Name */
+            vendor_name?: string | null;
+            /** Delivery Code */
+            delivery_code: string;
+        };
         /** PlatformConfigResponse */
         PlatformConfigResponse: {
             /** Config */
@@ -3412,6 +3467,11 @@ export interface components {
             vendor_city?: string | null;
             /** Vendor State */
             vendor_state?: string | null;
+            /**
+             * Vendor Is Open
+             * @default true
+             */
+            vendor_is_open: boolean;
             /**
              * Vendor Rating
              * @default 0
@@ -3658,6 +3718,11 @@ export interface components {
             /** Current Password */
             current_password: string;
         };
+        /** SetStoreOpenRequest */
+        SetStoreOpenRequest: {
+            /** Is Open */
+            is_open: boolean;
+        };
         /**
          * SubmitReviewsRequest
          * @description Everything the customer rated on one order, sent together. Either part is optional,
@@ -3855,6 +3920,11 @@ export interface components {
             logo_url: string | null;
             /** Status */
             status: string;
+            /**
+             * Is Open
+             * @default true
+             */
+            is_open: boolean;
             /** Zone Id */
             zone_id: string | null;
             /** Address */
@@ -3913,6 +3983,11 @@ export interface components {
             logo_url: string | null;
             /** Status */
             status: string;
+            /**
+             * Is Open
+             * @default true
+             */
+            is_open: boolean;
             /** Zone Id */
             zone_id: string | null;
             /** Address */
@@ -6391,6 +6466,8 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                date_from?: string | null;
+                date_to?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -6427,6 +6504,8 @@ export interface operations {
             query?: {
                 page?: number;
                 page_size?: number;
+                date_from?: string | null;
+                date_to?: string | null;
             };
             header?: {
                 authorization?: string | null;
@@ -6940,6 +7019,43 @@ export interface operations {
             };
         };
     };
+    set_store_open_vendors_me_open_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetStoreOpenRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_product_vendors_me_products_post: {
         parameters: {
             query?: never;
@@ -7358,6 +7474,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DeliveryQuoteResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pending_delivery_codes_orders_pending_delivery_codes_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingDeliveryCode"][];
                 };
             };
             /** @description Validation Error */

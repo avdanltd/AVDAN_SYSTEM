@@ -50,7 +50,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
   function handleAddToCart(e: React.MouseEvent) {
     e.preventDefault()
     e.stopPropagation()
-    if (!product.available || product.stock_qty === 0) return
+    if (!product.available || product.stock_qty === 0 || product.vendor_is_open === false) return
     if (vendorId && vendorId !== product.vendor_id) {
       setConfirmOpen(true)
       return
@@ -113,6 +113,11 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
                 <Badge variant="destructive">Out of stock</Badge>
               </div>
             )}
+            {product.vendor_is_open === false && product.available && product.stock_qty > 0 && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                <Badge variant="secondary">Store closed</Badge>
+              </div>
+            )}
           </div>
 
           <CardContent className="flex flex-col gap-2 p-3">
@@ -164,7 +169,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
               <Button
                 size="sm"
                 variant={product.available && product.stock_qty > 0 ? 'default' : 'secondary'}
-                disabled={!product.available || product.stock_qty === 0}
+                disabled={!product.available || product.stock_qty === 0 || product.vendor_is_open === false}
                 onClick={handleAddToCart}
                 className="h-8 w-full shrink-0 gap-1 text-xs sm:w-auto"
                 aria-label={`Add ${product.name} to cart`}

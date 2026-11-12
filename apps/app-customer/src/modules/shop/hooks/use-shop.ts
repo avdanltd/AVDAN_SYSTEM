@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useSession } from '@avdan/mobile'
 
 import { shopService, type ProductQuery } from '../services/shop.service'
 
@@ -47,6 +48,21 @@ export function useSearch(term: string, type: 'all' | 'products' | 'vendors' = '
     queryKey: ['search', term, type],
     queryFn: () => shopService.search(term, type),
     enabled: term.trim().length >= 2,
+  })
+}
+
+/**
+ * Delivery codes the signed-in customer still has to give a rider. Polled so the pop-up and the
+ * Orders-tab badge show up soon after the rider sets off and clear once the order is delivered.
+ */
+export function usePendingDeliveryCodes() {
+  const { isAuthenticated } = useSession()
+  return useQuery({
+    queryKey: ['pending-delivery-codes'],
+    queryFn: () => shopService.getPendingDeliveryCodes(),
+    enabled: isAuthenticated,
+    refetchInterval: 15_000,
+    staleTime: 10_000,
   })
 }
 

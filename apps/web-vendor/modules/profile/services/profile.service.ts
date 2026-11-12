@@ -23,6 +23,7 @@ export interface UpdateVendorPayload {
 export interface VendorMeResponse {
   id: string
   name: string
+  is_open: boolean
   description: string | null
   logo_url: string | null
   address: string | null
@@ -70,6 +71,8 @@ export const profileService = {
   getVendorProfile: () => apiClient.get<VendorMeResponse>('/vendors/me'),
   updateVendorProfile: (data: UpdateVendorPayload) =>
     apiClient.patch<VendorMeResponse>('/vendors/me', data),
+  setStoreOpen: (isOpen: boolean) =>
+    apiClient.patch<VendorMeResponse>('/vendors/me/open', { is_open: isOpen }),
   getBanks: () => apiClient.get<Bank[]>('/vendors/me/banks'),
   verifyAccount: (data: { account_number: string; bank_code: string }) =>
     apiClient.post<VerifyAccountResponse>('/vendors/me/payout-account/verify', data),

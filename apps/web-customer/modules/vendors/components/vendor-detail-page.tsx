@@ -5,7 +5,8 @@ import { useState, useCallback } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Star, ShoppingCart } from 'lucide-react'
+import { MapPin, Star, ShoppingCart } from 'lucide-react'
+import { formatVendorLocation } from '@avdan/types'
 import { toast } from 'sonner'
 
 import {
@@ -351,11 +352,25 @@ export function VendorDetailPage({ slug }: { slug: string }) {
                 </h1>
                 <Badge
                   variant="secondary"
-                  className={cn(vendor.status === 'active' && 'bg-success-muted text-success')}
+                  className={cn(
+                    vendor.status === 'active' && vendor.is_open !== false && 'bg-success-muted text-success',
+                    vendor.status === 'active' && vendor.is_open === false && 'bg-destructive/10 text-destructive',
+                  )}
                 >
-                  {vendor.status === 'active' ? 'Open' : vendor.status}
+                  {vendor.status !== 'active' ? vendor.status : vendor.is_open === false ? 'Closed' : 'Open'}
                 </Badge>
               </div>
+              {formatVendorLocation(vendor.city, vendor.state) && (
+                <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5" aria-hidden />
+                  {formatVendorLocation(vendor.city, vendor.state)}
+                </p>
+              )}
+              {vendor.is_open === false && (
+                <p className="mt-2 max-w-xl rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  This store is closed right now. You can browse, but new orders aren&apos;t being taken.
+                </p>
+              )}
               {vendor.description && (
                 <p className="mt-1 text-sm text-muted-foreground leading-relaxed max-w-xl">
                   {vendor.description}

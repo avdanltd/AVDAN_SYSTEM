@@ -1,6 +1,10 @@
+import { useMemo } from 'react'
+import { Share } from 'react-native'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { walletCsv, walletRangeParams, type WalletRangeValue } from '@avdan/types'
 
 import { vendorService, type CreateProductPayload } from '../services/vendor.service'
+import type { VendorDetail } from '../types'
 import { toast } from '@avdan/mobile'
 
 /* ── Storefront + catalog ─────────────────────────────────────────────────── */
@@ -11,6 +15,22 @@ export function useVendorProfile() {
     queryKey: ['vendor-profile'],
     queryFn: () => vendorService.getProfile(),
     staleTime: 30_000,
+  })
+}
+
+/** Opens or closes the store; the header pill reads the same `vendor-profile` query. */
+export function useSetStoreOpen() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (isOpen: boolean) => vendorService.setStoreOpen(isOpen),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<VendorDetail>(['vendor-profile'], (old) =>
+        old ? { ...old, is_open: updated.is_open } : old,
+      )
+      if (updated.is_open) toast.success('Store open', 'Customers can order again.')
+      else toast.success('Store closed', 'Customers can’t place new orders until you reopen.')
+    },
+    onError: () => toast.error('Couldn’t change your store status', 'Please try again.'),
   })
 }
 
@@ -235,15 +255,16 @@ export function useSavePayoutAccount(onDone?: () => void) {
 
 const WALLET_KEYS = ['vendor-wallet', 'vendor-wallet-entries', 'vendor-wallet-requests'] as const
 
-export function useWallet() {
+export function useWallet(range: WalletRangeValue) {
+  const params = useMemo(() => walletRangeParams(range), [range])
   const summary = useQuery({ queryKey: ['vendor-wallet'], queryFn: () => vendorService.getWallet() })
   const entries = useQuery({
-    queryKey: ['vendor-wallet-entries'],
-    queryFn: () => vendorService.getWalletEntries(),
+    queryKey: ['vendor-wallet-entries', params],
+    queryFn: () => vendorService.getWalletEntries(params),
   })
   const requests = useQuery({
-    queryKey: ['vendor-wallet-requests'],
-    queryFn: () => vendorService.getPayoutRequests(),
+    queryKey: ['vendor-wallet-requests', params],
+    queryFn: () => vendorService.getPayoutRequests(params),
   })
   return {
     summary,
@@ -261,5 +282,20 @@ export function useRequestWithdrawal() {
       WALLET_KEYS.forEach((key) => void queryClient.invalidateQueries({ queryKey: [key] }))
       toast.success('Withdrawal requested', 'An admin will review it shortly.')
     },
+  })
+}
+
+/** Shares the filtered wallet history as CSV text (opens the system share sheet). */
+export function useWalletExport(range: WalletRangeValue) {
+  return useMutation({
+    mutationFn: async () => {
+      const { requests, entries } = await vendorService.exportWallet(walletRangeParams(range))
+      if (requests.length === 0 && entries.length === 0) {
+        toast.error('Nothing to download', 'There is no wallet activity in that period.')
+        return
+      }
+      await Share.share({ title: 'AVDAN wallet.csv', message: walletCsv(requests, entries) })
+    },
+    onError: () => toast.error('Could not prepare the file', 'Please try again.'),
   })
 }

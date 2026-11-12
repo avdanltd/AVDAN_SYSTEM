@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { ReviewsSection } from './reviews-section'
 import { Dimensions, Image, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { Star, Store as StoreIcon } from 'lucide-react-native'
+import { MapPin, Star, Store as StoreIcon } from 'lucide-react-native'
+import { formatVendorLocation } from '@avdan/types'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { ProductCard } from '@/components/product-card'
@@ -26,6 +27,7 @@ export function VendorDetail({ slug }: { slug: string }) {
         vendor_name: vendor?.name ?? '',
         vendor_slug: vendor?.slug ?? '',
         created_at: '',
+        vendor_is_open: vendor?.is_open,
       })),
     [vendor],
   )
@@ -74,11 +76,28 @@ export function VendorDetail({ slug }: { slug: string }) {
                   : 'No reviews yet'}
               </Text>
               {vendor.status === 'active' ? (
-                <Badge label="Verified seller" bg={colors.successMuted} fg={colors.success} />
+                vendor.is_open === false ? (
+                  <Badge label="Closed" bg={colors.destructiveMuted} fg={colors.destructive} />
+                ) : (
+                  <Badge label="Open" bg={colors.successMuted} fg={colors.success} />
+                )
               ) : null}
             </View>
+            {formatVendorLocation(vendor.city, vendor.state) ? (
+              <View style={styles.ratingRow}>
+                <MapPin size={13} color={colors.mutedForeground} />
+                <Text style={[styles.rating, { color: colors.mutedForeground }]} numberOfLines={1}>
+                  {formatVendorLocation(vendor.city, vendor.state)}
+                </Text>
+              </View>
+            ) : null}
           </View>
         </View>
+        {vendor.is_open === false ? (
+          <Text style={[styles.desc, { color: colors.destructive }]}>
+            This store is closed right now. You can browse, but new orders aren’t being taken.
+          </Text>
+        ) : null}
         {vendor.description ? (
           <Text style={[styles.desc, { color: colors.mutedForeground }]}>{vendor.description}</Text>
         ) : null}

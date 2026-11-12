@@ -243,10 +243,15 @@ class WalletService:
         )
 
     async def list_entries(
-        self, owner_type: str, user_id: str, page: int, page_size: int
+        self, owner_type: str, user_id: str, page: int, page_size: int,
+        date_from: datetime | None = None, date_to: datetime | None = None,
     ) -> tuple[list[WalletEntry], int]:
         owner = await self._get_owner(owner_type, user_id)
-        where = (WalletEntry.owner_type == owner_type, WalletEntry.owner_id == owner.id)  # type: ignore[attr-defined]
+        where = [WalletEntry.owner_type == owner_type, WalletEntry.owner_id == owner.id]  # type: ignore[attr-defined]
+        if date_from:
+            where.append(WalletEntry.created_at >= date_from)
+        if date_to:
+            where.append(WalletEntry.created_at <= date_to)
         total = (await self.db.execute(select(func.count()).select_from(WalletEntry).where(*where))).scalar_one()
         rows = (await self.db.execute(
             select(WalletEntry).where(*where)
@@ -307,10 +312,15 @@ class WalletService:
         return request
 
     async def list_my_requests(
-        self, owner_type: str, user_id: str, page: int, page_size: int
+        self, owner_type: str, user_id: str, page: int, page_size: int,
+        date_from: datetime | None = None, date_to: datetime | None = None,
     ) -> tuple[list[PayoutRequest], int]:
         owner = await self._get_owner(owner_type, user_id)
-        where = (PayoutRequest.owner_type == owner_type, PayoutRequest.owner_id == owner.id)  # type: ignore[attr-defined]
+        where = [PayoutRequest.owner_type == owner_type, PayoutRequest.owner_id == owner.id]  # type: ignore[attr-defined]
+        if date_from:
+            where.append(PayoutRequest.created_at >= date_from)
+        if date_to:
+            where.append(PayoutRequest.created_at <= date_to)
         total = (await self.db.execute(select(func.count()).select_from(PayoutRequest).where(*where))).scalar_one()
         rows = (await self.db.execute(
             select(PayoutRequest).where(*where)
