@@ -26,7 +26,9 @@ import {
   Separator,
   Textarea,
   toast,
+  ContactSupport,
 } from '@avdan/ui'
+import { CONTACT_EMAILS } from '@avdan/types'
 import { addressFromApi, addressProblem, EMPTY_ADDRESS, type AddressValue } from '@avdan/types'
 import { profileService } from '../services/profile.service'
 import type { Bank } from '../services/profile.service'
@@ -583,6 +585,7 @@ export function ProfilePage() {
         </CardContent>
       </Card>
       <ChangePasswordCard />
+      <ContactSupport email={CONTACT_EMAILS.business} audience="Vendors" />
     </div>
   )
 }
