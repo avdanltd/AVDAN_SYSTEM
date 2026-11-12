@@ -269,6 +269,16 @@
   animation: avdan-blink 1.1s ease-in-out infinite;
 }
 
+/* Grows and shrinks while blinking — for alerts that must not be missed (new order for a vendor). */
+@keyframes avdan-throb {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.22); opacity: 0.55; }
+}
+
+.avdan-animate-throb {
+  animation: avdan-throb 0.9s ease-in-out infinite;
+}
+
 /* A bell that jingles for a moment, rests, then jingles again — draws the eye without a constant buzz. */
 @keyframes avdan-bell-ring {
   0%, 40%, 100% { transform: rotate(0); }
@@ -304,6 +314,7 @@
   .avdan-animate-float-slow,
   .avdan-animate-glow-pulse,
   .avdan-animate-blink,
+  .avdan-animate-throb,
   .avdan-animate-bell-ring,
   .avdan-animate-celebrate,
   .avdan-animate-celebrate-ring {
