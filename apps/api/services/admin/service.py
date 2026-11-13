@@ -339,4 +339,13 @@ class AdminService:
         )
         order.status = new_status
         await self.db.flush()
-        return order
+        # The caller serialises the order (items, updated_at). Reload it with its items now: a
+        # lazy load inside the response builder runs outside the async greenlet and crashed
+        # every override with a 500, so no override ever saved.
+        refreshed = await self.db.execute(
+            select(Order)
+            .where(Order.id == order.id)
+            .options(selectinload(Order.items))
+            .execution_options(populate_existing=True)
+        )
+        return refreshed.scalar_one()

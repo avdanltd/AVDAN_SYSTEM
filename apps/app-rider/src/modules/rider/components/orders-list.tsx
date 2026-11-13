@@ -39,7 +39,7 @@ function OrderCard({ order, onPress }: { order: RiderOrder; onPress: () => void 
 
         <View style={[styles.cardFoot, { borderTopColor: colors.border }]}>
           <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-            {orderRef(order.id)} · {order.items.length}{' '}
+            {orderRef(order.id)}{order.customer_name ? ` · ${order.customer_name}` : ''} · {order.items.length}{' '}
             {order.items.length === 1 ? 'item' : 'items'} · {formatRelative(order.updated_at)}
           </Text>
           <ChevronRight size={16} color={colors.subtleForeground} />

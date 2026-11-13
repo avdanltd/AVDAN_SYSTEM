@@ -36,6 +36,9 @@ function OrderRow({ order }: { order: RiderOrder }) {
         <CardContent className="flex items-center justify-between p-4">
           <div className="space-y-1">
             <p className="text-sm font-medium">Order #{order.id.slice(-8).toUpperCase()}</p>
+            {order.customer_name && (
+              <p className="text-sm text-foreground">Customer: {order.customer_name}</p>
+            )}
             <OrderStatusBadge status={order.status} />
             <p className="text-xs text-muted-foreground">
               {formatKobo(order.delivery_fee_kobo)} you earn

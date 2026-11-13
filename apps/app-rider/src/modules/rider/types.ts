@@ -24,6 +24,8 @@ export interface OrderItem {
 export interface RiderOrder {
   id: string
   customer_id: string
+  /** Customer's name, so the rider can tell orders apart. Address and phone stay hidden until hub handoff. */
+  customer_name?: string | null
   vendor_id: string
   status: OrderStatus
   total_kobo: number
