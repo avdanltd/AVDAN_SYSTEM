@@ -67,6 +67,7 @@ def _user_response(user: object) -> UserResponse:
         name=u.name,
         role=u.role,
         status=u.status,
+        created_at=u.created_at.isoformat() if u.created_at else "",
     )
 
 
@@ -131,13 +132,16 @@ async def finance_person(
 async def list_users(
     role: str | None = Query(default=None),
     status: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     _current_user: CurrentUser = Depends(require_role("admin", "support")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedUsersResponse:
     svc = AdminService(db)
-    users, total = await svc.list_users(role=role, status=status, page=page, page_size=page_size)
+    users, total = await svc.list_users(
+        role=role, status=status, page=page, page_size=page_size, search=search
+    )
     return PaginatedUsersResponse(
         items=[_user_response(u) for u in users],
         total=total,
