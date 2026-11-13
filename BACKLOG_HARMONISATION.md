@@ -448,3 +448,4 @@ Open:
       subscribe on prod.
 - [ ] Decide whether the admin "ACTION NEEDED" pill should count everything or only unassigned orders
       (it will be on most of the time).
+- [ ] **Analytics + SEO** — planned, kicks off 2026-11-14. See `ANALYTICS_SEO_PLAN.md` (start with Phase 2; Phase 1 needs a GA4 Measurement ID from the owner).
