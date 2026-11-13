@@ -23,9 +23,23 @@ class AdminService:
         status: str | None,
         page: int,
         page_size: int,
+        search: str | None = None,
     ) -> tuple[list[User], int]:
         query = select(User)
         count_query = select(func.count()).select_from(User)
+
+        term = (search or "").strip()
+        if term:
+            # Substring match on name, email or phone; escape LIKE wildcards typed by the admin.
+            escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            pattern = f"%{escaped}%"
+            match = or_(
+                User.name.ilike(pattern, escape="\\"),
+                User.email.ilike(pattern, escape="\\"),
+                User.phone.ilike(pattern, escape="\\"),
+            )
+            query = query.where(match)
+            count_query = count_query.where(match)
 
         if role:
             query = query.where(User.role == role)
