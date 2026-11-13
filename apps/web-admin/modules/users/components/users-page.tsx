@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import {
@@ -76,9 +76,16 @@ export function UsersPage() {
   const [banConfirmText, setBanConfirmText] = useState("");
   const [revokeUser, setRevokeUser] = useState<AdminUser | null>(null);
 
-  const params: Record<string, string> = { page: String(page), limit: "20" };
+  // Wait for a pause in typing before asking the server, so each keystroke isn't a request.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedSearch(search.trim()), 300);
+    return () => clearTimeout(id);
+  }, [search]);
+
+  const params: Record<string, string> = { page: String(page), page_size: "20" };
   if (role) params.role = role;
-  if (search) params.search = search;
+  if (debouncedSearch) params.search = debouncedSearch;
 
   const { data, isLoading, isError, refetch } = useUsers(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateUserStatus();
