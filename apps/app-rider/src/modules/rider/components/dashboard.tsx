@@ -217,7 +217,7 @@ export function Dashboard() {
                       {destinationLabel}
                     </Text>
                     <Text style={[styles.meta, { color: colors.mutedForeground }]}>
-                      {orderRef(activeOrder.id)} · {activeOrder.items.length}{' '}
+                      {orderRef(activeOrder.id)}{activeOrder.customer_name ? ` · ${activeOrder.customer_name}` : ''} · {activeOrder.items.length}{' '}
                       {activeOrder.items.length === 1 ? 'item' : 'items'}
                     </Text>
                   </View>

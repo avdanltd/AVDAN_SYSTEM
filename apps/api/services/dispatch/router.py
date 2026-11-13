@@ -164,7 +164,21 @@ _PRE_HUB_HANDOFF_STATUSES = {
 }
 
 
-def _order_resp(o: object, hub: object | None = None) -> OrderResponse:
+async def _customer_names(db: AsyncSession, orders: list) -> dict:
+    """Batch-fetch {customer_id: name} so a rider can tell their orders apart. Name only — the
+    address and phone stay withheld until the hub handoff (see _PRE_HUB_HANDOFF_STATUSES)."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+
+    ids = list({o.customer_id for o in orders})
+    if not ids:
+        return {}
+    res = await db.execute(select(User.id, User.name).where(User.id.in_(ids)))
+    return {row[0]: row[1] for row in res.all()}
+
+
+def _order_resp(o: object, hub: object | None = None, customer_name: str | None = None) -> OrderResponse:
     from services.orders.models import Order
     from services.qa.models import AgentHub
     order: Order = o  # type: ignore[assignment]
@@ -173,6 +187,7 @@ def _order_resp(o: object, hub: object | None = None) -> OrderResponse:
     return OrderResponse(
         id=str(order.id),
         customer_id=str(order.customer_id),
+        customer_name=customer_name,
         vendor_id=str(order.vendor_id),
         rider_id=str(order.rider_id) if order.rider_id else None,
         hub_id=str(order.hub_id) if order.hub_id else None,
@@ -206,7 +221,8 @@ async def get_my_orders(
     svc = DispatchService(db, redis)
     orders = await svc.get_rider_orders(current_user.user_id)
     hubs = await _hub_map(db, orders)
-    return [_order_resp(o, hubs.get(o.hub_id)) for o in orders]
+    names = await _customer_names(db, orders)
+    return [_order_resp(o, hubs.get(o.hub_id), names.get(o.customer_id)) for o in orders]
 
 
 # NOTE: this route MUST stay declared above /me/orders/{order_id}, otherwise FastAPI
@@ -223,7 +239,8 @@ async def get_my_order_history(
     svc = DispatchService(db, redis)
     orders = await svc.get_rider_order_history(current_user.user_id, limit=limit, offset=offset)
     hubs = await _hub_map(db, orders)
-    return [_order_resp(o, hubs.get(o.hub_id)) for o in orders]
+    names = await _customer_names(db, orders)
+    return [_order_resp(o, hubs.get(o.hub_id), names.get(o.customer_id)) for o in orders]
 
 
 @router.get("/me/orders/{order_id}", response_model=OrderResponse)
@@ -238,7 +255,8 @@ async def get_my_order(
     svc = DispatchService(db, redis)
     order = await svc.get_rider_order(current_user.user_id, order_id)
     hub = (await _hub_map(db, [order])).get(order.hub_id)
-    return _order_resp(order, hub)
+    names = await _customer_names(db, [order])
+    return _order_resp(order, hub, names.get(order.customer_id))
 
 
 @router.post("/me/orders/{order_id}/pickup", response_model=dict)
