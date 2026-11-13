@@ -417,3 +417,34 @@ the hub, soonest first, tap-to-call). Customer web + app show the stage line.
 - [x] **Celery worker + Beat now run locally and clean — 2026-08-31.** First real run surfaced and
       fixed a mapper-registration crash that had silently killed most order-status notifications;
       see `STATUS_BACKEND.md` 14.11.
+
+
+---
+
+## 9. Shipped 2026-11-12/13 and what is still open
+
+Shipped to `main` (production, all verified by CI + deploy, **not yet clicked through on a device**):
+footer tagline + `info@`/`hello@` split; vendor payout date/time + wallet range/CSV; store on/off;
+delivery-code pop-up; **delivery-fee promotion** (admin Configuration → Promotions, off by default, AVDAN
+funds the discount, rider pay unchanged); notification de-dupe (in-app channel only) + customer web bell;
+location filters (state / LGA / near me, `sort=nearest`) on web + mobile; vendor order status filters;
+wallet summary-card date filter; newsletter subscribe (`POST /notifications/subscribe`, migration 0029);
+vendor **NEW ORDER** alert → shared `AttentionAlert` in `@avdan/ui` for vendor / rider (NEW PICKUP) / hub
+(NEW PARCEL) / admin (ACTION NEEDED) + chime on the customer delivery code; sign-out confirmation on every
+role; admin status-override 500 fixed (MissingGreenlet); customer **name** now on rider orders (address and
+phone still withheld until hub handoff).
+
+Open:
+- [ ] **Mobile apps** need a new build/OTA for: location filters, checkout discount, wallet filter, rider
+      customer name. None of the alert/sound work exists on mobile; riders/vendors on phones need real push
+      notifications (a locked phone stops the web alert).
+- [ ] Turn the delivery promotion **on** (Configuration → Promotions) and set the end time (~2 weeks).
+- [ ] Create mailboxes `hello@avdanstore.com` and `info@avdanstore.com`; `email_from` default is still
+      `noreply@johnedeh.com`.
+- [ ] Rotate keys that sit in `docs/ssh.txt` and `apps/api/.env` (Paystack, Resend, a root password).
+- [ ] Vendor-facing view of their own reviews; customer mobile notifications screen + bell.
+- [ ] Existing vendors/hubs must re-enter their address once (new city/state fields).
+- [ ] Not yet seen live: a real Paystack transfer webhook, the location-filter SQL under load, newsletter
+      subscribe on prod.
+- [ ] Decide whether the admin "ACTION NEEDED" pill should count everything or only unassigned orders
+      (it will be on most of the time).
