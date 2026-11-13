@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -22,6 +23,7 @@ import {
   Input,
   Separator,
   ContactSupport,
+  SignOutDialog,
 } from '@avdan/ui'
 import { CONTACT_EMAILS } from '@avdan/types'
 
@@ -43,6 +45,7 @@ export function ProfilePage() {
   const { user } = useSession()
   const setUser = useAuthStore((s) => s.setUser)
   const { mutate: logout, isPending: isLoggingOut } = useLogout()
+  const [signOutOpen, setSignOutOpen] = useState(false)
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -150,11 +153,17 @@ export function ProfilePage() {
       <Button
         variant="destructive"
         className="w-full"
-        onClick={() => logout()}
+        onClick={() => setSignOutOpen(true)}
         disabled={isLoggingOut}
       >
         {isLoggingOut ? 'Signing out…' : 'Sign Out'}
       </Button>
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        loading={isLoggingOut}
+        onConfirm={() => logout()}
+      />
       <ContactSupport email={CONTACT_EMAILS.business} audience="Riders" />
     </div>
   )
