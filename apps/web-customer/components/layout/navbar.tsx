@@ -33,6 +33,7 @@ import {
   CategoryIcon,
   Logo,
   ThemeToggle,
+  SignOutDialog,
 } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { useSession } from '@/modules/auth/hooks/use-session'
@@ -422,6 +423,7 @@ function MobileNav({ isAuthenticated, user, onNav, onLogout, isPending }: Mobile
 export function Navbar() {
   const { user, isAuthenticated } = useSession()
   const { mutate: logout, isPending } = useLogout()
+  const [signOutOpen, setSignOutOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -456,8 +458,8 @@ export function Navbar() {
                   user={user}
                   onNav={() => setMobileOpen(false)}
                   onLogout={() => {
-                    logout()
                     setMobileOpen(false)
+                    setSignOutOpen(true)
                   }}
                   isPending={isPending}
                 />
@@ -582,7 +584,7 @@ export function Navbar() {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => logout()}
+                      onSelect={() => setSignOutOpen(true)}
                       disabled={isPending}
                       className="text-destructive focus:text-destructive"
                     >
@@ -611,6 +613,12 @@ export function Navbar() {
       </header>
 
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        loading={isPending}
+        onConfirm={() => logout()}
+      />
     </>
   )
 }

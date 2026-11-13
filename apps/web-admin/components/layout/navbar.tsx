@@ -17,6 +17,7 @@ import {
   SheetTrigger,
   Logo,
   ThemeToggle,
+  SignOutDialog,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
@@ -41,6 +42,7 @@ function getUserInitials(name: string | null | undefined): string {
 export function Navbar() {
   const { user } = useSession()
   const { mutate: logout, isPending } = useLogout()
+  const [signOutOpen, setSignOutOpen] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const initials = getUserInitials(user?.name)
 
@@ -83,7 +85,7 @@ export function Navbar() {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onClick={() => logout()}
+              onSelect={() => setSignOutOpen(true)}
               disabled={isPending}
               className="text-destructive focus:text-destructive"
             >
@@ -92,6 +94,13 @@ export function Navbar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SignOutDialog
+        open={signOutOpen}
+        onOpenChange={setSignOutOpen}
+        loading={isPending}
+        onConfirm={() => logout()}
+      />
     </header>
   )
 }
