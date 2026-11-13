@@ -19,6 +19,7 @@ import {
   SignOutDialog,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { NewParcelAlert } from '@/modules/attention/components/new-parcel-alert'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { SidebarContent } from './sidebar'
 
@@ -63,6 +64,7 @@ export function Navbar() {
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <NewParcelAlert />
         <ThemeToggle />
 
         <DropdownMenu>
