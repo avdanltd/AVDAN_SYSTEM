@@ -20,6 +20,7 @@ import {
   SignOutDialog,
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { ActionNeededAlert } from '@/modules/attention/components/action-needed-alert'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { SidebarContent } from './sidebar'
 import { ROUTES } from '@/config/routes'
@@ -65,6 +66,7 @@ export function Navbar() {
       <div className="hidden lg:block" />
 
       <div className="flex items-center gap-1">
+        <ActionNeededAlert />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
