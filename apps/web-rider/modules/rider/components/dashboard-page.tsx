@@ -107,6 +107,9 @@ export function DashboardPage() {
             <CardTitle className="text-base">Active Order</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            {activeOrder.customer_name && (
+              <p className="text-sm font-medium">Customer: {activeOrder.customer_name}</p>
+            )}
             <div className="flex items-start gap-2">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">

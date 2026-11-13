@@ -164,7 +164,7 @@ export function OrderDetail({ orderId }: { orderId: string }) {
       <Card style={styles.summary}>
         <View style={styles.summaryTop}>
           <View style={styles.summaryHeadings}>
-            <Text style={[styles.ref, { color: colors.mutedForeground }]}>{orderRef(order.id)}</Text>
+            <Text style={[styles.ref, { color: colors.mutedForeground }]}>{orderRef(order.id)}{order.customer_name ? ` · ${order.customer_name}` : ''}</Text>
             <Text style={[styles.earnLabel, { color: colors.mutedForeground }]}>You earn</Text>
             <Text style={[styles.amount, { color: colors.foreground }]}>
               {formatKobo(order.delivery_fee_kobo)}

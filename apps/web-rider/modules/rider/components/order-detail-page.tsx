@@ -92,6 +92,11 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <h1 className="text-lg font-semibold">Order #{order.id.slice(-8).toUpperCase()}</h1>
         <OrderStatusBadge status={order.status} />
       </div>
+      {order.customer_name && (
+        <p className="-mt-2 text-sm">
+          Customer: <span className="font-medium">{order.customer_name}</span>
+        </p>
+      )}
 
       {/* Delivery address — the API itself withholds this until the rider has picked the order
           back up from the hub, so `order.delivery_address` is genuinely `{}` on the wire before
