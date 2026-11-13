@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { KeyRound, X } from 'lucide-react'
 
-import { Button } from '@avdan/ui'
+import { Button, SoundToggle, useAlertChime } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
 import { usePendingDeliveryCodes } from '../hooks/use-pending-delivery-codes'
 
@@ -36,6 +36,13 @@ export function DeliveryCodePopup() {
   const codes = data ?? []
   const [expanded, setExpanded] = useState(false)
   const [mounted, setMounted] = useState(false)
+
+  // Chime while the full-size code is on screen so the customer notices it straight away.
+  const { soundOn, toggle: toggleSound } = useAlertChime({
+    active: mounted && expanded && codes.length > 0,
+    storageKey: 'avdan-customer-code-sound',
+    repeatMs: 6_000,
+  })
 
   const key = codes.map((c) => c.order_id).join(',')
   useEffect(() => {
@@ -84,14 +91,17 @@ export function DeliveryCodePopup() {
             <KeyRound className="avdan-animate-blink h-5 w-5" />
             <h2 className="text-base font-semibold text-foreground">Your rider is on the way</h2>
           </div>
-          <button
-            type="button"
-            onClick={dismiss}
-            aria-label="Close"
-            className="text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1">
+            <SoundToggle soundOn={soundOn} onToggle={toggleSound} label="Delivery code sound" />
+            <button
+              type="button"
+              onClick={dismiss}
+              aria-label="Close"
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <p className="mt-2 text-sm text-muted-foreground">
           Give the rider this code only once you have received your order.
