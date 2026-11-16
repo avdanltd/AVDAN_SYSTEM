@@ -11,6 +11,7 @@ import {
   Moon,
   Phone,
   ShieldCheck,
+  Star,
   Truck,
   Wallet,
 } from 'lucide-react-native'
@@ -96,6 +97,15 @@ export function Profile() {
             <Phone size={16} color={colors.subtleForeground} />
             <Text style={[styles.infoValue, { color: colors.foreground }]} numberOfLines={1}>
               {user?.phone ?? 'Not set'}
+            </Text>
+          </View>
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <View style={styles.infoRow}>
+            <Star size={16} color={colors.subtleForeground} />
+            <Text style={[styles.infoValue, { color: colors.foreground }]}>
+              {rider && (rider.review_count ?? 0) > 0
+                ? `${(rider.rating ?? 0).toFixed(1)} · ${rider.review_count} ${rider.review_count === 1 ? 'rating' : 'ratings'}`
+                : 'No ratings yet'}
             </Text>
           </View>
           {rider?.vehicle_type ? (

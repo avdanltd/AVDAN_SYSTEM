@@ -33,6 +33,15 @@ REVIEWABLE_STATUSES = frozenset({
 })
 
 
+# The parcel actually reached the customer — only then can the rider be rated.
+DELIVERED_STATUSES = frozenset({
+    OrderStatus.DELIVERED,
+    OrderStatus.PAYMENT_RELEASE_PENDING,
+    OrderStatus.PAYMENT_RELEASED,
+    OrderStatus.COMPLETED,
+})
+
+
 def reviewer_label(name: str | None) -> str:
     """`Ada Obi` -> `Ada O.` — public reviews never show a full name."""
     parts = (name or "").split()
@@ -121,6 +130,14 @@ class ReviewService:
 
         by_product = {r.product_id: r for r in reviews if r.target_type == ReviewTarget.PRODUCT}
         vendor_review = next((r for r in reviews if r.target_type == ReviewTarget.VENDOR), None)
+        rider_review = next((r for r in reviews if r.target_type == ReviewTarget.RIDER), None)
+        rider_name = None
+        if order.rider_id and order.status in DELIVERED_STATUSES:
+            from services.dispatch.models import Rider
+
+            rider = await self.db.get(Rider, order.rider_id)
+            rider_user = await self.db.get(User, rider.user_id) if rider else None
+            rider_name = (rider_user.name or "Your rider") if rider_user else "Your rider"
         seen: set[uuid.UUID] = set()
         products = []
         for item in order.items:
@@ -139,12 +156,15 @@ class ReviewService:
             "reason": reason,
             "vendor_name": vendor.name if vendor else None,
             "vendor": self.to_response(vendor_review, label) if vendor_review else None,
+            "rider_reviewable": rider_name is not None,
+            "rider_name": rider_name,
+            "rider": self.to_response(rider_review, label) if rider_review else None,
             "products": products,
         }
 
     async def submit(self, order_id: str, customer_user_id: str, data: SubmitReviewsRequest) -> dict:
-        if data.vendor is None and not data.products:
-            raise AppError(422, "NOTHING_TO_REVIEW", "Rate the vendor or at least one product.")
+        if data.vendor is None and data.rider is None and not data.products:
+            raise AppError(422, "NOTHING_TO_REVIEW", "Rate the vendor, the rider or at least one product.")
         order = await self._own_order(order_id, customer_user_id)
         reason = await self._ineligible_reason(order)
         if reason:
@@ -162,6 +182,10 @@ class ReviewService:
             wanted.append((pid, ReviewTarget.PRODUCT, p.rating, p.comment))
         if data.vendor is not None:
             wanted.append((None, ReviewTarget.VENDOR, data.vendor.rating, data.vendor.comment))
+        if data.rider is not None:
+            if not order.rider_id or order.status not in DELIVERED_STATUSES:
+                raise AppError(422, "RIDER_NOT_REVIEWABLE", "There is no delivery rider to rate on this order.")
+            wanted.append((None, ReviewTarget.RIDER, data.rider.rating, data.rider.comment))
         if len({(pid, t) for pid, t, _, _ in wanted}) != len(wanted):
             raise AppError(422, "DUPLICATE_REVIEW", "Each product can be rated once.")
 
@@ -176,11 +200,14 @@ class ReviewService:
                 customer_id=order.customer_id, order_id=order.id, vendor_id=order.vendor_id,
                 product_id=pid, target_type=target, rating=rating, comment=comment,
                 order_outcome=order.status,
+                rider_id=order.rider_id if target == ReviewTarget.RIDER else None,
             ))
         await self.db.flush()
         for pid, target, _, _ in wanted:
             if target == ReviewTarget.PRODUCT and pid is not None:
                 await self._recompute_product(pid)
+            elif target == ReviewTarget.RIDER and order.rider_id:
+                await self._recompute_rider(order.rider_id)
             else:
                 await self._recompute_vendor(order.vendor_id)
         return await self.get_order_reviews(order_id, customer_user_id)
@@ -212,6 +239,16 @@ class ReviewService:
         vendor = await self.db.get(Vendor, vendor_id)
         if vendor:
             vendor.rating, vendor.review_count = _avg(ratings), len(ratings)
+
+    async def _recompute_rider(self, rider_id: uuid.UUID) -> None:
+        from services.dispatch.models import Rider
+
+        ratings = await self._visible_ratings(
+            Review.rider_id == rider_id, Review.target_type == ReviewTarget.RIDER
+        )
+        rider = await self.db.get(Rider, rider_id)
+        if rider:
+            rider.rating, rider.review_count = _avg(ratings), len(ratings)
 
     # ── Public lists ─────────────────────────────────────────────────────────
 
@@ -303,6 +340,12 @@ class ReviewService:
         vendors = {vid: n for vid, n in (await self.db.execute(
             select(Vendor.id, Vendor.name).where(Vendor.id.in_({r.vendor_id for r in rows}))
         )).all()}
+        from services.dispatch.models import Rider
+
+        rider_ids = {r.rider_id for r in rows if r.rider_id}
+        riders = {rid: n for rid, n in (await self.db.execute(
+            select(Rider.id, User.name).join(User, User.id == Rider.user_id).where(Rider.id.in_(rider_ids))
+        )).all()} if rider_ids else {}
         pids = {r.product_id for r in rows if r.product_id}
         products = {pid: n for pid, n in (await self.db.execute(
             select(Product.id, Product.name).where(Product.id.in_(pids))
@@ -312,6 +355,7 @@ class ReviewService:
             "status": r.status, "order_id": str(r.order_id), "order_outcome": r.order_outcome,
             "customer_name": users.get(r.customer_id), "vendor_name": vendors.get(r.vendor_id),
             "product_name": products.get(r.product_id) if r.product_id else None,
+            "rider_name": riders.get(r.rider_id) if r.rider_id else None,
             "hidden_reason": r.hidden_reason,
             "hidden_by_name": users.get(r.hidden_by) if r.hidden_by else None,
             "created_at": r.created_at.isoformat(),
@@ -344,6 +388,8 @@ class ReviewService:
         await self.db.flush()
         if review.target_type == ReviewTarget.PRODUCT and review.product_id:
             await self._recompute_product(review.product_id)
+        elif review.target_type == ReviewTarget.RIDER and review.rider_id:
+            await self._recompute_rider(review.rider_id)
         else:
             await self._recompute_vendor(review.vendor_id)
         return review

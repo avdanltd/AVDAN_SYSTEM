@@ -2391,6 +2391,8 @@ export interface components {
             vendor_name: string | null;
             /** Product Name */
             product_name: string | null;
+            /** Rider Name */
+            rider_name?: string | null;
             /** Hidden Reason */
             hidden_reason: string | null;
             /** Hidden By Name */
@@ -3156,6 +3158,14 @@ export interface components {
             /** Vendor Name */
             vendor_name: string | null;
             vendor: components["schemas"]["ReviewResponse"] | null;
+            /**
+             * Rider Reviewable
+             * @default false
+             */
+            rider_reviewable: boolean;
+            /** Rider Name */
+            rider_name?: string | null;
+            rider?: components["schemas"]["ReviewResponse"] | null;
             /** Products */
             products: components["schemas"]["OrderProductReview"][];
         };
@@ -3751,6 +3761,16 @@ export interface components {
             lat: number | null;
             /** Lng */
             lng: number | null;
+            /**
+             * Rating
+             * @default 0
+             */
+            rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
         };
         /** SavePayoutAccountRequest */
         SavePayoutAccountRequest: {
@@ -3800,6 +3820,7 @@ export interface components {
          */
         SubmitReviewsRequest: {
             vendor?: components["schemas"]["ReviewInput"] | null;
+            rider?: components["schemas"]["ReviewInput"] | null;
             /** Products */
             products?: components["schemas"]["ProductReviewInput"][];
         };
