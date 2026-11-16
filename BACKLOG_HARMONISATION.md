@@ -448,3 +448,33 @@ Open:
       subscribe on prod.
 - [ ] Decide whether the admin "ACTION NEEDED" pill should count everything or only unassigned orders
       (it will be on most of the time).
+- [ ] **Analytics + SEO** — planned, kicks off 2026-11-14. See `ANALYTICS_SEO_PLAN.md` (start with Phase 2; Phase 1 needs a GA4 Measurement ID from the owner).
+
+## 10. Shipped 2026-11-14 to 16 and what is still open
+
+Shipped to `main` (CI + prod deploy green; **not yet clicked through on a device**):
+- **Admin users page:** search box now works (`GET /admin/users?search=` matches name/email/phone) and the
+  Joined column shows (the serialiser never sent `created_at`).
+- **iPhone checkout bug:** `clearCart()` triggered the empty-cart redirect to home, which beat the Paystack
+  redirect on iPhone Safari. Guarded with a ref in `checkout-page.tsx`.
+- **Cancel / pay again:** unpaid (PENDING) orders are cancellable with **no time window** (the
+  `order_cancellation_window_minutes` config is now unused). Before cancelling, `PaymentService.confirm_unpaid_before_cancel`
+  asks Paystack whether payment landed; a paid order refuses (409). `_get_escrow_for_order` now tolerates several
+  payment attempts (it used to raise on >1 row). "Proceed to payment" beside Cancel on web order detail and
+  app-customer (which also gained Cancel + confirm dialog).
+- **Rider invite flash:** the background `/auth/me` 401 bounced `/set-password` to `/login`. The staff `api-client`s
+  (rider, hub, admin, vendor) now skip the redirect on public auth paths.
+- **Review prompt:** `GET /reviews/pending` + web-customer `ReviewPromptPopup` ("Review this experience", Review now /
+  Remind me later = 24 h snooze in localStorage).
+- **Rider maps:** customer address is a Google Maps link (exact pin if `lat/lng` present) on web-rider and app-rider.
+
+Open:
+- [ ] **Decision:** cancelling *paid, not-yet-accepted* orders (needs an automatic Paystack refund + new PAID -> CANCELLED
+      transition) was not built. Customers can't cancel paid orders; admin can still refund.
+- [ ] **Decision:** rider rating in the review pop-up (only products + vendor exist today).
+- [ ] Review pop-up and rider-maps tap are web-first; customer **mobile** has no review pop-up. All mobile changes
+      need a new build/OTA.
+- [ ] Remove or repurpose the unused "cancellation window" setting in admin Configuration.
+- [ ] Analytics + SEO kickoff: see `ANALYTICS_SEO_PLAN.md`.
+- [ ] Still open from section 9: key rotation, mailboxes, promotion switch-on, push notifications on mobile.
+
