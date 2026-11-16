@@ -13,6 +13,7 @@ import { useSession } from '@/modules/auth/hooks/use-session'
 import { ROUTES } from '@/config/routes'
 import { formatKobo } from '@/lib/format'
 import { ORDER_ACTIONS } from '../types'
+import { mapsUrl } from '../lib/maps'
 
 // Dynamic import with ssr:false — Leaflet requires browser APIs, same pattern as
 // web-customer's tracking-page.tsx.
@@ -114,10 +115,16 @@ export function DashboardPage() {
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">
                 {activeOrder.delivery_address.street ? (
-                  <>
+                  <a
+                    href={mapsUrl(activeOrder.delivery_address)}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label="Open customer location in Google Maps"
+                    className="font-medium text-primary underline underline-offset-2"
+                  >
                     {activeOrder.delivery_address.street}
                     {activeOrder.delivery_address.city ? `, ${activeOrder.delivery_address.city}` : ''}
-                  </>
+                  </a>
                 ) : (
                   // Not yet revealed by the API (still pre-hub-handoff) — the hub is the
                   // relevant destination until then.

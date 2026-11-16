@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -93,9 +93,14 @@ export function CheckoutPage() {
   const [mounted, setMounted] = useState(false)
   useEffect(() => setMounted(true), [])
 
+  // Set just before we hand off to Paystack. Clearing the cart empties `items`, and without this
+  // guard the empty-cart redirect below navigates home and races the Paystack redirect: Android
+  // browsers let the Paystack navigation win, iPhone Safari let the home redirect win.
+  const leavingForPayment = useRef(false)
+
   // If cart is empty, redirect home
   useEffect(() => {
-    if (mounted && items.length === 0) {
+    if (mounted && items.length === 0 && !leavingForPayment.current) {
       router.replace(ROUTES.home)
     }
   }, [mounted, items.length, router])
@@ -125,9 +130,10 @@ export function CheckoutPage() {
     if (!placedOrder) return
     try {
       const payment = await initiatePayment(placedOrder.id)
+      leavingForPayment.current = true
       clearCart()
       // Redirect to Paystack payment page
-      window.location.href = payment.payment_url
+      window.location.assign(payment.payment_url)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to start payment. Please try again.'
       toast.error(message)

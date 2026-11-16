@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { toast } from '@avdan/ui'
 import type { SubmitReviewsInput } from '@avdan/types'
 
+import { useSession } from '@/modules/auth/hooks/use-session'
 import { reviewsService, type ReviewTarget } from '../services/reviews.service'
 
 export function useReviews(target: ReviewTarget, id: string, page: number) {
@@ -33,5 +34,18 @@ export function useSubmitReviews(orderId: string) {
       toast.success('Thanks — your review helps other customers.')
     },
     onError: (error: Error) => toast.error(error.message ?? 'Could not save your review'),
+  })
+}
+
+/** Recently delivered orders the customer hasn't reviewed yet. Polled so the prompt appears
+ *  soon after the rider confirms the delivery code. Customers only. */
+export function usePendingReviews() {
+  const { isAuthenticated, role } = useSession()
+  return useQuery({
+    queryKey: ['pending-reviews'],
+    queryFn: reviewsService.getPending,
+    enabled: isAuthenticated && role === 'customer',
+    refetchInterval: 30_000,
+    staleTime: 20_000,
   })
 }

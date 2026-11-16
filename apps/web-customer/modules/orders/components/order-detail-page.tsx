@@ -21,6 +21,7 @@ import {
 import { ArrowLeft, MapPin, Package, Truck } from 'lucide-react'
 import { useOrder } from '../hooks/use-order'
 import { useCancelOrder } from '../hooks/use-cancel-order'
+import { useInitiatePayment } from '@/modules/checkout/hooks/use-checkout'
 import { ROUTES } from '@/config/routes'
 
 function formatPrice(kobo: number): string {
@@ -49,6 +50,14 @@ export function OrderDetailPage({ id }: { id: string }) {
   const { data: order, isLoading, error } = useOrder(id)
   const { mutate: cancelOrder, isPending: isCancelling } = useCancelOrder(id)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const { mutate: startPayment, isPending: isStartingPayment } = useInitiatePayment()
+
+  function handlePayAgain() {
+    startPayment(id, {
+      onSuccess: (payment) => window.location.assign(payment.payment_url),
+      onError: (err) => toast.error(err instanceof Error ? err.message : 'Could not start payment. Please try again.'),
+    })
+  }
 
   function handleCancel() {
     cancelOrder(undefined, {
@@ -133,6 +142,11 @@ export function OrderDetailPage({ id }: { id: string }) {
                   <Truck className="mr-1.5 h-4 w-4" />
                   Track Order
                 </Link>
+              </Button>
+            )}
+            {canCancel && (
+              <Button size="sm" onClick={handlePayAgain} disabled={isStartingPayment || isCancelling}>
+                {isStartingPayment ? 'Opening payment…' : 'Proceed to payment'}
               </Button>
             )}
             {canCancel && (
@@ -284,7 +298,7 @@ export function OrderDetailPage({ id }: { id: string }) {
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title="Cancel this order?"
-        description="This action cannot be undone. The order will be cancelled and you will receive a refund if payment was made."
+        description="Are you sure you want to cancel this order? This action cannot be undone."
         confirmLabel="Yes, cancel order"
         cancelLabel="Keep order"
         destructive

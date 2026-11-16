@@ -78,6 +78,33 @@ class ReviewService:
             return "This order was never paid, so it can't be reviewed."
         return None
 
+    async def pending_reviews(self, customer_user_id: str, days: int = 14, limit: int = 3) -> list[dict]:
+        """Recently delivered orders the customer hasn't reviewed at all — feeds the "review this
+        experience" pop-up. Only orders that actually arrived (not cancelled/refunded ones)."""
+        from datetime import timedelta
+
+        from services.vendor.models import Vendor
+
+        delivered = [
+            OrderStatus.DELIVERED, OrderStatus.PAYMENT_RELEASE_PENDING,
+            OrderStatus.PAYMENT_RELEASED, OrderStatus.COMPLETED,
+        ]
+        cutoff = datetime.now(UTC) - timedelta(days=days)
+        reviewed = select(Review.order_id).where(Review.order_id == Order.id)
+        rows = (await self.db.execute(
+            select(Order.id, Vendor.name)
+            .join(Vendor, Vendor.id == Order.vendor_id)
+            .where(
+                Order.customer_id == uuid.UUID(customer_user_id),
+                Order.status.in_(delivered),
+                Order.updated_at >= cutoff,
+                ~reviewed.exists(),
+            )
+            .order_by(Order.updated_at.desc())
+            .limit(limit)
+        )).all()
+        return [{"order_id": str(oid), "vendor_name": name} for oid, name in rows]
+
     async def get_order_reviews(self, order_id: str, customer_user_id: str) -> dict:
         from services.auth.models import User
         from services.vendor.models import Vendor

@@ -14,6 +14,8 @@ class ApiClientError extends Error {
 // The access-token cookie is short-lived (15 min); the refresh token lasts 7 days. A single
 // shared promise collapses concurrent 401s (e.g. several queries firing at once) into one
 // refresh call instead of racing several.
+const PUBLIC_PATHS = ['/login', '/set-password', '/forgot-password', '/reset-password', '/register']
+
 let refreshPromise: Promise<boolean> | null = null
 
 function refreshSession(): Promise<boolean> {
@@ -60,7 +62,9 @@ class ApiClient {
       if (!isRetry && endpoint !== '/auth/refresh' && (await refreshSession())) {
         return this.request<T>(method, endpoint, body, isMultipart, true)
       }
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+      // Public auth pages (sign in, invite/set-password, password reset) have no session by design;
+      // the background /auth/me check must not bounce someone off them to the login screen.
+      if (typeof window !== 'undefined' && !PUBLIC_PATHS.some((p) => window.location.pathname.startsWith(p))) {
         window.location.href = '/login'
       }
       throw new ApiClientError(401, 'UNAUTHORIZED', 'Session expired')
