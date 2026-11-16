@@ -9,6 +9,7 @@ from services.review.schemas import (
     OrderReviewsResponse,
     PaginatedAdminReviewsResponse,
     PaginatedReviewsResponse,
+    PendingReviewResponse,
     SubmitReviewsRequest,
 )
 from services.review.service import ReviewService
@@ -17,6 +18,16 @@ from services.review.service import ReviewService
 router = APIRouter()
 # Moderation, mounted at /admin/reviews.
 admin_router = APIRouter()
+
+
+@router.get("/pending", response_model=list[PendingReviewResponse])
+async def pending_reviews(
+    current_user: CurrentUser = Depends(require_role("customer")),
+    db: AsyncSession = Depends(get_db),
+) -> list[PendingReviewResponse]:
+    """Recently delivered orders this customer hasn't reviewed yet (drives the review pop-up)."""
+    rows = await ReviewService(db).pending_reviews(current_user.user_id)
+    return [PendingReviewResponse(**row) for row in rows]
 
 
 @router.get("/orders/{order_id}", response_model=OrderReviewsResponse)

@@ -938,6 +938,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reviews/pending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Pending Reviews
+         * @description Recently delivered orders this customer hasn't reviewed yet (drives the review pop-up).
+         */
+        get: operations["pending_reviews_reviews_pending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/reviews/orders/{order_id}": {
         parameters: {
             query?: never;
@@ -3392,6 +3412,13 @@ export interface components {
             /** Delivery Code */
             delivery_code: string;
         };
+        /** PendingReviewResponse */
+        PendingReviewResponse: {
+            /** Order Id */
+            order_id: string;
+            /** Vendor Name */
+            vendor_name: string | null;
+        };
         /** PlatformConfigResponse */
         PlatformConfigResponse: {
             /** Config */
@@ -4964,6 +4991,7 @@ export interface operations {
             query?: {
                 role?: string | null;
                 status?: string | null;
+                search?: string | null;
                 page?: number;
                 page_size?: number;
             };
@@ -6343,6 +6371,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    pending_reviews_reviews_pending_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PendingReviewResponse"][];
                 };
             };
             /** @description Validation Error */

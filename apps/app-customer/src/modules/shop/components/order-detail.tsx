@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Image, Linking, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { OrderReview } from './order-review'
 import { useRouter } from 'expo-router'
@@ -6,6 +7,7 @@ import {
   Badge,
   Button,
   Card,
+  ConfirmDialog,
   EmptyState,
   Skeleton,
   fonts,
@@ -18,7 +20,9 @@ import {
 } from '@avdan/mobile'
 
 import { statusLabel } from '@/constants/status'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useOrder } from '../hooks/use-shop'
+import { shopService } from '../services/shop.service'
 import { useCheckout } from '../hooks/use-checkout'
 import { useOrderTracking } from '../hooks/use-order-tracking'
 
@@ -138,6 +142,17 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   const { colors } = useTheme()
   const { data: order, isLoading, isError } = useOrder(orderId)
   const { payExistingOrder, isBusy } = useCheckout()
+  const queryClient = useQueryClient()
+  const [confirmingCancel, setConfirmingCancel] = useState(false)
+  const cancel = useMutation({
+    mutationFn: () => shopService.cancelOrder(orderId),
+    onSuccess: () => {
+      setConfirmingCancel(false)
+      void queryClient.invalidateQueries({ queryKey: ['customer-order', orderId] })
+      void queryClient.invalidateQueries({ queryKey: ['customer-orders'] })
+    },
+    onError: () => setConfirmingCancel(false),
+  })
   const tracking = useOrderTracking(orderId, !!order && TRACKABLE_STATUSES.has(order.status))
 
   if (isLoading) {
@@ -207,10 +222,27 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             This order is saved but not paid for yet. Complete payment to send it to the seller.
           </Text>
           <Button
-            label="Pay now"
+            label="Proceed to payment"
             onPress={handlePay}
             loading={isBusy}
             icon={<CreditCard size={16} color={colors.primaryForeground} />}
+          />
+          <Button
+            label="Cancel order"
+            variant="outline"
+            onPress={() => setConfirmingCancel(true)}
+            disabled={isBusy || cancel.isPending}
+          />
+          <ConfirmDialog
+            visible={confirmingCancel}
+            onClose={() => setConfirmingCancel(false)}
+            title="Cancel this order?"
+            description="Are you sure you want to cancel this order? This can't be undone."
+            confirmLabel="Yes, cancel order"
+            cancelLabel="Keep order"
+            destructive
+            loading={cancel.isPending}
+            onConfirm={() => cancel.mutate()}
           />
         </Card>
       ) : null}

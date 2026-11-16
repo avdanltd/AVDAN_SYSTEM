@@ -328,32 +328,18 @@ class OrderService:
         return order
 
     async def cancel_order(self, customer_id: str, order_id: str) -> Order:
-        from datetime import UTC, datetime
-
-        from services.analytics.service import AnalyticsService
-
         order = await self._get_order(order_id)
         if str(order.customer_id) != customer_id:
             raise ForbiddenException("Access denied")
         if order.status != OrderStatus.PENDING:
-            raise AppError(400, "INVALID_TRANSITION", "Only PENDING orders can be cancelled")
+            raise AppError(400, "INVALID_TRANSITION", "Only orders that haven't been paid yet can be cancelled")
 
-        # `order_cancellation_window_minutes` (admin-configurable, PlatformConfig) existed as a
-        # config value with no enforcement anywhere until now. Scoped deliberately to PENDING-only
-        # cancellation (no money has moved yet, so this is purely a "how long is an unpaid order
-        # left cancellable before it's considered abandoned" policy) rather than extending
-        # self-service cancellation to PAID+ orders, which would need to trigger a real refund —
-        # a bigger product decision this session did not make unprompted.
-        config = await AnalyticsService(self.db).get_config()
-        window_minutes = config["order_cancellation_window_minutes"]
-        age_minutes = (datetime.now(UTC) - order.created_at).total_seconds() / 60
-        if age_minutes > window_minutes:
-            raise AppError(
-                400,
-                "CANCELLATION_WINDOW_EXPIRED",
-                f"This order can no longer be cancelled — the {window_minutes}-minute "
-                "cancellation window has passed. Contact support if you need help.",
-            )
+        # An unpaid order stays cancellable until it is paid (and, once paid, until the vendor
+        # accepts — see the state machine). No time window: a PENDING order used to become
+        # un-cancellable after `order_cancellation_window_minutes` and then sat PENDING forever.
+        from services.payment.service import PaymentService
+
+        await PaymentService(self.db).confirm_unpaid_before_cancel(order_id)
 
         await self._apply_transition(order, OrderStatus.CANCELLED, customer_id, "customer")
         await self._restore_stock(order_id)

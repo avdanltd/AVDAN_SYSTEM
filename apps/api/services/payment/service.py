@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -275,12 +275,47 @@ class PaymentService:
         return order
 
     async def _get_escrow_for_order(self, order_id: str) -> EscrowTransaction | None:
+        """The escrow that matters for an order. A customer may start payment more than once
+        ("proceed to payment again"), which leaves several INITIATED rows; prefer a paid/settled
+        one, otherwise the newest attempt. (A plain `scalar_one_or_none` raised on >1 row.)"""
+        paid_first = case(
+            (EscrowTransaction.status.in_([EscrowStatus.HELD, EscrowStatus.RELEASED, EscrowStatus.REFUNDED]), 0),
+            else_=1,
+        )
         result = await self.db.execute(
-            select(EscrowTransaction).where(
-                EscrowTransaction.order_id == uuid.UUID(order_id)
-            )
+            select(EscrowTransaction)
+            .where(EscrowTransaction.order_id == uuid.UUID(order_id))
+            .order_by(paid_first, EscrowTransaction.created_at.desc())
+            .limit(1)
         )
         return result.scalar_one_or_none()
+
+    async def confirm_unpaid_before_cancel(self, order_id: str) -> None:
+        """Called before cancelling a PENDING order. If the customer actually paid and the
+        webhook/verify hasn't landed yet, apply the payment instead of cancelling money away.
+        Raises when payment was received, or when Paystack can't be asked (never guess)."""
+        rows = (await self.db.execute(
+            select(EscrowTransaction).where(
+                EscrowTransaction.order_id == uuid.UUID(order_id),
+                EscrowTransaction.status == EscrowStatus.INITIATED,
+            )
+        )).scalars().all()
+        for escrow in rows:
+            try:
+                outcome = await self.verify_and_apply(escrow.provider_ref)
+            except AppError:
+                raise
+            except Exception as exc:  # provider/network failure
+                logger.warning("cancel: could not verify %s: %s", escrow.provider_ref, exc)
+                raise AppError(
+                    503, "PAYMENT_CHECK_FAILED",
+                    "We couldn't confirm your payment status just now. Please try again in a moment.",
+                ) from exc
+            if outcome.get("paid"):
+                raise AppError(
+                    409, "ALREADY_PAID",
+                    "Your payment has just been received, so this order can no longer be cancelled here.",
+                )
 
     async def _get_escrow_by_ref(
         self, provider: str, provider_ref: str

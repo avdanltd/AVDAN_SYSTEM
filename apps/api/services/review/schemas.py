@@ -44,6 +44,11 @@ class OrderProductReview(BaseModel):
     review: ReviewResponse | None
 
 
+class PendingReviewResponse(BaseModel):
+    order_id: str
+    vendor_name: str | None
+
+
 class OrderReviewsResponse(BaseModel):
     """What the customer can still review on an order, and what they already did."""
 
