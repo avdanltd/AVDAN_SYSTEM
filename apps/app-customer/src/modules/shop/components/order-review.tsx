@@ -19,6 +19,7 @@ export function OrderReview({ orderId }: { orderId: string }) {
   const { data, isLoading } = useOrderReviews(orderId)
   const submit = useSubmitReviews(orderId)
   const [vendor, setVendor] = useState<Draft>(EMPTY)
+  const [rider, setRider] = useState<Draft>(EMPTY)
   const [products, setProducts] = useState<Record<string, Draft>>({})
 
   if (isLoading) return <Skeleton height={90} />
@@ -27,7 +28,8 @@ export function OrderReview({ orderId }: { orderId: string }) {
   const draft = (id: string): Draft => products[id] ?? EMPTY
   const pending = data.products.filter((p) => !p.review)
   const vendorPending = !data.vendor
-  const nothingLeft = pending.length === 0 && !vendorPending
+  const riderPending = !!data.rider_reviewable && !data.rider
+  const nothingLeft = pending.length === 0 && !vendorPending && !riderPending
 
   const productReviews = pending
     .filter((p) => draft(p.product_id).rating > 0)
@@ -38,9 +40,10 @@ export function OrderReview({ orderId }: { orderId: string }) {
     }))
   const chosen: SubmitReviewsInput = {
     vendor: vendorPending && vendor.rating > 0 ? { rating: vendor.rating, comment: vendor.comment.trim() || null } : null,
+    rider: riderPending && rider.rating > 0 ? { rating: rider.rating, comment: rider.comment.trim() || null } : null,
     products: productReviews,
   }
-  const canSubmit = !!chosen.vendor || productReviews.length > 0
+  const canSubmit = !!chosen.vendor || !!chosen.rider || productReviews.length > 0
 
   const row = (label: string, value: Draft, onChange: (d: Draft) => void, placeholder: string) => (
     <View style={styles.draft}>
@@ -80,6 +83,17 @@ export function OrderReview({ orderId }: { orderId: string }) {
       {data.vendor
         ? readonly(data.vendor.rating, data.vendor.comment)
         : row(`Rate ${data.vendor_name ?? 'the vendor'}`, vendor, setVendor, 'How was the service and delivery? (optional)')}
+
+      {data.rider_reviewable ? (
+        <View style={[styles.product, { borderTopColor: colors.border }]}>
+          <Text style={[styles.name, { color: colors.foreground }]}>
+            Your rider{data.rider_name ? ` · ${data.rider_name}` : ''}
+          </Text>
+          {data.rider
+            ? readonly(data.rider.rating, data.rider.comment)
+            : row(`Rate ${data.rider_name ?? 'your rider'}`, rider, setRider, 'Was the rider polite and on time? (optional)')}
+        </View>
+      ) : null}
 
       {data.products.map((p) => (
         <View key={p.product_id} style={[styles.product, { borderTopColor: colors.border }]}>

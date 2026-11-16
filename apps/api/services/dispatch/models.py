@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -32,6 +32,9 @@ class Rider(BaseModel):
     payout_account_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     payout_bank_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
     payout_account_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Average of the visible rider reviews, kept in step by ReviewService (0 = none yet).
+    rating: Mapped[Decimal] = mapped_column(Numeric(3, 2), default=Decimal("0.00"), server_default="0", nullable=False)
+    review_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
 
 
 class RiderLocation(Base):

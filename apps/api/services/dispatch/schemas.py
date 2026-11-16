@@ -28,6 +28,8 @@ class RiderResponse(BaseModel):
     vehicle_type: str | None
     lat: float | None
     lng: float | None
+    rating: float = 0
+    review_count: int = 0
 
     model_config = {"from_attributes": True}
 

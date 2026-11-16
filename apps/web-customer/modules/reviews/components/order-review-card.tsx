@@ -19,6 +19,7 @@ export function OrderReviewCard({ orderId }: { orderId: string }) {
   const { data, isLoading } = useOrderReviews(orderId)
   const submit = useSubmitReviews(orderId)
   const [vendor, setVendor] = useState<Draft>(EMPTY)
+  const [rider, setRider] = useState<Draft>(EMPTY)
   const [products, setProducts] = useState<Record<string, Draft>>({})
 
   if (isLoading) return <Skeleton className="h-24 w-full" />
@@ -27,7 +28,8 @@ export function OrderReviewCard({ orderId }: { orderId: string }) {
   const draft = (id: string): Draft => products[id] ?? EMPTY
   const pending = data.products.filter((p) => !p.review)
   const vendorPending = !data.vendor
-  const nothingLeft = pending.length === 0 && !vendorPending
+  const riderPending = data.rider_reviewable && !data.rider
+  const nothingLeft = pending.length === 0 && !vendorPending && !riderPending
 
   const productReviews = pending
     .filter((p) => draft(p.product_id).rating > 0)
@@ -38,9 +40,10 @@ export function OrderReviewCard({ orderId }: { orderId: string }) {
     }))
   const chosen: SubmitReviewsInput = {
     vendor: vendorPending && vendor.rating > 0 ? { rating: vendor.rating, comment: vendor.comment.trim() || null } : null,
+    rider: riderPending && rider.rating > 0 ? { rating: rider.rating, comment: rider.comment.trim() || null } : null,
     products: productReviews,
   }
-  const canSubmit = !!chosen.vendor || productReviews.length > 0
+  const canSubmit = !!chosen.vendor || !!chosen.rider || productReviews.length > 0
 
   return (
     <Card>
@@ -67,6 +70,25 @@ export function OrderReviewCard({ orderId }: { orderId: string }) {
             />
           )}
         </div>
+
+        {/* Rider */}
+        {data.rider_reviewable && (
+          <div className="space-y-2 border-t border-border pt-4">
+            <p className="text-sm font-medium text-foreground">
+              Your rider{data.rider_name ? ` · ${data.rider_name}` : ''}
+            </p>
+            {data.rider ? (
+              <ReviewedRow rating={data.rider.rating} comment={data.rider.comment} />
+            ) : (
+              <DraftRow
+                label={`Rate ${data.rider_name ?? 'your rider'}`}
+                value={rider}
+                onChange={setRider}
+                placeholder="Was the rider polite and on time? (optional)"
+              />
+            )}
+          </div>
+        )}
 
         {/* Products */}
         {data.products.map((p) => (

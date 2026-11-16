@@ -45,6 +45,8 @@ def _rider_resp(
         vehicle_type=r.vehicle_type,
         lat=float(r.lat) if r.lat is not None else None,
         lng=float(r.lng) if r.lng is not None else None,
+        rating=float(r.rating or 0),
+        review_count=r.review_count or 0,
     )
 
 

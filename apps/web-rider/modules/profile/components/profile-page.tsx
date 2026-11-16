@@ -28,6 +28,7 @@ import {
 import { CONTACT_EMAILS } from '@avdan/types'
 
 import { useSession } from '@/modules/auth/hooks/use-session'
+import { useRiderProfile } from '@/modules/rider/hooks/use-availability'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { authService } from '@/modules/auth/services/auth.service'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
@@ -46,6 +47,7 @@ export function ProfilePage() {
   const setUser = useAuthStore((s) => s.setUser)
   const { mutate: logout, isPending: isLoggingOut } = useLogout()
   const [signOutOpen, setSignOutOpen] = useState(false)
+  const { data: riderProfile } = useRiderProfile()
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -77,6 +79,14 @@ export function ProfilePage() {
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Role</span>
             <span className="capitalize">{user?.role ?? '—'}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Customer rating</span>
+            <span>
+              {riderProfile && (riderProfile.review_count ?? 0) > 0
+                ? `★ ${(riderProfile.rating ?? 0).toFixed(1)} (${riderProfile.review_count})`
+                : 'No ratings yet'}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Status</span>

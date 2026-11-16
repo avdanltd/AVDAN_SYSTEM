@@ -64,10 +64,14 @@ export function ReviewsPage() {
       cell: (r) => (
         <div>
           <p className="font-medium text-foreground">
-            {r.target_type === 'product' ? (r.product_name ?? 'Product') : (r.vendor_name ?? 'Vendor')}
+            {r.target_type === 'product'
+              ? (r.product_name ?? 'Product')
+              : r.target_type === 'rider'
+                ? (r.rider_name ?? 'Rider')
+                : (r.vendor_name ?? 'Vendor')}
           </p>
           <p className="text-xs text-muted-foreground">
-            {r.target_type === 'product' ? `Product · ${r.vendor_name ?? ''}` : 'Vendor'}
+            {r.target_type === 'product' ? `Product · ${r.vendor_name ?? ''}` : r.target_type === 'rider' ? 'Rider' : 'Vendor'}
           </p>
         </div>
       ),
@@ -135,6 +139,7 @@ export function ReviewsPage() {
               <TabsTrigger value="ALL">Everything</TabsTrigger>
               <TabsTrigger value="product">Products</TabsTrigger>
               <TabsTrigger value="vendor">Vendors</TabsTrigger>
+              <TabsTrigger value="rider">Riders</TabsTrigger>
             </TabsList>
           </Tabs>
           <Button variant={lowOnly ? 'default' : 'outline'} size="sm" onClick={() => { setLowOnly(!lowOnly); setPage(1) }}>
