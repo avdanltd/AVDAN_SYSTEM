@@ -11,6 +11,7 @@ from models.base import BaseModel
 class ReviewTarget:
     PRODUCT = "product"
     VENDOR = "vendor"
+    RIDER = "rider"
 
 
 class ReviewStatus:
@@ -36,6 +37,11 @@ class Review(BaseModel):
             "uq_reviews_order_vendor", "order_id",
             unique=True, postgresql_where=text("target_type = 'vendor'"),
         ),
+        Index(
+            "uq_reviews_order_rider", "order_id",
+            unique=True, postgresql_where=text("target_type = 'rider'"),
+        ),
+        Index("ix_reviews_rider", "rider_id", "status"),
         Index("ix_reviews_product", "product_id", "status"),
         Index("ix_reviews_vendor", "vendor_id", "status"),
     )
@@ -51,6 +57,9 @@ class Review(BaseModel):
     )
     product_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=True
+    )
+    rider_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("riders.id", ondelete="CASCADE"), nullable=True
     )
     target_type: Mapped[str] = mapped_column(String(10), nullable=False)
     rating: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -22,6 +22,7 @@ class SubmitReviewsRequest(BaseModel):
     but at least one review is required."""
 
     vendor: ReviewInput | None = None
+    rider: ReviewInput | None = None
     products: list[ProductReviewInput] = Field(default_factory=list, max_length=50)
 
 
@@ -56,6 +57,10 @@ class OrderReviewsResponse(BaseModel):
     reason: str | None
     vendor_name: str | None
     vendor: ReviewResponse | None
+    # The rider who delivered it — only when the order was actually delivered by one.
+    rider_reviewable: bool = False
+    rider_name: str | None = None
+    rider: ReviewResponse | None = None
     products: list[OrderProductReview]
 
 
@@ -84,6 +89,7 @@ class AdminReviewResponse(BaseModel):
     customer_name: str | None
     vendor_name: str | None
     product_name: str | None
+    rider_name: str | None = None
     hidden_reason: str | None
     hidden_by_name: str | None
     created_at: str

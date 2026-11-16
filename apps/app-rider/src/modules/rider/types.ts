@@ -8,6 +8,9 @@ export interface RiderProfile {
   vehicle_type: string | null
   lat: number | null
   lng: number | null
+  /** Average customer rating (0 = none yet) and how many ratings it is based on. */
+  rating?: number
+  review_count?: number
 }
 
 export interface OrderItem {
