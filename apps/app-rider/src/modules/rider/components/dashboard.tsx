@@ -29,8 +29,14 @@ export function formatAddress(address: RiderOrder['delivery_address']): string {
   return [address.street, address.city, address.lga, address.state].filter(Boolean).join(', ') || 'Delivery address'
 }
 
+/** Opens the customer's location in Google Maps (free — a plain link, no API key). Uses the exact
+ * pin the customer shared at checkout when there is one, otherwise the written address. */
 export function openInMaps(address: RiderOrder['delivery_address']) {
-  const query = encodeURIComponent(formatAddress(address))
+  const { lat, lng } = address as { lat?: unknown; lng?: unknown }
+  const query =
+    typeof lat === 'number' && typeof lng === 'number'
+      ? `${lat},${lng}`
+      : encodeURIComponent(formatAddress(address))
   Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`)
 }
 

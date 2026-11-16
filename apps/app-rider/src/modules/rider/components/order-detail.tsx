@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Image, Linking, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { AlertCircle, Building2, CheckCircle2, MapPin, Navigation, Package, Phone, Receipt } from 'lucide-react-native'
 
@@ -188,9 +188,11 @@ export function OrderDetail({ orderId }: { orderId: string }) {
             <MapPin size={16} color={colors.primary} />
             <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivery address</Text>
           </View>
-          <Text style={[styles.addressText, { color: colors.foreground }]}>
-            {formatAddress(order.delivery_address)}
-          </Text>
+          <Pressable onPress={() => openInMaps(order.delivery_address)} accessibilityRole="link" accessibilityLabel="Open customer location in Google Maps">
+            <Text style={[styles.addressText, { color: colors.primary, textDecorationLine: 'underline' }]}>
+              {formatAddress(order.delivery_address)}
+            </Text>
+          </Pressable>
           {order.delivery_address.landmark ? (
             <Text style={{ color: colors.mutedForeground }}>Landmark: {order.delivery_address.landmark}</Text>
           ) : null}

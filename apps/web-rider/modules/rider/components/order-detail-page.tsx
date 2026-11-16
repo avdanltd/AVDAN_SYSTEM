@@ -11,6 +11,7 @@ import { useOrderAction } from '../hooks/use-order-actions'
 import { useLiveLocation } from '../hooks/use-live-location'
 import { ORDER_ACTIONS, HUB_RELEVANT_STATUSES } from '../types'
 import { formatKobo } from '@/lib/format'
+import { mapsUrl } from '../lib/maps'
 
 // Dynamic import with ssr:false — Leaflet requires browser APIs, same pattern as
 // web-customer's tracking-page.tsx.
@@ -111,11 +112,28 @@ export function OrderDetailPage({ orderId }: OrderDetailPageProps) {
         <CardContent className="text-sm text-muted-foreground">
           {order.delivery_address.street ? (
             <>
-              <p>{order.delivery_address.street}</p>
+              <a
+                href={mapsUrl(order.delivery_address)}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Open customer location in Google Maps"
+                className="block font-medium text-primary underline underline-offset-2"
+              >
+                <p>{order.delivery_address.street}</p>
+              </a>
               {order.delivery_address.city && <p>{order.delivery_address.city}</p>}
               {order.delivery_address.lga && <p>{order.delivery_address.lga}</p>}
               {order.delivery_address.state && <p>{order.delivery_address.state}</p>}
               {order.delivery_address.landmark && <p>Landmark: {order.delivery_address.landmark}</p>}
+              <a
+                href={mapsUrl(order.delivery_address)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 mr-2 inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 font-medium text-foreground"
+              >
+                <MapPin className="h-4 w-4" />
+                Open in Google Maps
+              </a>
               {order.delivery_address.phone && (
                 <a
                   href={`tel:${order.delivery_address.phone}`}
