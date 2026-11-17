@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, Query
@@ -13,10 +13,12 @@ from services.admin.schemas import (
     AdminProductResponse,
     ApproveProductRequest,
     AttentionResponse,
+    NewUserStatsResponse,
     PaginatedAdminProductsResponse,
     RejectProductRequest,
 )
 from services.admin.service import AdminService
+from services.analytics.audit import record_audit
 from services.analytics.schemas import (
     OrderVolumeResponse,
     OverviewResponse,
@@ -128,11 +130,27 @@ async def finance_person(
     return await FinanceService(db).person(kind, user_id, start, end)
 
 
+@router.get("/users/stats", response_model=NewUserStatsResponse)
+async def new_user_stats(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    role: str | None = Query(default=None),
+    bucket: str | None = Query(default=None, pattern="^(day|week|month)$"),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> NewUserStatsResponse:
+    """How many new accounts joined in a period (Lagos dates): totals by role + a day/week/month
+    series. Powers the "New users" panel on the admin Users page."""
+    return NewUserStatsResponse(**await AdminService(db).new_user_stats(date_from, date_to, role, bucket))
+
+
 @router.get("/users", response_model=PaginatedUsersResponse)
 async def list_users(
     role: str | None = Query(default=None),
     status: str | None = Query(default=None),
     search: str | None = Query(default=None, max_length=100),
+    date_from: date | None = Query(default=None, description="Joined on/after (Lagos date)"),
+    date_to: date | None = Query(default=None, description="Joined on/before (Lagos date)"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     _current_user: CurrentUser = Depends(require_role("admin", "support")),
@@ -140,7 +158,8 @@ async def list_users(
 ) -> PaginatedUsersResponse:
     svc = AdminService(db)
     users, total = await svc.list_users(
-        role=role, status=status, page=page, page_size=page_size, search=search
+        role=role, status=status, page=page, page_size=page_size, search=search,
+        date_from=date_from, date_to=date_to,
     )
     return PaginatedUsersResponse(
         items=[_user_response(u) for u in users],
@@ -154,46 +173,51 @@ async def list_users(
 async def update_user_status(
     user_id: str,
     data: UpdateUserStatusRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     svc = AdminService(db)
-    user = await svc.update_user_status(user_id, data.status)
+    user, before = await svc.update_user_status(user_id, data.status)
+    record_audit(db, current_user.user_id, "user.status", "user", user_id, {"status": before}, {"status": user.status})
     return _user_response(user)
 
 
 @router.post("/users", response_model=UserResponse, status_code=201)
 async def create_admin_user(
     data: AdminCreateUserRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> UserResponse:
     svc = AuthService(db, redis)
     user = await svc.create_privileged_user(data)
+    record_audit(db, current_user.user_id, "user.invite", "user", user.id, None, {"role": user.role, "email": user.email})
     return _user_response(user)
 
 
 @router.post("/users/{user_id}/resend-invite", response_model=UserResponse)
 async def resend_invite(
     user_id: str,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> UserResponse:
     """New link, new email; the old link stops working."""
     user = await AuthService(db, redis).resend_invite(user_id)
+    record_audit(db, current_user.user_id, "user.invite_resend", "user", user_id)
     return _user_response(user)
 
 
 @router.delete("/users/{user_id}/invite", status_code=204)
 async def revoke_invite(
     user_id: str,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
     redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> None:
     await AuthService(db, redis).revoke_invite(user_id)
+    # The account row is deleted on revoke, so the audit row keeps the id only as text.
+    record_audit(db, current_user.user_id, "user.invite_revoke", "user", user_id)
 
 
 # ── Vendor management ─────────────────────────────────────────────────────────
@@ -240,11 +264,12 @@ async def list_vendors(
 async def update_vendor_status(
     vendor_id: str,
     data: UpdateVendorStatusRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> AdminVendorResponse:
     svc = AdminService(db)
-    vendor = await svc.update_vendor_status(vendor_id, data.status)
+    vendor, before = await svc.update_vendor_status(vendor_id, data.status)
+    record_audit(db, current_user.user_id, "vendor.status", "vendor", vendor_id, {"status": before}, {"status": vendor.status})
     return _admin_vendor_response(vendor)
 
 
@@ -296,23 +321,31 @@ async def list_products(
 async def approve_product(
     product_id: str,
     data: ApproveProductRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> AdminProductResponse:
     """Approve a product and set the price customers will see. Also re-prices a live product."""
-    return _admin_product_response(await AdminService(db).approve_product(
+    product = await AdminService(db).approve_product(
         product_id, data.price_kobo, data.discount_type, data.discount_value, data.special_delivery_fee_kobo
-    ))
+    )
+    record_audit(
+        db, current_user.user_id, "product.approve", "product", product_id, None,
+        {"price_kobo": data.price_kobo, "discount_type": data.discount_type,
+         "discount_value": data.discount_value, "special_delivery_fee_kobo": data.special_delivery_fee_kobo},
+    )
+    return _admin_product_response(product)
 
 
 @router.post("/products/{product_id}/reject", response_model=AdminProductResponse)
 async def reject_product(
     product_id: str,
     data: RejectProductRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> AdminProductResponse:
-    return _admin_product_response(await AdminService(db).reject_product(product_id, data.reason))
+    product = await AdminService(db).reject_product(product_id, data.reason)
+    record_audit(db, current_user.user_id, "product.reject", "product", product_id, None, {"reason": data.reason})
+    return _admin_product_response(product)
 
 
 # ── Order management ──────────────────────────────────────────────────────────
@@ -757,11 +790,12 @@ async def list_hubs(
 @router.post("/hubs", response_model=HubResponse, status_code=201)
 async def create_hub(
     data: CreateHubRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> HubResponse:
     svc = AdminService(db)
     hub = await svc.create_hub(data.name, data.capacity, data.lat, data.lng)
+    record_audit(db, current_user.user_id, "hub.create", "hub", hub.id, None, {"name": data.name, "capacity": data.capacity})
     return _hub_resp(hub)
 
 
@@ -769,31 +803,34 @@ async def create_hub(
 async def update_hub(
     hub_id: str,
     data: UpdateHubRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> HubResponse:
     svc = AdminService(db)
     hub = await svc.update_hub(hub_id, data.name, data.capacity)
+    record_audit(db, current_user.user_id, "hub.update", "hub", hub_id, None, {"name": data.name, "capacity": data.capacity})
     return _hub_resp(hub)
 
 
 @router.delete("/hubs/{hub_id}", status_code=204)
 async def delete_hub(
     hub_id: str,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> None:
     svc = AdminService(db)
     await svc.delete_hub(hub_id)
+    record_audit(db, current_user.user_id, "hub.delete", "hub", hub_id)
 
 
 @router.patch("/users/{user_id}/hub", response_model=UserResponse)
 async def assign_agent_hub(
     user_id: str,
     data: AssignHubRequest,
-    _current_user: CurrentUser = Depends(require_role("admin")),
+    current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> UserResponse:
     svc = AdminService(db)
     user = await svc.assign_agent_hub(user_id, data.hub_id)
+    record_audit(db, current_user.user_id, "user.hub_assign", "user", user_id, None, {"hub_id": data.hub_id})
     return _user_response(user)

@@ -2,15 +2,19 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import NotFoundException, ValidationException
+from services.analytics.audit import record_audit
 from services.auth.models import User
 from services.orders.models import Order, OrderEvent
 from services.vendor.models import Product, Vendor
+
+_LAGOS = "Africa/Lagos"
 
 
 class AdminService:
@@ -24,9 +28,16 @@ class AdminService:
         page: int,
         page_size: int,
         search: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> tuple[list[User], int]:
         query = select(User)
         count_query = select(func.count()).select_from(User)
+
+        joined = self._joined_between(date_from, date_to)
+        if joined:
+            query = query.where(*joined)
+            count_query = count_query.where(*joined)
 
         term = (search or "").strip()
         if term:
@@ -58,7 +69,92 @@ class AdminService:
 
         return users, total
 
-    async def update_user_status(self, user_id: str, new_status: str) -> User:
+    # ── New-user numbers ──────────────────────────────────────────────────────
+
+    @staticmethod
+    def _joined_between(date_from: date | None, date_to: date | None) -> list:  # type: ignore[type-arg]
+        """`created_at` conditions for an inclusive Lagos-time date range (the admins' calendar)."""
+        local = func.timezone(_LAGOS, User.created_at)
+        conds = []
+        if date_from:
+            conds.append(local >= datetime.combine(date_from, time.min))
+        if date_to:
+            conds.append(local < datetime.combine(date_to + timedelta(days=1), time.min))
+        return conds
+
+    async def new_user_stats(
+        self, date_from: date | None, date_to: date | None, role: str | None, bucket: str | None
+    ) -> dict:
+        """How many accounts were created in a period: totals by role plus a time series.
+
+        `bucket` is day / week / month; when omitted it follows the span (up to ~5 weeks -> days,
+        up to ~4 months -> weeks, longer -> months). Counts every account created, including ones
+        still waiting on email verification and staff accounts still at the invited stage."""
+        local = func.timezone(_LAGOS, User.created_at)
+        conds = self._joined_between(date_from, date_to)
+        if role:
+            conds.append(User.role == role)
+
+        by_role_rows = (await self.db.execute(
+            select(User.role, func.count()).where(*conds).group_by(User.role)
+        )).all()
+        by_role = {r: n for r, n in by_role_rows}
+        total = sum(by_role.values())
+        active = (await self.db.execute(
+            select(func.count()).select_from(User).where(*conds, User.status == "active")
+        )).scalar_one()
+
+        first_seen = (await self.db.execute(select(func.min(local)).where(*conds))).scalar_one()
+        start = date_from or (first_seen.date() if first_seen else date.today())
+        end = date_to or date.today()
+        span_days = max((end - start).days + 1, 1)
+        unit = bucket if bucket in ("day", "week", "month") else (
+            "day" if span_days <= 35 else "week" if span_days <= 120 else "month"
+        )
+
+        trunc = func.date_trunc(unit, local)
+        rows = (await self.db.execute(
+            select(trunc, User.role, func.count()).where(*conds).group_by(trunc, User.role).order_by(trunc)
+        )).all()
+        points: dict[str, dict] = {}
+        for b, r_, n in rows:
+            key = b.date().isoformat()
+            point = points.setdefault(key, {"bucket": key, "total": 0, "by_role": {}})
+            point["total"] += n
+            point["by_role"][r_] = n
+
+        # Fill empty buckets so a quiet day shows as zero instead of vanishing from the chart.
+        series: list[dict] = []
+        cursor = self._bucket_start(start, unit)
+        last = self._bucket_start(end, unit)
+        while cursor <= last and len(series) < 400:
+            key = cursor.isoformat()
+            series.append(points.get(key, {"bucket": key, "total": 0, "by_role": {}}))
+            cursor = self._next_bucket(cursor, unit)
+
+        return {
+            "date_from": start.isoformat(), "date_to": end.isoformat(), "bucket": unit,
+            "total": total, "active": active, "by_role": by_role, "series": series,
+        }
+
+    @staticmethod
+    def _bucket_start(d: date, unit: str) -> date:
+        if unit == "week":
+            return d - timedelta(days=d.weekday())  # Monday, as Postgres date_trunc('week')
+        if unit == "month":
+            return d.replace(day=1)
+        return d
+
+    @staticmethod
+    def _next_bucket(d: date, unit: str) -> date:
+        if unit == "week":
+            return d + timedelta(days=7)
+        if unit == "month":
+            return (d.replace(day=28) + timedelta(days=4)).replace(day=1)
+        return d + timedelta(days=1)
+
+    async def update_user_status(self, user_id: str, new_status: str) -> tuple[User, str]:
+        """Returns (user, previous status) so the caller can write the audit entry."""
         result = await self.db.execute(select(User).where(User.id == user_id))  # type: ignore[arg-type]
         user = result.scalar_one_or_none()
         if not user:
@@ -69,8 +165,9 @@ class AdminService:
             raise ValidationException(
                 "This account hasn't been set up yet. Resend the invitation or revoke it instead."
             )
+        before = user.status
         user.status = new_status
-        return user
+        return user, before
 
     # ── Vendor management ─────────────────────────────────────────────────────
 
@@ -95,7 +192,7 @@ class AdminService:
         result = await self.db.execute(query)
         return list(result.scalars().all()), total
 
-    async def update_vendor_status(self, vendor_id: str, new_status: str) -> Vendor:
+    async def update_vendor_status(self, vendor_id: str, new_status: str) -> tuple[Vendor, str]:
         result = await self.db.execute(
             select(Vendor).where(Vendor.id == uuid.UUID(vendor_id))
         )
@@ -103,8 +200,9 @@ class AdminService:
         if not vendor:
             raise NotFoundException("Vendor not found")
 
+        before = vendor.status
         vendor.status = new_status
-        return vendor
+        return vendor, before
 
     # ── Product approval ──────────────────────────────────────────────────────
 
@@ -350,6 +448,10 @@ class AdminService:
                 actor_role="admin",
                 event_metadata={"reason": reason, "manual_override": True},
             )
+        )
+        record_audit(
+            self.db, admin_id, "order.status_override", "order", order.id,
+            {"status": order.status}, {"status": new_status, "reason": reason},
         )
         order.status = new_status
         await self.db.flush()

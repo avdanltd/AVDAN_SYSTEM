@@ -26,5 +26,6 @@ export const ROUTES = {
   hubs: '/hubs',
   analytics: '/analytics',
   config: '/config',
+  notifications: '/notifications',
   profile: '/profile',
 } as const
