@@ -17,12 +17,18 @@ async def paystack_webhook(
     x_paystack_signature: str | None = Header(default=None),
     db: AsyncSession = Depends(get_db),
 ) -> dict:
-    # Accounts that moved to restricted keys are signed with the webhook signing key and send
-    # `Paystack-Signature`; the legacy `x-paystack-signature` is signed with the old secret key.
-    # Accept either — the provider verifies it against every signing key we hold.
-    header_name = "paystack-signature" if paystack_signature else "x-paystack-signature"
-    signature = paystack_signature or x_paystack_signature
-    if not signature:
+    # Accounts on restricted keys get `Paystack-Signature` (t=…,v1=<kid>:<sig>, signed with the
+    # webhook signing secret); accounts that still hold a secret key also get the legacy
+    # `x-paystack-signature`. Accept an event if either header verifies.
+    candidates = [
+        (name, value)
+        for name, value in (
+            ("paystack-signature", paystack_signature),
+            ("x-paystack-signature", x_paystack_signature),
+        )
+        if value
+    ]
+    if not candidates:
         raise AppError(400, "MISSING_SIGNATURE", "paystack-signature header is required")
 
     # Read raw bytes — required for HMAC verification
@@ -30,7 +36,16 @@ async def paystack_webhook(
 
     # Signature verified FIRST — no processing if invalid
     provider = get_provider("paystack")
-    event = await provider.verify_webhook(payload, signature, header_name=header_name)
+    event = None
+    last_error: AppError | None = None
+    for name, value in candidates:
+        try:
+            event = await provider.verify_webhook(payload, value, header_name=name)
+            break
+        except AppError as exc:
+            last_error = exc
+    if event is None:
+        raise last_error or AppError(401, "INVALID_SIGNATURE", "Webhook signature verification failed")
 
     svc = PaymentService(db)
 
