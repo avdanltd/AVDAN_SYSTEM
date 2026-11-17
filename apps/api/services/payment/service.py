@@ -262,6 +262,13 @@ class PaymentService:
             "refund_reason": reason,
         }
 
+        from services.analytics.audit import record_audit
+
+        record_audit(
+            self.db, admin_id, "payment.refund", "order", order_id, None,
+            {"amount_kobo": amount_kobo, "reason": reason, "refund_ref": result.refund_ref},
+        )
+
         order_svc = OrderService(self.db)
         await order_svc.transition(
             order_id=order_id,

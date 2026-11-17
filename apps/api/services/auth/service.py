@@ -48,11 +48,12 @@ class AuthService:
         self.db.add(user)
         await self.db.flush()
         otp = await self._generate_otp(str(user.id))
-        
+
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
             send_otp_email_task.delay(user.email, user.name, otp, user.role)
-            
+
+        self._announce_new_user(user)
         return user, otp
 
     async def register_vendor(self, data: RegisterVendorRequest) -> tuple[User, str]:
@@ -77,12 +78,25 @@ class AuthService:
         self.db.add(profile)
 
         otp = await self._generate_otp(str(user.id))
-        
+
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
             send_otp_email_task.delay(user.email, user.name, otp, user.role)
-            
+
+        self._announce_new_user(user)
         return user, otp
+
+    def _announce_new_user(self, user: User) -> None:
+        """Audit trail entry (actor = the new user) and an in-app alert for every admin/support."""
+        from services.analytics.audit import record_audit
+        from workers.tasks.notifications import notify_admins_new_user
+
+        record_audit(
+            self.db, user.id, "user.register", "user", user.id, None,
+            {"role": user.role, "email": user.email, "status": user.status},
+        )
+        # A few seconds' head start so the new row is committed before the worker looks it up.
+        notify_admins_new_user.apply_async(args=[str(user.id)], countdown=5)
 
     async def verify_otp(self, user_id: str, otp: str) -> User:
         stored = await self.redis.get(f"otp:{user_id}")
@@ -101,11 +115,11 @@ class AuthService:
     async def resend_otp(self, user_id: str) -> str:
         user = await self.get_user_by_id(user_id)
         otp = await self._generate_otp(str(user.id))
-        
+
         if user.email:
             from workers.tasks.notifications import send_otp_email_task
             send_otp_email_task.delay(user.email, user.name, otp, user.role)
-            
+
         return otp
 
     async def login(self, data: LoginRequest) -> tuple[str, str, str]:
@@ -289,6 +303,11 @@ class AuthService:
         user.status = "active"
         await self.redis.delete(self._invite_key(token))
         await self.redis.delete(f"invite_user:{user.id}")
+        from services.analytics.audit import record_audit
+        from workers.tasks.notifications import notify_admins_new_user
+
+        record_audit(self.db, user.id, "user.invite_accept", "user", user.id, {"status": "invited"}, {"status": "active"})
+        notify_admins_new_user.apply_async(args=[str(user.id)], countdown=5)
         return user
 
     # ── Forgot / reset password ───────────────────────────────────────────────

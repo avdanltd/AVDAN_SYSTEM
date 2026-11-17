@@ -1,10 +1,13 @@
 import { apiClient } from '@/lib/api-client'
-import type { PaginatedResponse } from '@avdan/types'
+import type { NewUserStats, PaginatedResponse } from '@avdan/types'
 import type { AdminUser, CreateAdminPayload, Hub, CreateHubPayload } from '../types'
 
 export const usersService = {
   getUsers: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminUser>>('/admin/users', params),
+
+  getNewUserStats: (params: Record<string, string>) =>
+    apiClient.get<NewUserStats>('/admin/users/stats', params),
 
   updateStatus: (id: string, status: string) =>
     apiClient.patch<AdminUser>(`/admin/users/${id}/status`, { status }),

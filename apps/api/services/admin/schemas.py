@@ -56,3 +56,19 @@ class ApproveProductRequest(BaseModel):
 
 class RejectProductRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
+
+class NewUserPoint(BaseModel):
+    bucket: str  # first day of the day / week / month, YYYY-MM-DD (Lagos time)
+    total: int
+    by_role: dict[str, int]
+
+
+class NewUserStatsResponse(BaseModel):
+    date_from: str
+    date_to: str
+    bucket: str  # "day" | "week" | "month"
+    total: int
+    active: int  # of those, how many have verified / set up their account
+    by_role: dict[str, int]
+    series: list[NewUserPoint]
