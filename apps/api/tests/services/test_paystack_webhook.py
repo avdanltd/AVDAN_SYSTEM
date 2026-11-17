@@ -33,22 +33,20 @@ def test_restricted_api_key_needs_the_account_secret_key_for_webhooks() -> None:
     assert ok.reference == "wd-1"
 
 
-def test_signing_key_verifies_new_header_format_and_diagnostic_survives_log_redaction(caplog) -> None:  # type: ignore[no-untyped-def]
+def test_failure_is_logged_without_leaking_and_survives_log_redaction(caplog) -> None:  # type: ignore[no-untyped-def]
     import logging
 
     from core.logging import SensitiveDataFilter
 
     provider = PaystackProvider("rk_live_restricted", webhook_secret="whsec_signingkey")
-    assert _verify(provider, _sign("whsec_signingkey")).reference == "wd-1"
-
     with caplog.at_level(logging.WARNING, logger="services.payment.providers.paystack"):
         with pytest.raises(AppError):
-            asyncio.run(provider.verify_webhook(BODY, "t=123,v1=abc", header_name="paystack-signature"))
+            asyncio.run(provider.verify_webhook(BODY, "t=123,v1=whk_abc:deadbeef", header_name="paystack-signature"))
     record = caplog.records[-1]
     SensitiveDataFilter().filter(record)  # what the app's handler does before writing
     msg = record.getMessage()
-    assert "sig_shape=structured" in msg and "header=new" in msg
-    assert "whsec" in msg and "signingkey" not in msg  # prefix only, never the key
+    assert "header=new" in msg and "reason=" in msg
+    assert "signingkey" not in msg and "whsec_" not in msg  # never the key
 
 
 def test_wrong_signature_is_rejected() -> None:

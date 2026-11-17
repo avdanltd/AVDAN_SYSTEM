@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import json
 import logging
+import time
 
 import httpx
 
@@ -55,91 +56,67 @@ def _paystack_code(response: httpx.Response) -> str:
 logger = logging.getLogger(__name__)
 
 
-def _key_kind(key: str) -> str:
-    """`sk_live_…` -> `sk_live`, `whsec_…` -> `whsec`. Prefix only, never the key itself."""
-    parts = key.split("_")
-    return "_".join(parts[:2]) if len(parts) >= 3 else parts[0][:6]
+_HEX_LOWER = frozenset("0123456789abcdef")
+# Paystack's documented replay window for the Paystack-Signature timestamp.
+_TOLERANCE_SECONDS = 300
 
 
-_HEX = frozenset("0123456789abcdefABCDEF")
-_TS_KEYS = ("t", "ts", "timestamp", "time")
+def _parse_paystack_signature(header: str) -> tuple[int | None, list[tuple[str, str]]]:
+    """Parse `Paystack-Signature: t=<unix>,v1=<key id>:<hex>[,v1=<key id>:<hex>]`.
 
-
-def _is_hex(value: str) -> bool:
-    return bool(value) and all(c in _HEX for c in value)
-
-
-def _parse_signature(header: str) -> tuple[list[str], list[str]]:
-    """Split a signature header into (candidate hex signatures, candidate timestamps).
-
-    Handles a bare hex digest, `sha512=<hex>`, and Stripe-style `t=<unix>,v1=<hex>[,v0=<hex>]`
-    headers: every `key=value` part is inspected, hex values of SHA-256/SHA-512 length become
-    signature candidates, numeric `t`/`timestamp` values become timestamp candidates."""
-    header = header.strip()
-    if _is_hex(header):
-        return [header.lower()], []
-    sigs: list[str] = []
-    stamps: list[str] = []
-    for part in header.replace(";", ",").replace(" ", ",").split(","):
-        if not part:
-            continue
-        key, _, value = part.partition("=")
-        key, value = key.strip().lower(), value.strip()
-        if not value:
-            continue
-        if key in _TS_KEYS and value.isdigit():
-            stamps.append(value)
-        elif _is_hex(value) and len(value) in (64, 128):
-            sigs.append(value.lower())
-    return sigs, stamps
-
-
-def _mask_header(header: str) -> str:
-    """The header's structure with every hex run / number replaced by its length, so the format
-    can be diagnosed from logs without exposing a usable signature: `t=<10d>,v1=<128h>`."""
-    out: list[str] = []
-    for part in header.replace(" ", " ").split(","):
+    Returns (timestamp or None, [(key id, signature)]). Ignores any other fields, as Paystack's
+    docs require. A repeated or non-numeric `t` makes the header invalid (timestamp None)."""
+    stamp: int | None = None
+    seen_t = False
+    entries: list[tuple[str, str]] = []
+    for part in header.split(","):
         key, sep, value = part.partition("=")
-        if sep and _is_hex(value) and not value.isdigit():
-            out.append(f"{key}=<{len(value)}h>")
-        elif sep and value.isdigit():
-            out.append(f"{key}=<{len(value)}d>")
-        elif not sep and _is_hex(part):
-            out.append(f"<{len(part)}h>")
-        else:
-            out.append(f"{key}{sep}<{len(value)}c>" if sep else f"<{len(part)}c>")
-    return ",".join(out)
+        if not sep:
+            continue
+        key, value = key.strip(), value.strip()
+        if key == "t":
+            if seen_t or not value.isdigit():
+                return None, []
+            seen_t = True
+            stamp = int(value)
+        elif key == "v1":
+            kid, colon, sig = value.partition(":")
+            if colon:
+                entries.append((kid, sig))
+    return stamp, entries
 
 
-def _signature_matches(payload: bytes, header: str, keys: list[str]) -> bool:
-    sigs, stamps = _parse_signature(header)
-    if not sigs:
-        return False
-    messages = [payload]
-    for ts in stamps:
-        t = ts.encode()
-        messages += [t + b"." + payload, t + payload, t + b":" + payload]
-    for key in keys:
-        for message in messages:
-            for algo in (hashlib.sha512, hashlib.sha256):
-                digest = hmac.new(key.encode("utf-8"), message, algo).hexdigest()
-                if any(hmac.compare_digest(digest, sig) for sig in sigs):
-                    return True
-    return False
-
-
-def _signature_shape(signature: str) -> str:
-    """Hint at the header's format (plain hex vs `t=…,v1=…` style) without echoing it."""
-    if all(c in "0123456789abcdefABCDEF" for c in signature):
-        return "hex"
-    return "structured" if ("=" in signature or "," in signature) else "other"
+def _verify_signed_header(
+    payload: bytes, header: str, secrets: list[str], now: float | None = None
+) -> tuple[bool, str]:
+    """Verify a `Paystack-Signature` header. Returns (ok, reason) — reason is a short, secret-free
+    description of why it failed, for the log."""
+    stamp, entries = _parse_paystack_signature(header)
+    if stamp is None or not entries:
+        return False, "unparseable header (need one t= and at least one v1=<kid>:<sig>)"
+    skew = abs((time.time() if now is None else now) - stamp)
+    if skew > _TOLERANCE_SECONDS:
+        return False, f"timestamp {int(skew)}s off server time (limit {_TOLERANCE_SECONDS}s)"
+    candidates = [sig for _, sig in entries if len(sig) == 128 and all(c in _HEX_LOWER for c in sig)]
+    if not candidates:
+        return False, "no v1 signature of 128 lowercase hex characters"
+    message = str(stamp).encode() + b"." + payload
+    for secret in secrets:
+        expected = hmac.new(secret.encode("utf-8"), message, hashlib.sha512).hexdigest()
+        if any(hmac.compare_digest(expected, sig) for sig in candidates):
+            return True, ""
+    kids = ", ".join(sorted({kid for kid, _ in entries}))
+    return False, f"no v1 matched the configured signing secret (kids in header: {kids})"
 
 
 class PaystackProvider(PaymentProvider):
     def __init__(self, secret_key: str, webhook_secret: str = "") -> None:
         self._secret_key = secret_key
-        # Signing keys to try for webhooks: the dedicated one first, then the API key.
-        self._webhook_keys = [k for k in (webhook_secret, secret_key) if k]
+        # `Paystack-Signature` is signed with the dashboard webhook signing secret (whsec_…), whole
+        # string including the prefix. The legacy `x-paystack-signature` is signed with the account
+        # secret key (sk_…); a restricted key (rk_…) is not one, so it simply never matches.
+        self._signing_secrets = [webhook_secret] if webhook_secret else []
+        self._legacy_keys = [k for k in (webhook_secret, secret_key) if k]
 
     def _headers(self) -> dict[str, str]:
         return {
@@ -329,20 +306,27 @@ class PaystackProvider(PaymentProvider):
     async def verify_webhook(
         self, payload: bytes, signature: str, header_name: str = ""
     ) -> WebhookEvent:
-        # Paystack signs the raw body with the account's secret key (HMAC-SHA512). Accept a match
-        # against any configured signing key; compare in constant time.
-        matched = _signature_matches(payload, signature, self._webhook_keys)
+        if header_name == "paystack-signature":
+            matched, reason = _verify_signed_header(payload, signature, self._signing_secrets)
+        else:
+            # Legacy header: bare HMAC-SHA512 of the raw body, no timestamp.
+            signature = signature.strip().lower()
+            matched = len(signature) == 128 and any(
+                hmac.compare_digest(
+                    hmac.new(key.encode("utf-8"), payload, hashlib.sha512).hexdigest(), signature
+                )
+                for key in self._legacy_keys
+            )
+            reason = "no match against the account secret key"
         if not matched:
             # NB: core.logging redacts any line containing words like "secret" or "token", so this
-            # message avoids them. It records only the shape of the signature, never a key.
+            # message avoids them. It records the failure reason and header kind, never a key.
             logger.warning(
-                "paystack webhook signature mismatch: header=%s sig_len=%d sig_shape=%s sig_layout=%s body=%dB "
-                "keys_tried=%s - if no whsec key is listed, configure the dashboard webhook signing key",
-                "new" if header_name == "paystack-signature" else "legacy", len(signature), _signature_shape(signature),
-                _mask_header(signature), len(payload),
-                ", ".join(_key_kind(k) for k in self._webhook_keys) or "none",
+                "paystack webhook signature mismatch: header=%s body=%dB signing_keys_configured=%d reason=%s",
+                "new" if header_name == "paystack-signature" else "legacy", len(payload),
+                len(self._signing_secrets), reason.replace("secret", "key"),
             )
-            raise AppError(400, "INVALID_SIGNATURE", "Webhook signature verification failed")
+            raise AppError(401, "INVALID_SIGNATURE", "Webhook signature verification failed")
 
         body = json.loads(payload)
         event_type: str = body.get("event", "")
