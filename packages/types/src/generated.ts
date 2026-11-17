@@ -359,6 +359,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * New User Stats
+         * @description How many new accounts joined in a period (Lagos dates): totals by role + a day/week/month
+         *     series. Powers the "New users" panel on the admin Users page.
+         */
+        get: operations["new_user_stats_admin_users_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users": {
         parameters: {
             query?: never;
@@ -2929,6 +2950,36 @@ export interface components {
             /** Refresh Token */
             refresh_token?: string | null;
         };
+        /** NewUserPoint */
+        NewUserPoint: {
+            /** Bucket */
+            bucket: string;
+            /** Total */
+            total: number;
+            /** By Role */
+            by_role: {
+                [key: string]: number;
+            };
+        };
+        /** NewUserStatsResponse */
+        NewUserStatsResponse: {
+            /** Date From */
+            date_from: string;
+            /** Date To */
+            date_to: string;
+            /** Bucket */
+            bucket: string;
+            /** Total */
+            total: number;
+            /** Active */
+            active: number;
+            /** By Role */
+            by_role: {
+                [key: string]: number;
+            };
+            /** Series */
+            series: components["schemas"]["NewUserPoint"][];
+        };
         /** NotificationResponse */
         NotificationResponse: {
             /** Id */
@@ -5007,12 +5058,54 @@ export interface operations {
             };
         };
     };
+    new_user_stats_admin_users_stats_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                role?: string | null;
+                bucket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NewUserStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_users_admin_users_get: {
         parameters: {
             query?: {
                 role?: string | null;
                 status?: string | null;
                 search?: string | null;
+                /** @description Joined on/after (Lagos date) */
+                date_from?: string | null;
+                /** @description Joined on/before (Lagos date) */
+                date_to?: string | null;
                 page?: number;
                 page_size?: number;
             };

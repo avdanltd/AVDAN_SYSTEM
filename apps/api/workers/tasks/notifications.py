@@ -99,6 +99,57 @@ def send_order_notification(order_id: str, from_state: str | None, to_state: str
     asyncio.run(run_and_dispose(_dispatch_async(order_id, from_state, to_state, triggers)))
 
 
+@celery_app.task(name="workers.tasks.notifications.notify_admins_new_user")
+def notify_admins_new_user(user_id: str) -> None:
+    """In-app alert for every active admin and support user when someone joins: a customer or
+    vendor who just signed up, or a staff member / rider / hub agent who accepted their invite."""
+    asyncio.run(run_and_dispose(_notify_admins_new_user_async(user_id)))
+
+
+_ROLE_LABELS = {
+    "customer": "Customer", "vendor": "Vendor", "rider": "Rider", "agent": "Hub agent",
+    "support": "Support", "admin": "Admin",
+}
+
+
+async def _notify_admins_new_user_async(user_id: str) -> None:
+    from core.database import AsyncSessionLocal
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            await create_new_user_alerts(db, user_id)
+
+
+async def create_new_user_alerts(db, user_id: str) -> int:  # type: ignore[no-untyped-def]
+    """Add the in-app "new user" row for each active admin / support user. Returns how many."""
+    import uuid
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from services.auth.models import User
+    from services.notification.models import Notification
+
+    user = (await db.execute(select(User).where(User.id == uuid.UUID(user_id)))).scalar_one_or_none()
+    if not user:
+        return 0
+    label = _ROLE_LABELS.get(user.role, user.role.title())
+    who = user.name or user.email or user.phone or "Someone"
+    content = {
+        "title": f"New {label.lower()} joined",
+        "body": f"{who} just joined AVDAN as a {label.lower()}.",
+        "user_id": user_id,
+        "role": user.role,
+    }
+    admins = (await db.execute(
+        select(User.id).where(User.role.in_(["admin", "support"]), User.status == "active")
+    )).scalars().all()
+    now = datetime.now(UTC)
+    for admin_id in admins:
+        db.add(Notification(user_id=admin_id, type="new_user", channel="in_app", content=content, sent_at=now))
+    return len(admins)
+
+
 @celery_app.task(name="workers.tasks.notifications.notify_rider_assigned")
 def notify_rider_assigned(order_id: str, rider_user_id: str) -> None:
     """Separate from send_order_notification: assigning a rider is not an order state

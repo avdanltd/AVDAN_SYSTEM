@@ -49,12 +49,15 @@ import { Pagination } from "@/modules/shared/components/pagination";
 import { CreateAdminDialog } from "./create-admin-dialog";
 import { AssignHubDialog } from "./assign-hub-dialog";
 
+import { NewUsersPanel } from "./new-users-panel";
+import { PRESETS, presetRange, type RangePreset } from "../lib/date-range";
+
 const ROLE_OPTIONS = [
   { value: "__all__", label: "All Roles" },
   { value: "customer", label: "Customer" },
   { value: "vendor", label: "Vendor" },
   { value: "rider", label: "Rider" },
-  { value: "agent", label: "Agent" },
+  { value: "agent", label: "Hub" },
   { value: "admin", label: "Admin" },
   { value: "support", label: "Support" },
 ];
@@ -68,6 +71,9 @@ export function UsersPage() {
   const [page, setPage] = useState(1);
   const [role, setRole] = useState("");
   const [search, setSearch] = useState("");
+  const [preset, setPreset] = useState<RangePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [assignHubUser, setAssignHubUser] = useState<AdminUser | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
@@ -86,6 +92,16 @@ export function UsersPage() {
   const params: Record<string, string> = { page: String(page), page_size: "20" };
   if (role) params.role = role;
   if (debouncedSearch) params.search = debouncedSearch;
+  // Lagos-calendar dates from the preset, or the two pickers when "Pick dates" is chosen.
+  const range =
+    preset === "custom" ? { from: customFrom, to: customTo } : presetRange(preset);
+  if (range.from) params.date_from = range.from;
+  if (range.to) params.date_to = range.to;
+
+  const statsParams: Record<string, string> = {};
+  if (role) statsParams.role = role;
+  if (range.from) statsParams.date_from = range.from;
+  if (range.to) statsParams.date_to = range.to;
 
   const { data, isLoading, isError, refetch } = useUsers(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateUserStatus();
@@ -245,13 +261,66 @@ export function UsersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Users</h1>
-          <p className="text-sm text-muted-foreground">{total} total users</p>
+          <p className="text-sm text-muted-foreground">{total} {range.from || range.to || role ? "matching" : "total"} users</p>
         </div>
         <Button onClick={() => setCreateOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Staff
         </Button>
       </div>
+
+      {/* Who joined, and when */}
+      <div className="flex flex-wrap items-center gap-2">
+        {PRESETS.map((p) => (
+          <Button
+            key={p.value}
+            size="sm"
+            variant={preset === p.value ? "default" : "outline"}
+            onClick={() => {
+              setPreset(p.value);
+              setPage(1);
+            }}
+          >
+            {p.label}
+          </Button>
+        ))}
+        {preset === "custom" && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              aria-label="From date"
+              value={customFrom}
+              max={customTo || undefined}
+              onChange={(e) => {
+                setCustomFrom(e.target.value);
+                setPage(1);
+              }}
+              className="w-40"
+            />
+            <span className="text-sm text-muted-foreground">to</span>
+            <Input
+              type="date"
+              aria-label="To date"
+              value={customTo}
+              min={customFrom || undefined}
+              onChange={(e) => {
+                setCustomTo(e.target.value);
+                setPage(1);
+              }}
+              className="w-40"
+            />
+          </div>
+        )}
+      </div>
+
+      <NewUsersPanel
+        params={statsParams}
+        role={role}
+        onRoleChange={(r) => {
+          setRole(r);
+          setPage(1);
+        }}
+      />
 
       {/* Filters */}
       <div className="flex items-center gap-3">

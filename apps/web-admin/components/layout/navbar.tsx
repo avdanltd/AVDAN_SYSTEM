@@ -21,6 +21,7 @@ import {
 } from '@avdan/ui'
 import { useSession } from '@/modules/auth/hooks/use-session'
 import { ActionNeededAlert } from '@/modules/attention/components/action-needed-alert'
+import { NotificationBell } from '@/modules/notifications/components/notification-bell'
 import { useLogout } from '@/modules/auth/hooks/use-logout'
 import { SidebarContent } from './sidebar'
 import { ROUTES } from '@/config/routes'
@@ -67,6 +68,7 @@ export function Navbar() {
 
       <div className="flex items-center gap-1">
         <ActionNeededAlert />
+        <NotificationBell />
         <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
