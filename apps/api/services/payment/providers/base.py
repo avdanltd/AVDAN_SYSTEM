@@ -60,7 +60,8 @@ class WebhookEvent:
 class PaymentProvider(ABC):
     @abstractmethod
     async def initiate_charge(
-        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = ""
+        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = "",
+        reference_suffix: str | None = None,
     ) -> ChargeResult: ...
 
     @abstractmethod
