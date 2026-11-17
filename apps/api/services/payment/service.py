@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from sqlalchemy import case, select
+from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -57,8 +57,17 @@ class PaymentService:
         # is a pass-through to the rider, not vendor revenue, so it must be collected up front
         # rather than carved out of the vendor's cut later (see release_escrow).
         charge_amount_kobo = order.total_kobo + order.delivery_fee_kobo
+        # The first attempt keeps the plain `avdan-<order>` reference. Every later attempt (the
+        # customer pressing "proceed to payment" again) gets a fresh suffix, because Paystack
+        # refuses to initialise a reference it has already seen.
+        attempts = (await self.db.execute(
+            select(func.count()).select_from(EscrowTransaction).where(
+                EscrowTransaction.order_id == uuid.UUID(order_id)
+            )
+        )).scalar_one()
         charge = await provider.initiate_charge(
-            order_id, charge_amount_kobo, user.email, callback_url
+            order_id, charge_amount_kobo, user.email, callback_url,
+            reference_suffix=uuid.uuid4().hex[:8] if attempts else None,
         )
 
         escrow = EscrowTransaction(

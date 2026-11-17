@@ -81,12 +81,16 @@ class PaystackProvider(PaymentProvider):
         }
 
     async def initiate_charge(
-        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = ""
+        self, order_id: str, amount_kobo: int, customer_email: str, callback_url: str = "",
+        reference_suffix: str | None = None,
     ) -> ChargeResult:
+        # Paystack rejects a reference it has seen before (400 "Duplicate Transaction Reference"),
+        # so a second payment attempt on the same order needs its own suffix.
+        reference = f"avdan-{order_id}" + (f"-{reference_suffix}" if reference_suffix else "")
         payload: dict = {
             "email": customer_email,
             "amount": amount_kobo,
-            "reference": f"avdan-{order_id}",
+            "reference": reference,
         }
         if callback_url:
             payload["callback_url"] = callback_url
