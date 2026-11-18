@@ -471,10 +471,43 @@ Shipped to `main` (CI + prod deploy green; **not yet clicked through on a device
 Open:
 - [ ] **Decision:** cancelling *paid, not-yet-accepted* orders (needs an automatic Paystack refund + new PAID -> CANCELLED
       transition) was not built. Customers can't cancel paid orders; admin can still refund.
-- [ ] **Decision:** rider rating in the review pop-up (only products + vendor exist today).
+- [x] Rider rating: built 2026-11-17, see section 11.
 - [ ] Review pop-up and rider-maps tap are web-first; customer **mobile** has no review pop-up. All mobile changes
       need a new build/OTA.
 - [ ] Remove or repurpose the unused "cancellation window" setting in admin Configuration.
 - [ ] Analytics + SEO kickoff: see `ANALYTICS_SEO_PLAN.md`.
 - [ ] Still open from section 9: key rotation, mailboxes, promotion switch-on, push notifications on mobile.
 
+
+---
+
+## 11. Shipped 2026-11-17 to 18 and what is still open
+
+Shipped (all merged to main and deployed; no open PRs):
+- **Rider ratings** (migration `0030`): customers rate the rider with the order; `riders.rating`/`review_count`; admin Reviews
+  "Riders" tab. This closes the "rider rating" decision left open in section 10.
+- **Paystack payment retry:** every attempt after the first sends a unique reference suffix (Paystack rejects a reused one,
+  which surfaced as "an unexpected error occurred" on Proceed to payment).
+- **Paystack webhook signature** now verified exactly as documented: `Paystack-Signature: t=…,v1=<kid>:<sig>`, HMAC-SHA512 of
+  `"<t>." + raw body` keyed with the whole `whsec_` secret, 300 s tolerance, legacy `x-paystack-signature` kept as fallback.
+  First accepted retry seen after deploy. Not yet seen: a real payment confirmed end to end by webhook alone (pay, close the
+  Paystack tab, watch the order flip to PAID).
+- **Admin new-user alerts and numbers:** in-app bell + Notifications page for admin/support on every sign-up and accepted
+  invite; Users page panel with presets (Today/7d/30d/This month/All/Pick dates, Lagos dates), role chips and a chart.
+  `GET /admin/users/stats`.
+- **Audit trail widened:** sign-ups, invites (sent/resent/revoked/accepted), user and vendor status, hub assignment, product
+  approve/reject, hub create/edit/delete, order status override, refunds. Helper: `services/analytics/audit.py::record_audit`.
+  Entries before 2026-11-17 do not exist for these actions.
+- **Admin order numbers:** Orders page panel with the same presets, a chip per status group (awaiting payment, in progress,
+  delivered, release pending, completed, cancelled/rejected, disputes & refunds), paid value, and a stacked chart.
+  `GET /admin/orders/stats`; groups are defined once in `AdminService.ORDER_GROUPS`. `GET /admin/orders` now honours
+  `search` (order-ID prefix), `date_from`, `date_to`, which the page sent but the API used to ignore.
+  Shared UI: `modules/shared/components/date-range-bar.tsx`, `modules/shared/lib/date-range.ts`.
+
+Open:
+- [ ] None of the new-user / order-number screens has been clicked through in a browser or exercised with a real sign-up.
+- [ ] Audit log viewer has no per-action filter or date filter yet.
+- [ ] Optional: admin email/push for new users, a chime for the bell, order stats per vendor/hub/rider.
+- [ ] Decision still open: cancelling *paid, not-yet-accepted* orders (auto-refund vs admin-approved cancel request).
+- [ ] Remove or repurpose the unused "cancellation window" setting; mobile builds/OTA for mobile-side changes; mobile push.
+- [ ] Analytics + SEO kickoff (`ANALYTICS_SEO_PLAN.md`), key rotation, mailboxes, delivery-promotion switch-on.
