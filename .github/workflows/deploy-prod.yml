@@ -187,14 +187,17 @@ jobs:
           # while the domain still points elsewhere, e.g. during a cutover to a new server.
           # Polls until it answers (up to ~90 s) instead of always waiting a fixed 20 s.
           ssh -i ~/.ssh/deploy_key ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} 'bash -s' <<'REMOTE'
+          set -e  # the two checks at the end must both pass, or this step (and the deploy) fails
           for i in $(seq 1 30); do
             if curl -skf --resolve api.avdanstore.com:443:127.0.0.1 https://api.avdanstore.com/health -o /dev/null \
-               && curl -skf --resolve avdanstore.com:443:127.0.0.1 https://avdanstore.com/favicon.ico -o /dev/null; then
+               && curl -skf --resolve avdanstore.com:443:127.0.0.1 https://avdanstore.com/ -o /dev/null; then
               break
             fi
             sleep 3
           done
           docker compose -f /opt/avdan/docker-compose.prod.yml ps --format 'table {{.Name}}\t{{.Status}}'
-          curl -skf --resolve avdanstore.com:443:127.0.0.1 https://avdanstore.com/favicon.ico -o /dev/null && echo 'avdanstore.com: OK'
-          curl -skf --resolve api.avdanstore.com:443:127.0.0.1 https://api.avdanstore.com/health && echo 'api.avdanstore.com: OK'
+          curl -skf --resolve avdanstore.com:443:127.0.0.1 https://avdanstore.com/ -o /dev/null
+          echo 'avdanstore.com: OK'
+          curl -skf --resolve api.avdanstore.com:443:127.0.0.1 https://api.avdanstore.com/health
+          echo ' api.avdanstore.com: OK'
           REMOTE
