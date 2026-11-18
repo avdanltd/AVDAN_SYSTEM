@@ -1,10 +1,13 @@
 import { apiClient } from '@/lib/api-client'
-import type { PaginatedResponse } from '@avdan/types'
+import type { OrderStats, PaginatedResponse } from '@avdan/types'
 import type { AdminOrder } from '../types'
 
 export const ordersService = {
   getOrders: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminOrder>>('/admin/orders', params),
+
+  getOrderStats: (params: Record<string, string>) =>
+    apiClient.get<OrderStats>('/admin/orders/stats', params),
 
   getOrder: (id: string) => apiClient.get<AdminOrder>(`/admin/orders/${id}`),
 

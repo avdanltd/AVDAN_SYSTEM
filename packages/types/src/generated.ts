@@ -540,6 +540,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/orders/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Order Stats
+         * @description How many orders were placed in a period (Lagos dates): counts per status group (awaiting
+         *     payment, in progress, delivered, release pending, completed, cancelled, disputes) plus a
+         *     day/week/month series. Powers the "Order numbers" panel on the admin Orders page.
+         */
+        get: operations["order_stats_admin_orders_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/orders": {
         parameters: {
             query?: never;
@@ -3091,6 +3113,17 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /** OrderGroupCount */
+        OrderGroupCount: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Statuses */
+            statuses: string[];
+            /** Count */
+            count: number;
+        };
         /** OrderItemRequest */
         OrderItemRequest: {
             /** Product Id */
@@ -3219,6 +3252,34 @@ export interface components {
             rider?: components["schemas"]["ReviewResponse"] | null;
             /** Products */
             products: components["schemas"]["OrderProductReview"][];
+        };
+        /** OrderStatsPoint */
+        OrderStatsPoint: {
+            /** Bucket */
+            bucket: string;
+            /** Total */
+            total: number;
+            /** By Group */
+            by_group: {
+                [key: string]: number;
+            };
+        };
+        /** OrderStatsResponse */
+        OrderStatsResponse: {
+            /** Date From */
+            date_from: string;
+            /** Date To */
+            date_to: string;
+            /** Bucket */
+            bucket: string;
+            /** Total */
+            total: number;
+            /** Value Kobo */
+            value_kobo: number;
+            /** Groups */
+            groups: components["schemas"]["OrderGroupCount"][];
+            /** Series */
+            series: components["schemas"]["OrderStatsPoint"][];
         };
         /** OrderVolumePoint */
         OrderVolumePoint: {
@@ -5476,10 +5537,54 @@ export interface operations {
             };
         };
     };
+    order_stats_admin_orders_stats_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                group?: string | null;
+                bucket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderStatsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_all_orders_admin_orders_get: {
         parameters: {
             query?: {
                 status?: string | null;
+                /** @description Order ID (start of it) */
+                search?: string | null;
+                /** @description Placed on/after (Lagos date) */
+                date_from?: string | null;
+                /** @description Placed on/before (Lagos date) */
+                date_to?: string | null;
                 vendor_id?: string | null;
                 customer_id?: string | null;
                 page?: number;

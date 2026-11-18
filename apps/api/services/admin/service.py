@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import String, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -301,6 +301,107 @@ class AdminService:
 
     # ── Order management ──────────────────────────────────────────────────────
 
+    # ── Order numbers ─────────────────────────────────────────────────────────
+
+    # The groups the admin reads order volume by. One source of truth: the stats endpoint returns
+    # these (with counts) so the chips, the chart and the list filter can never disagree.
+    ORDER_GROUPS: list[tuple[str, str, list[str]]] = [
+        ("pending", "Awaiting payment", ["PENDING"]),
+        ("in_progress", "In progress", [
+            "PAID", "VENDOR_ACCEPTED", "PREPARING", "READY_FOR_PICKUP", "PICKED_UP",
+            "IN_TRANSIT_TO_HUB", "ARRIVED_AT_HUB", "AT_HUB", "QA_IN_PROGRESS", "QA_PASSED",
+            "QA_FAILED", "VENDOR_REMEDIATION", "OUT_FOR_DELIVERY",
+        ]),
+        ("delivered", "Delivered", ["DELIVERED"]),
+        ("release_pending", "Release pending", ["PAYMENT_RELEASE_PENDING"]),
+        ("completed", "Completed", ["PAYMENT_RELEASED", "COMPLETED"]),
+        ("cancelled", "Cancelled / rejected", ["CANCELLED", "VENDOR_REJECTED"]),
+        ("issues", "Disputes & refunds", ["DISPUTED", "DISPUTE_RESOLVED", "REFUND_INITIATED", "FAILED_DELIVERY"]),
+    ]
+    # Orders that never turned into money: unpaid, cancelled before/after, or rejected by the vendor.
+    _NO_VALUE = ["PENDING", "CANCELLED", "VENDOR_REJECTED"]
+
+    @staticmethod
+    def _ordered_between(date_from: date | None, date_to: date | None) -> list:  # type: ignore[type-arg]
+        """`created_at` conditions for an inclusive Lagos-time date range."""
+        local = func.timezone(_LAGOS, Order.created_at)
+        conds = []
+        if date_from:
+            conds.append(local >= datetime.combine(date_from, time.min))
+        if date_to:
+            conds.append(local < datetime.combine(date_to + timedelta(days=1), time.min))
+        return conds
+
+    async def order_stats(
+        self, date_from: date | None, date_to: date | None, group: str | None, bucket: str | None
+    ) -> dict:
+        """How many orders were placed in a period: counts per status group plus a time series.
+
+        Chip counts (`groups`) always cover every group so they stay put while one is selected;
+        `total`, `value_kobo` and the series follow the selected `group`."""
+        local = func.timezone(_LAGOS, Order.created_at)
+        conds = self._ordered_between(date_from, date_to)
+
+        status_rows = (await self.db.execute(
+            select(Order.status, func.count()).where(*conds).group_by(Order.status)
+        )).all()
+        by_status = {s_: n for s_, n in status_rows}
+        status_to_group = {st: key for key, _, sts in self.ORDER_GROUPS for st in sts}
+
+        groups = []
+        for key, label, sts in self.ORDER_GROUPS:
+            groups.append({
+                "key": key, "label": label, "statuses": sts,
+                "count": sum(by_status.get(st, 0) for st in sts),
+            })
+        # A status added later but not grouped yet still counts, under "in progress".
+        stray = sum(n for st, n in by_status.items() if st not in status_to_group)
+        if stray:
+            groups[1]["count"] += stray
+
+        selected = next((g for g in self.ORDER_GROUPS if g[0] == group), None)
+        if selected:
+            conds.append(Order.status.in_(selected[2]))
+
+        total = (await self.db.execute(select(func.count()).select_from(Order).where(*conds))).scalar_one()
+        value = (await self.db.execute(
+            select(func.coalesce(func.sum(Order.total_kobo + Order.delivery_fee_kobo), 0))
+            .where(*conds, Order.status.notin_(self._NO_VALUE))
+        )).scalar_one()
+
+        first_seen = (await self.db.execute(select(func.min(local)).where(*conds))).scalar_one()
+        start = date_from or (first_seen.date() if first_seen else date.today())
+        end = date_to or date.today()
+        span_days = max((end - start).days + 1, 1)
+        unit = bucket if bucket in ("day", "week", "month") else (
+            "day" if span_days <= 35 else "week" if span_days <= 120 else "month"
+        )
+
+        trunc = func.date_trunc(unit, local)
+        rows = (await self.db.execute(
+            select(trunc, Order.status, func.count()).where(*conds).group_by(trunc, Order.status).order_by(trunc)
+        )).all()
+        points: dict[str, dict] = {}
+        for b, st, n in rows:
+            key = b.date().isoformat()
+            point = points.setdefault(key, {"bucket": key, "total": 0, "by_group": {}})
+            g = status_to_group.get(st, "in_progress")
+            point["total"] += n
+            point["by_group"][g] = point["by_group"].get(g, 0) + n
+
+        series: list[dict] = []
+        cursor = self._bucket_start(start, unit)
+        last = self._bucket_start(end, unit)
+        while cursor <= last and len(series) < 400:
+            key = cursor.isoformat()
+            series.append(points.get(key, {"bucket": key, "total": 0, "by_group": {}}))
+            cursor = self._next_bucket(cursor, unit)
+
+        return {
+            "date_from": start.isoformat(), "date_to": end.isoformat(), "bucket": unit,
+            "total": total, "value_kobo": int(value), "groups": groups, "series": series,
+        }
+
     async def list_orders(
         self,
         status: str | None,
@@ -308,9 +409,20 @@ class AdminService:
         customer_id: str | None,
         page: int,
         page_size: int,
+        search: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> tuple[list[Order], int]:
         query = select(Order)
         count_query = select(func.count()).select_from(Order)
+
+        extra = self._ordered_between(date_from, date_to)
+        if search and search.strip():
+            term = search.strip().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            extra.append(cast(Order.id, String).ilike(f"{term}%", escape="\\"))
+        for cond in extra:
+            query = query.where(cond)
+            count_query = count_query.where(cond)
 
         if status:
             statuses = [s.strip() for s in status.split(",") if s.strip()]

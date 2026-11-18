@@ -50,7 +50,8 @@ import { CreateAdminDialog } from "./create-admin-dialog";
 import { AssignHubDialog } from "./assign-hub-dialog";
 
 import { NewUsersPanel } from "./new-users-panel";
-import { PRESETS, presetRange, type RangePreset } from "../lib/date-range";
+import { presetRange, type RangePreset } from "@/modules/shared/lib/date-range";
+import { DateRangeBar } from "@/modules/shared/components/date-range-bar";
 
 const ROLE_OPTIONS = [
   { value: "__all__", label: "All Roles" },
@@ -270,48 +271,23 @@ export function UsersPage() {
       </div>
 
       {/* Who joined, and when */}
-      <div className="flex flex-wrap items-center gap-2">
-        {PRESETS.map((p) => (
-          <Button
-            key={p.value}
-            size="sm"
-            variant={preset === p.value ? "default" : "outline"}
-            onClick={() => {
-              setPreset(p.value);
-              setPage(1);
-            }}
-          >
-            {p.label}
-          </Button>
-        ))}
-        {preset === "custom" && (
-          <div className="flex items-center gap-2">
-            <Input
-              type="date"
-              aria-label="From date"
-              value={customFrom}
-              max={customTo || undefined}
-              onChange={(e) => {
-                setCustomFrom(e.target.value);
-                setPage(1);
-              }}
-              className="w-40"
-            />
-            <span className="text-sm text-muted-foreground">to</span>
-            <Input
-              type="date"
-              aria-label="To date"
-              value={customTo}
-              min={customFrom || undefined}
-              onChange={(e) => {
-                setCustomTo(e.target.value);
-                setPage(1);
-              }}
-              className="w-40"
-            />
-          </div>
-        )}
-      </div>
+      <DateRangeBar
+        preset={preset}
+        customFrom={customFrom}
+        customTo={customTo}
+        onPreset={(p) => {
+          setPreset(p);
+          setPage(1);
+        }}
+        onCustomFrom={(v) => {
+          setCustomFrom(v);
+          setPage(1);
+        }}
+        onCustomTo={(v) => {
+          setCustomTo(v);
+          setPage(1);
+        }}
+      />
 
       <NewUsersPanel
         params={statsParams}
