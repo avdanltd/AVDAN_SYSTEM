@@ -504,6 +504,10 @@ Shipped (all merged to main and deployed; no open PRs):
   `search` (order-ID prefix), `date_from`, `date_to`, which the page sent but the API used to ignore.
   Shared UI: `modules/shared/components/date-range-bar.tsx`, `modules/shared/lib/date-range.ts`.
 
+- **Faster deploys (2026-11-18):** `deploy-prod.yml` builds the six images in parallel (matrix), runs CI alongside them,
+  keeps layer cache in the registry (`:buildcache` tags) and polls health instead of a fixed sleep. Before: ~10-11 min.
+  First run (cold cache) took ~14 min because the VPS had to pull every layer; warm-cache timing recorded below once measured.
+
 Open:
 - [ ] None of the new-user / order-number screens has been clicked through in a browser or exercised with a real sign-up.
 - [ ] Audit log viewer has no per-action filter or date filter yet.
@@ -511,3 +515,4 @@ Open:
 - [ ] Decision still open: cancelling *paid, not-yet-accepted* orders (auto-refund vs admin-approved cancel request).
 - [ ] Remove or repurpose the unused "cancellation window" setting; mobile builds/OTA for mobile-side changes; mobile push.
 - [ ] Analytics + SEO kickoff (`ANALYTICS_SEO_PLAN.md`), key rotation, mailboxes, delivery-promotion switch-on.
+- [ ] Deploy speed: path filtering to skip unchanged apps (needs unchanged images re-tagged to the new commit).
