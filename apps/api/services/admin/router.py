@@ -14,6 +14,7 @@ from services.admin.schemas import (
     ApproveProductRequest,
     AttentionResponse,
     NewUserStatsResponse,
+    OrderStatsResponse,
     PaginatedAdminProductsResponse,
     RejectProductRequest,
 )
@@ -520,9 +521,27 @@ def _order_detail_resp(
     )
 
 
+@router.get("/orders/stats", response_model=OrderStatsResponse)
+async def order_stats(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    group: str | None = Query(default=None),
+    bucket: str | None = Query(default=None, pattern="^(day|week|month)$"),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderStatsResponse:
+    """How many orders were placed in a period (Lagos dates): counts per status group (awaiting
+    payment, in progress, delivered, release pending, completed, cancelled, disputes) plus a
+    day/week/month series. Powers the "Order numbers" panel on the admin Orders page."""
+    return OrderStatsResponse(**await AdminService(db).order_stats(date_from, date_to, group, bucket))
+
+
 @router.get("/orders", response_model=PaginatedOrdersResponse)
 async def list_all_orders(
     status: str | None = Query(default=None),
+    search: str | None = Query(default=None, max_length=64, description="Order ID (start of it)"),
+    date_from: date | None = Query(default=None, description="Placed on/after (Lagos date)"),
+    date_to: date | None = Query(default=None, description="Placed on/before (Lagos date)"),
     vendor_id: str | None = Query(default=None),
     customer_id: str | None = Query(default=None),
     page: int = Query(default=1, ge=1),
@@ -537,6 +556,9 @@ async def list_all_orders(
         customer_id=customer_id,
         page=page,
         page_size=page_size,
+        search=search,
+        date_from=date_from,
+        date_to=date_to,
     )
     riders = await _rider_info(db, orders)
     hubs = await _hub_info(db, orders)

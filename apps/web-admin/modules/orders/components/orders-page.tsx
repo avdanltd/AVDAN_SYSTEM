@@ -20,6 +20,9 @@ import type { AdminOrder } from "../types";
 import { formatKobo, formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
 import { ROUTES } from "@/config/routes";
+import { presetRange, type RangePreset } from "@/modules/shared/lib/date-range";
+import { DateRangeBar } from "@/modules/shared/components/date-range-bar";
+import { OrderStatsPanel } from "./order-stats-panel";
 
 const STATUS_OPTIONS = [
   { value: "__all__", label: "All Statuses" },
@@ -53,14 +56,26 @@ export function OrdersPage() {
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  // Which stats chip is selected ("" = none); its statuses drive the list filter below.
+  const [group, setGroup] = useState("");
+  const [preset, setPreset] = useState<RangePreset>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
 
-  const params: Record<string, string> = { page: String(page), limit: "20" };
+  // Lagos-calendar dates from the preset, or the two pickers when "Pick dates" is chosen.
+  const range =
+    preset === "custom" ? { from: customFrom, to: customTo } : presetRange(preset);
+
+  const params: Record<string, string> = { page: String(page), page_size: "20" };
   if (status) params.status = status;
   if (search) params.search = search;
-  if (dateFrom) params.date_from = dateFrom;
-  if (dateTo) params.date_to = dateTo;
+  if (range.from) params.date_from = range.from;
+  if (range.to) params.date_to = range.to;
+
+  const statsParams: Record<string, string> = {};
+  if (group) statsParams.group = group;
+  if (range.from) statsParams.date_from = range.from;
+  if (range.to) statsParams.date_to = range.to;
 
   const { data, isLoading, isError, refetch } = useAdminOrders(params);
   const orders = data?.items ?? [];
@@ -167,9 +182,39 @@ export function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-display text-2xl font-semibold text-foreground">Orders</h1>
-          <p className="text-sm text-muted-foreground">{total} total orders</p>
+          <p className="text-sm text-muted-foreground">
+            {total} {range.from || range.to || status || search ? "matching" : "total"} orders
+          </p>
         </div>
       </div>
+
+      <DateRangeBar
+        preset={preset}
+        customFrom={customFrom}
+        customTo={customTo}
+        onPreset={(p) => {
+          setPreset(p);
+          setPage(1);
+        }}
+        onCustomFrom={(v) => {
+          setCustomFrom(v);
+          setPage(1);
+        }}
+        onCustomTo={(v) => {
+          setCustomTo(v);
+          setPage(1);
+        }}
+      />
+
+      <OrderStatsPanel
+        params={statsParams}
+        group={group}
+        onGroupChange={(g, statuses) => {
+          setGroup(g);
+          setStatus(statuses);
+          setPage(1);
+        }}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -186,9 +231,10 @@ export function OrdersPage() {
           />
         </div>
         <Select
-          value={status || "__all__"}
+          value={status.includes(",") ? "__all__" : status || "__all__"}
           onValueChange={(v) => {
             setStatus(v === "__all__" ? "" : v);
+            setGroup("");
             setPage(1);
           }}
         >
@@ -203,26 +249,6 @@ export function OrdersPage() {
             ))}
           </SelectContent>
         </Select>
-        <Input
-          type="date"
-          value={dateFrom}
-          onChange={(e) => {
-            setDateFrom(e.target.value);
-            setPage(1);
-          }}
-          className="w-40"
-          placeholder="From"
-        />
-        <Input
-          type="date"
-          value={dateTo}
-          onChange={(e) => {
-            setDateTo(e.target.value);
-            setPage(1);
-          }}
-          className="w-40"
-          placeholder="To"
-        />
       </div>
 
       <div className="rounded-lg border border-border bg-background shadow-card">
