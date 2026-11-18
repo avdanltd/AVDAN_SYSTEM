@@ -72,3 +72,26 @@ class NewUserStatsResponse(BaseModel):
     active: int  # of those, how many have verified / set up their account
     by_role: dict[str, int]
     series: list[NewUserPoint]
+
+
+class OrderGroupCount(BaseModel):
+    key: str
+    label: str
+    statuses: list[str]
+    count: int
+
+
+class OrderStatsPoint(BaseModel):
+    bucket: str  # first day of the day / week / month, YYYY-MM-DD (Lagos time)
+    total: int
+    by_group: dict[str, int]
+
+
+class OrderStatsResponse(BaseModel):
+    date_from: str
+    date_to: str
+    bucket: str  # "day" | "week" | "month"
+    total: int
+    value_kobo: int  # gross value (goods + delivery) of the orders that were actually paid for
+    groups: list[OrderGroupCount]
+    series: list[OrderStatsPoint]
