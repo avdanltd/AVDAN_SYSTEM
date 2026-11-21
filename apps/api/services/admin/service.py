@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import date, datetime, time, timedelta
 
-from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy import String, and_, cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -171,18 +171,55 @@ class AdminService:
 
     # ── Vendor management ─────────────────────────────────────────────────────
 
+    @staticmethod
+    def _incomplete_vendor_condition():  # type: ignore[no-untyped-def]
+        """SQL twin of `vendor_checklist`'s required items (needs User joined): a vendor that has
+        not filled in location, street, map pin, a real description or a phone number. Rejected
+        vendors are left out, there is nothing left to chase."""
+        def blank(col):  # type: ignore[no-untyped-def]
+            return func.length(func.trim(func.coalesce(col, ""))) == 0
+
+        return and_(
+            Vendor.status != "rejected",
+            or_(
+                blank(Vendor.state), blank(Vendor.lga), blank(Vendor.city), blank(Vendor.street),
+                Vendor.lat.is_(None), Vendor.lng.is_(None),
+                func.length(func.trim(func.coalesce(Vendor.description, ""))) < 20,
+                blank(User.phone),
+            ),
+        )
+
+    async def vendor_counts(self) -> dict[str, int]:
+        """How many vendors in each status, plus how many have not filled all requirements, for
+        the numbers in the filter dropdown."""
+        by_status = dict((await self.db.execute(select(Vendor.status, func.count()).group_by(Vendor.status))).all())
+        incomplete = (await self.db.execute(
+            select(func.count()).select_from(Vendor).join(User, User.id == Vendor.user_id)
+            .where(self._incomplete_vendor_condition())
+        )).scalar_one()
+        return {
+            "all": sum(by_status.values()),
+            "pending": by_status.get("pending", 0), "active": by_status.get("active", 0),
+            "suspended": by_status.get("suspended", 0), "rejected": by_status.get("rejected", 0),
+            "incomplete": incomplete,
+        }
+
     async def list_vendors(
         self,
         status: str | None,
         page: int,
         page_size: int,
+        incomplete: bool = False,
     ) -> tuple[list[Vendor], int]:
-        query = select(Vendor)
-        count_query = select(func.count()).select_from(Vendor)
+        query = select(Vendor).join(User, User.id == Vendor.user_id)
+        count_query = select(func.count()).select_from(Vendor).join(User, User.id == Vendor.user_id)
 
         if status:
             query = query.where(Vendor.status == status)
             count_query = count_query.where(Vendor.status == status)
+        if incomplete:
+            query = query.where(self._incomplete_vendor_condition())
+            count_query = count_query.where(self._incomplete_vendor_condition())
 
         total_result = await self.db.execute(count_query)
         total = total_result.scalar_one()
@@ -483,6 +520,27 @@ class AdminService:
         if date_to:
             conds.append(local < datetime.combine(date_to + timedelta(days=1), time.min))
         return conds
+
+    async def order_status_counts(self, date_from: date | None, date_to: date | None) -> dict[str, int]:
+        """Orders per exact status in a period (Lagos dates), for the numbers in the status dropdown."""
+        conds = self._ordered_between(date_from, date_to)
+        rows = (await self.db.execute(select(Order.status, func.count()).where(*conds).group_by(Order.status))).all()
+        counts = {st: n for st, n in rows}
+        counts["__all__"] = sum(counts.values())
+        return counts
+
+    async def user_counts(self) -> dict:
+        by_role = dict((await self.db.execute(select(User.role, func.count()).group_by(User.role))).all())
+        by_status = dict((await self.db.execute(select(User.status, func.count()).group_by(User.status))).all())
+        return {"total": sum(by_role.values()), "by_role": by_role, "by_status": by_status}
+
+    async def product_counts(self, vendor_id: str | None) -> dict[str, int]:
+        q = select(Product.approval_status, func.count()).group_by(Product.approval_status)
+        if vendor_id:
+            q = q.where(Product.vendor_id == uuid.UUID(vendor_id))
+        counts = {st: n for st, n in (await self.db.execute(q)).all()}
+        counts["__all__"] = sum(counts.values())
+        return counts
 
     async def order_stats(
         self,

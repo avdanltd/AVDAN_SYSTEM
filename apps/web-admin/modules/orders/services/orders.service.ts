@@ -6,6 +6,9 @@ export const ordersService = {
   getOrders: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminOrder>>('/admin/orders', params),
 
+  getStatusCounts: (params: Record<string, string>) =>
+    apiClient.get<Record<string, number>>('/admin/orders/status-counts', params),
+
   getOrderStats: (params: Record<string, string>) =>
     apiClient.get<OrderStats>('/admin/orders/stats', params),
 

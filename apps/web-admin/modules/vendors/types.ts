@@ -7,6 +7,8 @@ export interface AdminVendor {
   status: string
   rating: number | null
   created_at: string
+  /** Required items this vendor has not filled in yet (labels). */
+  missing?: string[]
 }
 
 export interface VendorChecklistItem {

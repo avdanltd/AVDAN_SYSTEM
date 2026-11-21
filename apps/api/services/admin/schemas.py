@@ -217,3 +217,9 @@ class SetVendorBusinessRequest(BaseModel):
 
 class RenameBusinessRequest(BaseModel):
     name: str = Field(min_length=2, max_length=255)
+
+
+class UserCountsResponse(BaseModel):
+    total: int
+    by_role: dict[str, int]
+    by_status: dict[str, int]

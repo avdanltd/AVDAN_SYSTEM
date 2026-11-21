@@ -214,6 +214,8 @@ class UpdateVendorStatusRequest(BaseModel):
 
 class AdminVendorResponse(VendorResponse):
     user_id: str
+    # Required items this vendor has not filled in yet (labels), so admins see who needs chasing.
+    missing: list[str] = []
 
     @field_validator("user_id", mode="before")
     @classmethod
