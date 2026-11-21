@@ -99,3 +99,49 @@ def test_no_discount_clears_a_previous_one():
     p.compare_at_price_kobo, p.discount_type, p.discount_value = 150_000, "PERCENT", 20
     run(_admin_with(p).approve_product("x", 150_000))
     assert (p.price_kobo, p.compare_at_price_kobo, p.discount_type) == (150_000, None, None)
+
+
+# ── Vendor edits send a live product back for review ─────────────────────────
+
+def _vendor_svc(product):
+    from services.vendor.service import VendorService
+
+    svc = VendorService(None)  # type: ignore[arg-type]
+
+    async def _get(_uid, _pid):
+        return product
+
+    svc._get_product_for_user = _get  # type: ignore[method-assign]
+    return svc
+
+
+def _live_product():
+    return SimpleNamespace(
+        name="Rice", description="Good rice", vendor_price_kobo=100_000, price_kobo=120_000,
+        approval_status="APPROVED", rejection_reason=None, image_urls=["a.jpg"], stock_qty=5,
+        category_id=None, id=uuid.uuid4(),
+    )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"description": "New text"}, {"name": "Rice 50kg"}, {"image_urls": ["b.jpg"]}, {"price_kobo": 110_000}],
+)
+def test_changing_what_customers_see_sends_a_live_product_back_for_review(change):
+    from services.vendor.schemas import UpdateProductRequest
+
+    p = _live_product()
+    run(_vendor_svc(p).update_product("u", "p", UpdateProductRequest(**change)))
+    assert p.approval_status == "PENDING"
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"stock_qty": 9}, {"description": "Good rice"}, {"name": "Rice"}, {"image_urls": ["a.jpg"]}, {"price_kobo": 100_000}],
+)
+def test_stock_and_unchanged_values_do_not_trigger_review(change):
+    from services.vendor.schemas import UpdateProductRequest
+
+    p = _live_product()
+    run(_vendor_svc(p).update_product("u", "p", UpdateProductRequest(**change)))
+    assert p.approval_status == "APPROVED"

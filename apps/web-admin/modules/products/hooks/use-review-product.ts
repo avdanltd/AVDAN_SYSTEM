@@ -23,5 +23,13 @@ export function useReviewProduct() {
     onSettled,
   })
 
-  return { approve, reject }
+  const setCategory = useMutation({
+    mutationFn: ({ id, categoryId }: { id: string; categoryId: string | null }) =>
+      productsService.setCategory(id, categoryId),
+    onSuccess: () => toast.success('Category updated.'),
+    onError: (err: Error) => toast.error(err.message ?? 'Failed to change the category.'),
+    onSettled,
+  })
+
+  return { approve, reject, setCategory }
 }

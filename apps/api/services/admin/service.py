@@ -246,6 +246,23 @@ class AdminService:
             raise NotFoundException("Product not found")
         return product
 
+    async def set_product_category(self, product_id: str, category_id: str | None) -> tuple[Product, str | None]:
+        """Move a product to another category (or none). Returns (product, previous category id)."""
+        from services.categories.models import Category
+
+        product = await self._get_product(product_id)
+        before = str(product.category_id) if product.category_id else None
+        if category_id:
+            cat = (await self.db.execute(select(Category).where(Category.id == uuid.UUID(category_id)))).scalar_one_or_none()
+            if not cat:
+                raise NotFoundException("Category not found")
+            product.category_id = cat.id
+            product.category = cat
+        else:
+            product.category_id = None
+            product.category = None
+        return product, before
+
     async def approve_product(
         self,
         product_id: str,

@@ -24,6 +24,7 @@ import {
 } from '@avdan/ui'
 import { useAdminProducts } from '../hooks/use-admin-products'
 import { useReviewProduct } from '../hooks/use-review-product'
+import { ProductDetails } from './product-details'
 import type { AdminProduct } from '../types'
 import { Pagination } from '@/modules/shared/components/pagination'
 
@@ -206,7 +207,7 @@ export function ProductsPage() {
       cell: (row) => (
         <div className="flex gap-2">
           <Button size="sm" onClick={() => openPricing(row)}>
-            {row.approval_status === 'APPROVED' ? 'Change price' : 'Review'}
+            {row.approval_status === 'APPROVED' ? 'Edit' : 'Review'}
           </Button>
           {row.approval_status !== 'REJECTED' && (
             <Button
@@ -288,14 +289,15 @@ export function ProductsPage() {
 
       {pricing && (
         <Dialog open onOpenChange={(o) => !o && setPricing(null)}>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{pricing.approval_status === 'APPROVED' ? 'Change shown price' : 'Approve product'}</DialogTitle>
+              <DialogTitle>{pricing.approval_status === 'APPROVED' ? 'Edit product' : 'Review product'}</DialogTitle>
               <DialogDescription>
-                {pricing.name} · {pricing.vendor_name}
+                {pricing.name} · {pricing.vendor_name}. Check the photos, description and category, then set the price.
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-3">
+            <ProductDetails product={pricing} />
+            <div className="space-y-3 border-t border-border pt-4">
               <p className="text-sm">
                 Vendor price: <span className="font-medium">{naira(pricing.vendor_price_kobo)}</span>
               </p>
@@ -407,6 +409,20 @@ export function ProductsPage() {
               <Button variant="outline" onClick={() => setPricing(null)} disabled={approve.isPending}>
                 Cancel
               </Button>
+              {pricing.approval_status !== 'REJECTED' && (
+                <Button
+                  variant="outline"
+                  disabled={approve.isPending}
+                  onClick={() => {
+                    // e.g. a photo that looks deceptive: reject with a reason the vendor will see.
+                    setRejecting(pricing)
+                    setReason('')
+                    setPricing(null)
+                  }}
+                >
+                  Reject…
+                </Button>
+              )}
               <Button disabled={!canSubmit || approve.isPending} onClick={submitApprove}>
                 {approve.isPending ? 'Saving…' : pricing.approval_status === 'APPROVED' ? 'Save price' : 'Approve & go live'}
               </Button>

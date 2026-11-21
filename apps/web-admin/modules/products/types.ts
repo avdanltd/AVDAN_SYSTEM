@@ -2,6 +2,7 @@ export interface AdminProduct {
   id: string
   vendor_id: string
   vendor_name: string
+  category_id: string | null
   category_name: string | null
   name: string
   description: string | null
