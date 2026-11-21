@@ -42,7 +42,7 @@ def _item_resp(item: object, vendor_view: bool = False) -> OrderItemResponse:
     )
 
 
-def _event_resp(event: object) -> OrderEventResponse:
+def _event_resp(event: object, hide_metadata: bool = False) -> OrderEventResponse:
     from services.orders.models import OrderEvent
     e: OrderEvent = event  # type: ignore[assignment]
     return OrderEventResponse(
@@ -50,7 +50,9 @@ def _event_resp(event: object) -> OrderEventResponse:
         from_state=e.from_state,
         to_state=e.to_state,
         actor_role=e.actor_role,
-        metadata=e.event_metadata,
+        # A vendor only needs the story (what happened, when); the notes behind it can hold rider
+        # ids, payment references, the customer's dispute text and hub QA notes.
+        metadata=None if hide_metadata else e.event_metadata,
         created_at=e.created_at.isoformat(),
     )
 
@@ -111,7 +113,7 @@ def _order_detail_resp(
         delivery_quote=None if vendor_view else o.delivery_quote,
         delivery_address={} if vendor_view else o.delivery_address,
         items=[_item_resp(i, vendor_view) for i in (o.items or [])],
-        events=[_event_resp(e) for e in (o.events or [])],
+        events=[_event_resp(e, hide_metadata=vendor_view) for e in (o.events or [])],
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )

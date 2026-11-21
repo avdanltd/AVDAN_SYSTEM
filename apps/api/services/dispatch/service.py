@@ -452,14 +452,16 @@ class DispatchService:
         if not order.delivery_code:
             return
         key = f"delivery_code_attempts:{order.id}"
-        attempts = int(await self.redis.get(key) or 0)
-        if attempts >= _MAX_CODE_ATTEMPTS:
+        # Count the attempt FIRST, atomically, then judge it. Reading the counter, comparing and
+        # incrementing afterwards lets many parallel guesses all see "0 attempts so far".
+        attempts = int(await self.redis.incr(key))
+        if attempts == 1:
+            await self.redis.expire(key, 24 * 3600)
+        if attempts > _MAX_CODE_ATTEMPTS:
             raise ValidationException(
                 "Too many wrong codes. Contact AVDAN support to complete this delivery."
             )
         if not supplied or not hmac.compare_digest(supplied.strip(), order.delivery_code):
-            await self.redis.incr(key)
-            await self.redis.expire(key, 24 * 3600)
             raise ValidationException(
                 "Enter the 4-digit delivery code the customer received."
                 if not supplied else "That delivery code is not correct."
