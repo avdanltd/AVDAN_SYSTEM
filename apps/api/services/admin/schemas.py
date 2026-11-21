@@ -145,3 +145,23 @@ class AdminVendorProfileResponse(BaseModel):
     missing: list[str]  # labels of required items that are not done
     unread_from_vendor: int = 0
 
+
+
+class AdminProductVendorSummary(BaseModel):
+    """One row of the admin Products landing page: a vendor and what they have listed."""
+
+    vendor_id: str
+    name: str
+    status: str
+    logo_url: str | None = None
+    total: int
+    live: int
+    pending: int
+    rejected: int
+
+
+class PaginatedProductVendorsResponse(BaseModel):
+    items: list[AdminProductVendorSummary]
+    total: int
+    page: int
+    page_size: int

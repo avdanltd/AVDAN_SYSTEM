@@ -13,6 +13,7 @@ const VENDOR_STATUS_LABELS: Record<string, string> = {
   READY_FOR_PICKUP: 'Awaiting pickup',
   PICKED_UP: 'In delivery',
   IN_TRANSIT_TO_HUB: 'In delivery',
+  ARRIVED_AT_HUB: 'Arrived at hub',
   AT_HUB: 'At hub',
   QA_IN_PROGRESS: 'Hub inspection',
   QA_PASSED: 'Passed inspection',

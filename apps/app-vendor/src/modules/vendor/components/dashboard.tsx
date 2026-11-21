@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronRight, Inbox, Package, TrendingUp, Wallet } from 
 import { statusLabel } from '@/constants/status'
 import { useVendorAnalytics, useVendorOrders, useVendorProfile } from '../hooks/use-vendor'
 import { ACTIVE_STATUSES } from '../types'
+import { OrderHistogram } from './order-histogram'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
 function greeting(): string {
@@ -125,6 +126,12 @@ export function Dashboard() {
           <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Products</Text>
         </Card>
       </View>
+
+      {/* Orders at a glance */}
+      <View style={styles.sectionHeader}>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Your orders</Text>
+      </View>
+      <OrderHistogram />
 
       {/* Needs action */}
       <View style={styles.sectionHeader}>

@@ -20,3 +20,15 @@ export interface AdminProduct {
   special_delivery_fee_kobo: number
   created_at: string
 }
+
+/** One vendor on the Products landing page, with how much of their catalogue is in each state. */
+export interface ProductVendorSummary {
+  vendor_id: string
+  name: string
+  status: string
+  logo_url: string | null
+  total: number
+  live: number
+  pending: number
+  rejected: number
+}

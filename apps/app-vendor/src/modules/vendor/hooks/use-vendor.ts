@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Share } from 'react-native'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { walletCsv, walletRangeParams, type WalletRangeValue } from '@avdan/types'
 
 import { vendorService, type CreateProductPayload } from '../services/vendor.service'
@@ -324,5 +324,15 @@ export function useSendMessage() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['vendor-messages'] })
     },
+  })
+}
+
+/** Order counts by status group and a day/week/month series for the dashboard histogram. */
+export function useOrderStats(params: Record<string, string>) {
+  return useQuery({
+    queryKey: ['vendor-order-stats', params],
+    queryFn: () => vendorService.getOrderStats(params),
+    placeholderData: keepPreviousData,
+    refetchInterval: 60_000,
   })
 }

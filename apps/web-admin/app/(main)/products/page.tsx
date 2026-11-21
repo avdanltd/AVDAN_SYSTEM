@@ -1,5 +1,5 @@
-import { ProductsPage } from '@/modules/products/components/products-page'
+import { ProductsLandingPage } from '@/modules/products/components/products-landing-page'
 
 export default function Page() {
-  return <ProductsPage />
+  return <ProductsLandingPage />
 }

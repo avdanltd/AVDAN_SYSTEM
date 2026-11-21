@@ -1,10 +1,12 @@
-"use client";
+'use client'
 
-import { Button, Input } from "@avdan/ui";
-import { PRESETS, type RangePreset } from "../lib/date-range";
+import { PRESETS, type RangePreset } from '@avdan/types'
+import { Button } from '../primitives/button'
+import { Input } from '../primitives/input'
 
-/** Today / 7 days / 30 days / This month / All time / Pick dates — shared by every admin page
- * that slices numbers by period. The page owns the state; this only renders and reports. */
+/** Today / 7 days / 30 days / This month / All time / Pick dates. The page owns the state; this
+ * only renders the choices and reports what was picked. Shared by every dashboard that slices
+ * numbers by period. */
 export function DateRangeBar({
   preset,
   customFrom,
@@ -13,26 +15,21 @@ export function DateRangeBar({
   onCustomFrom,
   onCustomTo,
 }: {
-  preset: RangePreset;
-  customFrom: string;
-  customTo: string;
-  onPreset: (p: RangePreset) => void;
-  onCustomFrom: (v: string) => void;
-  onCustomTo: (v: string) => void;
+  preset: RangePreset
+  customFrom: string
+  customTo: string
+  onPreset: (p: RangePreset) => void
+  onCustomFrom: (v: string) => void
+  onCustomTo: (v: string) => void
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
       {PRESETS.map((p) => (
-        <Button
-          key={p.value}
-          size="sm"
-          variant={preset === p.value ? "default" : "outline"}
-          onClick={() => onPreset(p.value)}
-        >
+        <Button key={p.value} size="sm" variant={preset === p.value ? 'default' : 'outline'} onClick={() => onPreset(p.value)}>
           {p.label}
         </Button>
       ))}
-      {preset === "custom" && (
+      {preset === 'custom' && (
         <div className="flex items-center gap-2">
           <Input
             type="date"
@@ -54,5 +51,5 @@ export function DateRangeBar({
         </div>
       )}
     </div>
-  );
+  )
 }

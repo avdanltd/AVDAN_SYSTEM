@@ -1,4 +1,4 @@
-import type { PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
+import type { OrderStats, PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
 import type {
   Bank,
   Category,
@@ -67,6 +67,9 @@ export const vendorService = {
 
   setAvailability: (productId: string, available: boolean) =>
     apiClient.patch<Product>(`/vendors/me/products/${productId}/availability`, { available }),
+
+  getOrderStats: (params: Record<string, string>) =>
+    apiClient.get<OrderStats>('/orders/vendor/stats', params),
 
   getAttention: () =>
     apiClient.get<{ orders: number; products: number; messages: number }>('/vendors/me/attention'),
