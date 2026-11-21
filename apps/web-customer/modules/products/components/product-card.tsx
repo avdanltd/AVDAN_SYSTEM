@@ -70,7 +70,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             router.push(productHref)
           }
         }}
-        className="group block cursor-pointer"
+        className="group block h-full cursor-pointer"
       >
         <Card className="h-full overflow-hidden transition-all duration-300 hover:-translate-y-0.5 hover:shadow-card">
           {/* Image */}
@@ -120,7 +120,7 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             )}
           </div>
 
-          <CardContent className="flex flex-col gap-2 p-3">
+          <CardContent className="flex flex-1 flex-col gap-2 p-3">
             {/* Vendor */}
             <Link
               href={ROUTES.vendor(product.vendor_slug)}
@@ -129,19 +129,20 @@ export function ProductCard({ product, badgeLabel }: ProductCardProps) {
             >
               {product.vendor_name}
             </Link>
-            {formatVendorLocation(product.vendor_city, product.vendor_state) && (
-              <p className="line-clamp-1 text-[11px] text-muted-foreground">
-                {formatVendorLocation(product.vendor_city, product.vendor_state)}
-              </p>
-            )}
+            {/* Optional lines keep their height when empty so all cards in a row match. */}
+            <p className="line-clamp-1 min-h-4 text-[11px] text-muted-foreground">
+              {formatVendorLocation(product.vendor_city, product.vendor_state)}
+            </p>
 
-            {(product.review_count ?? 0) > 0 && (
-              <p className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                <span className="font-medium text-foreground">{(product.rating ?? 0).toFixed(1)}</span>
-                <span>({product.review_count})</span>
-              </p>
-            )}
+            <p className="flex min-h-4 items-center gap-1 text-[11px] text-muted-foreground">
+              {(product.review_count ?? 0) > 0 && (
+                <>
+                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <span className="font-medium text-foreground">{(product.rating ?? 0).toFixed(1)}</span>
+                  <span>({product.review_count})</span>
+                </>
+              )}
+            </p>
 
             {/* Name — reserves 2 lines of height always, so a short title doesn't shrink the
                 card and break grid uniformity with its longer-titled neighbours. */}

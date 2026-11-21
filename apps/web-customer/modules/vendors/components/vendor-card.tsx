@@ -19,10 +19,10 @@ function getInitials(name: string): string {
 
 export function VendorCard({ vendor }: { vendor: Vendor }) {
   return (
-    <Link href={ROUTES.vendor(vendor.slug)} className="group block">
-      <Card className="overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+    <Link href={ROUTES.vendor(vendor.slug)} className="group block h-full">
+      <Card className="flex h-full flex-col overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
         {/* Banner */}
-        <div className="relative h-28 bg-gradient-to-br from-primary/20 via-primary/10 to-secondary">
+        <div className="relative h-28 shrink-0 bg-gradient-to-br from-primary/20 via-primary/10 to-secondary">
           {vendor.logo_url && (
             <Image
               src={vendor.logo_url}
@@ -43,7 +43,7 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
           </div>
         </div>
 
-        <div className="px-5 pb-4 pt-9">
+        <div className="flex flex-1 flex-col px-5 pb-4 pt-9">
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
               {vendor.name}
@@ -59,23 +59,25 @@ export function VendorCard({ vendor }: { vendor: Vendor }) {
               {vendor.status !== 'active' ? vendor.status : vendor.is_open === false ? 'Closed' : 'Open'}
             </Badge>
           </div>
-          {formatVendorLocation(vendor.city, vendor.state) && (
-            <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="line-clamp-1">
-                {formatVendorLocation(vendor.city, vendor.state)}
-                {vendor.distance_km != null ? ` · ${vendor.distance_km} km away` : ''}
-              </span>
-            </p>
-          )}
+          {/* Location and description always take their space (even when empty) so every card in a
+              row is the same height whatever the vendor typed. */}
+          <p className="mt-0.5 flex min-h-4 items-center gap-1 text-xs text-muted-foreground">
+            {formatVendorLocation(vendor.city, vendor.state) && (
+              <>
+                <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+                <span className="line-clamp-1">
+                  {formatVendorLocation(vendor.city, vendor.state)}
+                  {vendor.distance_km != null ? ` · ${vendor.distance_km} km away` : ''}
+                </span>
+              </>
+            )}
+          </p>
 
-          {vendor.description && (
-            <p className="mt-1 text-sm text-muted-foreground line-clamp-2 leading-relaxed">
-              {vendor.description}
-            </p>
-          )}
+          <p className="mt-1 line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
+            {vendor.description}
+          </p>
 
-          <div className="mt-3 flex items-center justify-between">
+          <div className="mt-auto flex items-center justify-between pt-3">
             {vendor.rating !== null && (vendor.review_count ?? 0) > 0 ? (
               <span className="flex items-center gap-1 text-sm font-medium text-warning">
                 <Star className="h-3.5 w-3.5 fill-current" />

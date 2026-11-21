@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Image, Modal, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
-import { CheckCircle2, MapPin, Package, Receipt } from 'lucide-react-native'
+import { CheckCircle2, Package, Receipt, User } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useOrderActions, useVendorOrder } from '../hooks/use-vendor'
@@ -130,9 +130,6 @@ export function OrderDetail({ orderId }: { orderId: string }) {
   }
 
   const actions = ORDER_ACTIONS[order.status] ?? []
-  const address = [order.delivery_address.street, order.delivery_address.city, order.delivery_address.state]
-    .filter(Boolean)
-    .join(', ')
 
   const submitReject = () => {
     const trimmed = reason.trim()
@@ -213,18 +210,19 @@ export function OrderDetail({ orderId }: { orderId: string }) {
           </View>
         </Card>
 
-        {address ? (
-          <Card style={styles.block}>
-            <View style={styles.blockHead}>
-              <MapPin size={16} color={colors.primary} />
-              <Text style={[styles.blockTitle, { color: colors.foreground }]}>Delivering to</Text>
-            </View>
-            <Text style={[styles.addressText, { color: colors.foreground }]}>{address}</Text>
-            <Text style={[styles.addressHint, { color: colors.subtleForeground }]}>
-              A rider collects from your store — you do not deliver this yourself.
-            </Text>
-          </Card>
-        ) : null}
+        {/* Name only: the customer's address, phone and email are deliberately never shown to vendors. */}
+        <Card style={styles.block}>
+          <View style={styles.blockHead}>
+            <User size={16} color={colors.primary} />
+            <Text style={[styles.blockTitle, { color: colors.foreground }]}>Customer</Text>
+          </View>
+          <Text style={[styles.addressText, { color: colors.foreground }]}>
+            {order.customer_name ?? 'Customer'}
+          </Text>
+          <Text style={[styles.addressHint, { color: colors.subtleForeground }]}>
+            A rider collects from your store — you do not deliver this yourself.
+          </Text>
+        </Card>
 
         <Card style={styles.block}>
           <View style={styles.blockHead}>

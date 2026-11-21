@@ -41,7 +41,7 @@ const config: ExpoConfig = {
     ...(GOOGLE_SERVICES_JSON ? { googleServicesFile: GOOGLE_SERVICES_JSON } : {}),
     package: 'com.avdanstore.vendor',
     adaptiveIcon: {
-      backgroundColor: '#E07A06',
+      backgroundColor: '#9EA6B2',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',

@@ -15,10 +15,11 @@ export interface OrderItem {
 
 export interface VendorOrder {
   id: string
-  customer_id: string
+  /** The customer's name only. The API withholds their address, phone, email and id from
+   * vendors on purpose, so vendors don't deal with customers outside AVDAN. */
+  customer_name?: string | null
   status: OrderStatus
   total_kobo: number
-  delivery_address: Record<string, unknown>
   created_at: string
   updated_at: string
   items?: OrderItem[]

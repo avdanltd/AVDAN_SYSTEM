@@ -61,19 +61,28 @@ def _total_for(o: object, vendor_view: bool) -> int:
     return order.total_kobo
 
 
-def _order_resp(order: object, vendor_name: str | None = None, vendor_view: bool = False) -> OrderResponse:
+def _order_resp(
+    order: object,
+    vendor_name: str | None = None,
+    vendor_view: bool = False,
+    customer_name: str | None = None,
+) -> OrderResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderResponse(
         id=str(o.id),
-        customer_id=str(o.customer_id),
+        # A vendor sees the customer's name and the order ID, nothing else about them: no address,
+        # phone, email, or even the customer's id. Otherwise vendors start dealing with customers
+        # directly and bypass AVDAN. Riders collect from the vendor, so the vendor needs none of it.
+        customer_id="" if vendor_view else str(o.customer_id),
+        customer_name=customer_name if vendor_view else None,
         vendor_id=str(o.vendor_id),
         vendor_name=vendor_name,
         status=o.status,
         total_kobo=_total_for(o, vendor_view),
         delivery_fee_kobo=o.delivery_fee_kobo,
-        delivery_quote=o.delivery_quote,
-        delivery_address=o.delivery_address,
+        delivery_quote=None if vendor_view else o.delivery_quote,
+        delivery_address={} if vendor_view else o.delivery_address,
         items=[_item_resp(i, vendor_view) for i in (o.items or [])],
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
@@ -81,20 +90,24 @@ def _order_resp(order: object, vendor_name: str | None = None, vendor_view: bool
 
 
 def _order_detail_resp(
-    order: object, vendor_name: str | None = None, vendor_view: bool = False
+    order: object,
+    vendor_name: str | None = None,
+    vendor_view: bool = False,
+    customer_name: str | None = None,
 ) -> OrderDetailResponse:
     from services.orders.models import Order
     o: Order = order  # type: ignore[assignment]
     return OrderDetailResponse(
         id=str(o.id),
-        customer_id=str(o.customer_id),
+        customer_id="" if vendor_view else str(o.customer_id),
+        customer_name=customer_name if vendor_view else None,
         vendor_id=str(o.vendor_id),
         vendor_name=vendor_name,
         status=o.status,
         total_kobo=_total_for(o, vendor_view),
         delivery_fee_kobo=o.delivery_fee_kobo,
-        delivery_quote=o.delivery_quote,
-        delivery_address=o.delivery_address,
+        delivery_quote=None if vendor_view else o.delivery_quote,
+        delivery_address={} if vendor_view else o.delivery_address,
         items=[_item_resp(i, vendor_view) for i in (o.items or [])],
         events=[_event_resp(e) for e in (o.events or [])],
         created_at=o.created_at.isoformat(),
@@ -128,6 +141,19 @@ async def _vendor_names(db: AsyncSession, order_list: list) -> dict:
 
 
 # ── Customer endpoints ────────────────────────────────────────────────────────
+
+async def _customer_names(db: AsyncSession, order_list: list) -> dict:
+    """{customer_id: name} for the vendor's order screens. Name only, by design (see _order_resp)."""
+    from sqlalchemy import select
+
+    from services.auth.models import User
+
+    ids = list({o.customer_id for o in order_list})
+    if not ids:
+        return {}
+    res = await db.execute(select(User.id, User.name).where(User.id.in_(ids)))
+    return {row[0]: row[1] for row in res.all()}
+
 
 @router.post("", response_model=OrderResponse, status_code=201)
 async def create_order(
@@ -247,8 +273,9 @@ async def list_vendor_orders(
     orders, total = await svc.list_vendor_orders(
         current_user.user_id, status, page, page_size
     )
+    names = await _customer_names(db, orders)
     return PaginatedOrdersResponse(
-        items=[_order_resp(o, vendor_view=True) for o in orders],
+        items=[_order_resp(o, vendor_view=True, customer_name=names.get(o.customer_id)) for o in orders],
         total=total,
         page=page,
         page_size=page_size,
@@ -263,7 +290,8 @@ async def get_vendor_order(
 ) -> OrderDetailResponse:
     svc = OrderService(db)
     order = await svc.get_vendor_order(current_user.user_id, order_id)
-    return _order_detail_resp(order, vendor_view=True)
+    names = await _customer_names(db, [order])
+    return _order_detail_resp(order, vendor_view=True, customer_name=names.get(order.customer_id))
 
 
 @router.post("/vendor/{order_id}/accept", response_model=OrderResponse)
