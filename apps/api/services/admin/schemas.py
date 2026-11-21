@@ -9,6 +9,7 @@ class AdminProductResponse(BaseModel):
     id: str
     vendor_id: str
     vendor_name: str
+    category_id: str | None = None
     category_name: str | None
     name: str
     description: str | None
@@ -95,3 +96,7 @@ class OrderStatsResponse(BaseModel):
     value_kobo: int  # gross value (goods + delivery) of the orders that were actually paid for
     groups: list[OrderGroupCount]
     series: list[OrderStatsPoint]
+
+
+class SetProductCategoryRequest(BaseModel):
+    category_id: str | None = None  # null = no category

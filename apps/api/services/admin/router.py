@@ -17,6 +17,7 @@ from services.admin.schemas import (
     OrderStatsResponse,
     PaginatedAdminProductsResponse,
     RejectProductRequest,
+    SetProductCategoryRequest,
 )
 from services.admin.service import AdminService
 from services.analytics.audit import record_audit
@@ -284,6 +285,7 @@ def _admin_product_response(p: object) -> AdminProductResponse:
         id=str(product.id),
         vendor_id=str(product.vendor_id),
         vendor_name=product.vendor.name,
+        category_id=str(product.category_id) if product.category_id else None,
         category_name=cat.name if cat else None,
         name=product.name,
         description=product.description,
@@ -346,6 +348,22 @@ async def reject_product(
 ) -> AdminProductResponse:
     product = await AdminService(db).reject_product(product_id, data.reason)
     record_audit(db, current_user.user_id, "product.reject", "product", product_id, None, {"reason": data.reason})
+    return _admin_product_response(product)
+
+
+@router.patch("/products/{product_id}/category", response_model=AdminProductResponse)
+async def set_product_category(
+    product_id: str,
+    data: SetProductCategoryRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminProductResponse:
+    """Fix a product's category at any time (e.g. the vendor put it in the wrong one)."""
+    product, before = await AdminService(db).set_product_category(product_id, data.category_id)
+    record_audit(
+        db, current_user.user_id, "product.category", "product", product_id,
+        {"category_id": before}, {"category_id": data.category_id},
+    )
     return _admin_product_response(product)
 
 

@@ -199,7 +199,7 @@ export function ProductForm({ productId }: Props) {
             </View>
           </Field>
 
-          <Field label="Description" error={errors.description} hint="Optional, but it helps customers decide.">
+          <Field label="Description" error={errors.description} hint="Optional, but it helps customers decide. AVDAN reviews the description, photos and price; changing any of them later sends the product back for approval.">
             <View style={[...fieldStyle('description'), styles.textareaWrap]}>
               <TextInput
                 style={[styles.input, styles.textarea, { color: colors.foreground }]}

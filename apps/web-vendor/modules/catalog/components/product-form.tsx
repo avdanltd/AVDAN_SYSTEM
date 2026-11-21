@@ -199,7 +199,8 @@ export function ProductForm({ product, onSuccess }: ProductFormProps) {
                 {field.value > 0 && (
                   <p className="text-xs text-muted-foreground">
                     You are paid ₦{field.value.toLocaleString('en-NG')} per unit; AVDAN reviews
-                    it and sets the price customers see. Changing it later needs approval again.
+                    it and sets the price customers see. Changing the price, name, description or photos
+                    later sends the product back to AVDAN for approval.
                   </p>
                 )}
               </FormItem>

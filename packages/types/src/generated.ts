@@ -540,6 +540,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/products/{product_id}/category": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Set Product Category
+         * @description Fix a product's category at any time (e.g. the vendor put it in the wrong one).
+         */
+        patch: operations["set_product_category_admin_products__product_id__category_patch"];
+        trace?: never;
+    };
     "/admin/orders/stats": {
         parameters: {
             query?: never;
@@ -2378,6 +2398,8 @@ export interface components {
             vendor_id: string;
             /** Vendor Name */
             vendor_name: string;
+            /** Category Id */
+            category_id?: string | null;
             /** Category Name */
             category_name: string | null;
             /** Name */
@@ -3919,6 +3941,11 @@ export interface components {
             pin: string;
             /** Current Password */
             current_password: string;
+        };
+        /** SetProductCategoryRequest */
+        SetProductCategoryRequest: {
+            /** Category Id */
+            category_id?: string | null;
         };
         /** SetStoreOpenRequest */
         SetStoreOpenRequest: {
@@ -5514,6 +5541,45 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["RejectProductRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProductResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_product_category_admin_products__product_id__category_patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                product_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetProductCategoryRequest"];
             };
         };
         responses: {
