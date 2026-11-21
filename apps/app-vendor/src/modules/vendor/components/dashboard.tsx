@@ -6,6 +6,7 @@ import { AlertTriangle, ChevronRight, Inbox, Package, TrendingUp, Wallet } from 
 import { statusLabel } from '@/constants/status'
 import { useVendorAnalytics, useVendorOrders, useVendorProfile } from '../hooks/use-vendor'
 import { ACTIVE_STATUSES } from '../types'
+import { BranchPrompt } from './branch-prompt'
 import { OrderHistogram } from './order-histogram'
 import { Badge, Button, Card, EmptyState, Skeleton, fonts, formatKobo, orderRef, radius, spacing, useTheme } from '@avdan/mobile'
 
@@ -53,6 +54,8 @@ export function Dashboard() {
           />
         ) : null}
       </View>
+
+      <BranchPrompt />
 
       {/* New orders — the thing a vendor opens this app for */}
       <Card

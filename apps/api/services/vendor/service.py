@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.exceptions import NotFoundException
-from services.vendor.models import Product, Vendor
+from services.vendor.models import Business, Product, Vendor
 from services.vendor.schemas import (
     CreateProductRequest,
     UpdateProductRequest,
@@ -58,6 +58,7 @@ class VendorService:
         lga: str | None = None,
         near_lat: float | None = None,
         near_lng: float | None = None,
+        business_slug: str | None = None,
     ) -> tuple[list[Product], int]:
         from services.categories.models import Category
 
@@ -87,6 +88,14 @@ class VendorService:
         if vendor_id:
             q = q.where(Product.vendor_id == uuid.UUID(vendor_id))
             cq = cq.where(Product.vendor_id == uuid.UUID(vendor_id))
+
+        if business_slug:
+            # Every product of every branch of one business (each branch still sells its own).
+            in_business = Product.vendor_id.in_(
+                select(Vendor.id).join(Business, Business.id == Vendor.business_id).where(Business.slug == business_slug)
+            )
+            q = q.where(in_business)
+            cq = cq.where(in_business)
 
         if search:
             pattern = f"%{search}%"
@@ -187,35 +196,78 @@ class VendorService:
         lga: str | None = None,
         near_lat: float | None = None,
         near_lng: float | None = None,
+        group: bool = False,
     ) -> tuple[list[Vendor], int]:
-        query = select(Vendor).where(Vendor.status == "active")
-        count_query = select(func.count()).select_from(Vendor).where(Vendor.status == "active")
-
+        """`group=True` shows each business once (its nearest or best-rated matching branch stands
+        for it) so the marketplace lists a brand, not one card per branch."""
+        conds = [Vendor.status == "active"]
         if zone_id:
-            query = query.where(Vendor.zone_id == zone_id)
-            count_query = count_query.where(Vendor.zone_id == zone_id)
-
+            conds.append(Vendor.zone_id == zone_id)
         if search:
             pattern = f"%{search}%"
-            query = query.where(Vendor.name.ilike(pattern))
-            count_query = count_query.where(Vendor.name.ilike(pattern))
+            # A search for a brand finds all its branches, whatever each branch is called.
+            conds.append(or_(
+                Vendor.name.ilike(pattern),
+                Vendor.business_id.in_(select(Business.id).where(Business.name.ilike(pattern))),
+            ))
+        conds.extend(self._location_where(state, lga))
 
-        for cond in self._location_where(state, lga):
-            query = query.where(cond)
-            count_query = count_query.where(cond)
-
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar_one()
-
-        offset = (page - 1) * page_size
         if near_lat is not None and near_lng is not None:
-            query = query.order_by(self._distance_expr(near_lat, near_lng).asc().nulls_last(), Vendor.rating.desc())
+            order = [self._distance_expr(near_lat, near_lng).asc().nulls_last(), Vendor.rating.desc()]
         else:
-            query = query.order_by(Vendor.rating.desc(), Vendor.created_at.desc())
-        query = query.offset(offset).limit(page_size)
+            order = [Vendor.rating.desc(), Vendor.created_at.desc()]
+        offset = (page - 1) * page_size
 
-        result = await self.db.execute(query)
+        if group:
+            rank = func.row_number().over(
+                partition_by=func.coalesce(Vendor.business_id, Vendor.id), order_by=order
+            ).label("rn")
+            ranked = select(Vendor.id.label("id"), rank).where(*conds).subquery()
+            total = (await self.db.execute(
+                select(func.count()).select_from(ranked).where(ranked.c.rn == 1)
+            )).scalar_one()
+            result = await self.db.execute(
+                select(Vendor).join(ranked, ranked.c.id == Vendor.id).where(ranked.c.rn == 1)
+                .order_by(*order).offset(offset).limit(page_size)
+            )
+            return list(result.scalars().all()), total
+
+        total = (await self.db.execute(select(func.count()).select_from(Vendor).where(*conds))).scalar_one()
+        result = await self.db.execute(select(Vendor).where(*conds).order_by(*order).offset(offset).limit(page_size))
         return list(result.scalars().all()), total
+
+    async def business_info(self, vendors: list[Vendor]) -> dict:
+        """{business_id: {slug, name, count, places}} for the businesses these vendors belong to:
+        how many active branches each has and where, for the "3 branches" label on a card."""
+        ids = {v.business_id for v in vendors if v.business_id}
+        if not ids:
+            return {}
+        names = {b.id: b for b in (await self.db.execute(select(Business).where(Business.id.in_(ids)))).scalars().all()}
+        rows = (await self.db.execute(
+            select(Vendor.business_id, Vendor.city, Vendor.state).where(Vendor.business_id.in_(ids), Vendor.status == "active")
+        )).all()
+        info: dict = {}
+        for bid, city, state in rows:
+            d = info.setdefault(bid, {"count": 0, "places": []})
+            d["count"] += 1
+            place = ", ".join(x for x in (city, state) if x and x.strip())
+            if place and place not in d["places"]:
+                d["places"].append(place)
+        return {
+            bid: {"slug": names[bid].slug, "name": names[bid].name, "count": d["count"], "places": d["places"][:4]}
+            for bid, d in info.items() if bid in names
+        }
+
+    async def get_business_by_slug(self, slug: str) -> tuple[Business, list[Vendor]]:
+        biz = (await self.db.execute(select(Business).where(Business.slug == slug))).scalar_one_or_none()
+        if not biz:
+            raise NotFoundException("Business not found")
+        branches = list((await self.db.execute(
+            select(Vendor).where(Vendor.business_id == biz.id, Vendor.status == "active").order_by(Vendor.name)
+        )).scalars().all())
+        if not branches:
+            raise NotFoundException("Business not found")
+        return biz, branches
 
     async def get_vendor_by_slug(self, slug: str) -> Vendor:
         result = await self.db.execute(
@@ -289,7 +341,7 @@ class VendorService:
             vendor.description = data.description
 
         if data.logo_url is not None:
-            vendor.logo_url = data.logo_url
+            vendor.logo_url = data.logo_url or None  # an empty string removes the logo
 
         # Structured fields (street, town/city, state, LGA, landmark) win; the single free-text
         # `address` is still accepted from older app versions.

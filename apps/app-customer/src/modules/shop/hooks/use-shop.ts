@@ -34,6 +34,14 @@ export function useVendors(where: LocationQuery = {}) {
   })
 }
 
+export function useBusiness(slug: string) {
+  return useQuery({
+    queryKey: ['business', slug],
+    queryFn: () => shopService.getBusiness(slug),
+    enabled: !!slug,
+  })
+}
+
 export function useVendor(slug: string) {
   return useQuery({
     queryKey: ['vendor', slug],

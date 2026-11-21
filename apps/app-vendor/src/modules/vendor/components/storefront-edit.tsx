@@ -6,6 +6,7 @@ import { z } from 'zod'
 
 import { useUpdateStorefront, useVendorProfile } from '../hooks/use-vendor'
 import { AddressFields, Button, Card, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
+import { LogoPicker } from './logo-picker'
 import { addressFromApi, addressProblem, type AddressValue } from '@avdan/types'
 
 // Mirrors UpdateVendorProfileRequest: name 1-255, description free text. The address is validated
@@ -113,6 +114,8 @@ export function StorefrontEdit() {
     >
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Card style={styles.card}>
+          <LogoPicker logoUrl={vendor?.logo_url} />
+
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>Store name</Text>
             <View style={fieldStyle('name')}>

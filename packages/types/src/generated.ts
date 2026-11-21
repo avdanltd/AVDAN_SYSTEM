@@ -469,6 +469,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/branch-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Branch Requests */
+        get: operations["list_branch_requests_admin_branch_requests_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/branch-requests/{request_id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve Branch Request */
+        post: operations["approve_branch_request_admin_branch_requests__request_id__approve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/branch-requests/{request_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Branch Request */
+        post: operations["reject_branch_request_admin_branch_requests__request_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/businesses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Businesses */
+        get: operations["list_businesses_admin_businesses_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/businesses/{business_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename Business */
+        patch: operations["rename_business_admin_businesses__business_id__patch"];
+        trace?: never;
+    };
+    "/admin/vendors/{vendor_id}/business": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Vendor Business
+         * @description Link a vendor to a business (or start a new one from it): the fix for brands that were
+         *     registered separately before this existed.
+         */
+        put: operations["set_vendor_business_admin_vendors__vendor_id__business_put"];
+        post?: never;
+        /** Unlink Vendor Business */
+        delete: operations["unlink_vendor_business_admin_vendors__vendor_id__business_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/vendors/{vendor_id}": {
         parameters: {
             query?: never;
@@ -1342,6 +1449,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vendors/business/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Business
+         * @description One brand and its active branches (nearest first when a location is given).
+         */
+        get: operations["get_business_vendors_business__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vendors/me": {
         parameters: {
             query?: never;
@@ -1412,6 +1539,84 @@ export interface paths {
         get: operations["my_unread_messages_vendors_me_messages_unread_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/business": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Business
+         * @description Is this store part of a business, and is a request to join one waiting?
+         */
+        get: operations["my_business_vendors_me_business_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/business/suggest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Suggest Business */
+        get: operations["suggest_business_vendors_me_business_suggest_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/business/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Request To Join Business
+         * @description "We are a branch of ...": goes to an AVDAN admin, who vets it before anything is linked.
+         */
+        post: operations["request_to_join_business_vendors_me_business_request_post"];
+        /** Cancel Business Request */
+        delete: operations["cancel_business_request_vendors_me_business_request_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/business/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Leave Business
+         * @description This store steps out of its business. Other branches are not affected.
+         */
+        post: operations["leave_business_vendors_me_business_leave_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2683,6 +2888,8 @@ export interface components {
              * @default 0
              */
             unread_from_vendor: number;
+            business?: components["schemas"]["MyBusiness"] | null;
+            link_request?: components["schemas"]["LinkRequestInfo"] | null;
         };
         /** AdminVendorResponse */
         AdminVendorResponse: {
@@ -2734,8 +2941,27 @@ export interface components {
             review_count: number;
             /** Created At */
             created_at: string;
+            /** Business Slug */
+            business_slug?: string | null;
+            /** Business Name */
+            business_name?: string | null;
+            /**
+             * Branch Count
+             * @default 1
+             */
+            branch_count: number;
+            /**
+             * Branch Places
+             * @default []
+             */
+            branch_places: string[];
             /** User Id */
             user_id: string;
+        };
+        /** ApproveBranchRequest */
+        ApproveBranchRequest: {
+            /** Business Name */
+            business_name?: string | null;
         };
         /** ApprovePayoutRequest */
         ApprovePayoutRequest: {
@@ -2836,6 +3062,113 @@ export interface components {
              * Format: binary
              */
             file: string;
+        };
+        /** BranchRequestResponse */
+        BranchRequestResponse: {
+            /** Id */
+            id: string;
+            /** Status */
+            status: string;
+            /** Note */
+            note?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Target Name */
+            target_name?: string | null;
+            /** Created At */
+            created_at: string;
+            /** Vendor Id */
+            vendor_id: string;
+            /** Vendor Name */
+            vendor_name: string;
+            /** Vendor Place */
+            vendor_place: string;
+            /** Vendor Status */
+            vendor_status: string;
+            /**
+             * Hints
+             * @default []
+             */
+            hints: string[];
+        };
+        /** BusinessBranchInfo */
+        BusinessBranchInfo: {
+            /** Vendor Id */
+            vendor_id: string;
+            /** Name */
+            name: string;
+            /** Place */
+            place: string;
+            /** Status */
+            status: string;
+            /**
+             * Is You
+             * @default false
+             */
+            is_you: boolean;
+        };
+        /** BusinessBranchSummary */
+        BusinessBranchSummary: {
+            /** Vendor Id */
+            vendor_id: string;
+            /** Name */
+            name: string;
+            /** Place */
+            place: string;
+        };
+        /**
+         * BusinessDetailResponse
+         * @description What customers see for a brand: its branches, with the combined rating.
+         */
+        BusinessDetailResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Description */
+            description?: string | null;
+            /** Logo Url */
+            logo_url?: string | null;
+            /**
+             * Rating
+             * @default 0
+             */
+            rating: number;
+            /**
+             * Review Count
+             * @default 0
+             */
+            review_count: number;
+            /** Branch Count */
+            branch_count: number;
+            /** Branches */
+            branches: components["schemas"]["VendorResponse"][];
+        };
+        /** BusinessSuggestion */
+        BusinessSuggestion: {
+            /** Kind */
+            kind: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Detail */
+            detail: string;
+        };
+        /** BusinessSummary */
+        BusinessSummary: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Branch Count */
+            branch_count: number;
+            /** Branches */
+            branches: components["schemas"]["BusinessBranchSummary"][];
         };
         /** CategoryCreate */
         CategoryCreate: {
@@ -3191,6 +3524,32 @@ export interface components {
             /** Role */
             role: string;
         };
+        /** JoinRequestBody */
+        JoinRequestBody: {
+            /** Business Id */
+            business_id?: string | null;
+            /** Vendor Id */
+            vendor_id?: string | null;
+            /** Brand Name */
+            brand_name?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** LinkRequestInfo */
+        LinkRequestInfo: {
+            /** Id */
+            id: string;
+            /** Status */
+            status: string;
+            /** Target Name */
+            target_name?: string | null;
+            /** Note */
+            note?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Created At */
+            created_at: string;
+        };
         /** LocationUpdate */
         LocationUpdate: {
             /** Lat */
@@ -3212,6 +3571,22 @@ export interface components {
         LogoutRequest: {
             /** Refresh Token */
             refresh_token?: string | null;
+        };
+        /** MyBusiness */
+        MyBusiness: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Branches */
+            branches: components["schemas"]["BusinessBranchInfo"][];
+        };
+        /** MyBusinessStatus */
+        MyBusinessStatus: {
+            business?: components["schemas"]["MyBusiness"] | null;
+            request?: components["schemas"]["LinkRequestInfo"] | null;
         };
         /** NewUserPoint */
         NewUserPoint: {
@@ -4039,6 +4414,11 @@ export interface components {
             /** Description */
             description: string;
         };
+        /** RejectBranchRequest */
+        RejectBranchRequest: {
+            /** Reason */
+            reason: string;
+        };
         /** RejectOrderRequest */
         RejectOrderRequest: {
             /** Reason */
@@ -4053,6 +4433,11 @@ export interface components {
         RejectProductRequest: {
             /** Reason */
             reason: string;
+        };
+        /** RenameBusinessRequest */
+        RenameBusinessRequest: {
+            /** Name */
+            name: string;
         };
         /** ResolveDisputeRequest */
         ResolveDisputeRequest: {
@@ -4186,6 +4571,13 @@ export interface components {
         SetStoreOpenRequest: {
             /** Is Open */
             is_open: boolean;
+        };
+        /** SetVendorBusinessRequest */
+        SetVendorBusinessRequest: {
+            /** Business Id */
+            business_id?: string | null;
+            /** Name */
+            name?: string | null;
         };
         /**
          * SubmitReviewsRequest
@@ -4442,6 +4834,20 @@ export interface components {
             review_count: number;
             /** Created At */
             created_at: string;
+            /** Business Slug */
+            business_slug?: string | null;
+            /** Business Name */
+            business_name?: string | null;
+            /**
+             * Branch Count
+             * @default 1
+             */
+            branch_count: number;
+            /**
+             * Branch Places
+             * @default []
+             */
+            branch_places: string[];
             /**
              * Products
              * @default []
@@ -4520,6 +4926,20 @@ export interface components {
             review_count: number;
             /** Created At */
             created_at: string;
+            /** Business Slug */
+            business_slug?: string | null;
+            /** Business Name */
+            business_name?: string | null;
+            /**
+             * Branch Count
+             * @default 1
+             */
+            branch_count: number;
+            /**
+             * Branch Places
+             * @default []
+             */
+            branch_places: string[];
         };
         /** VerifyAccountRequest */
         VerifyAccountRequest: {
@@ -5660,6 +6080,263 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaginatedVendorsResponse"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_branch_requests_admin_branch_requests_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BranchRequestResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    approve_branch_request_admin_branch_requests__request_id__approve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveBranchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reject_branch_request_admin_branch_requests__request_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                request_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectBranchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_businesses_admin_businesses_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSummary"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_business_admin_businesses__business_id__patch: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                business_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RenameBusinessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_vendor_business_admin_vendors__vendor_id__business_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vendor_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetVendorBusinessRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unlink_vendor_business_admin_vendors__vendor_id__business_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vendor_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -7547,6 +8224,7 @@ export interface operations {
                 lga?: string | null;
                 near_lat?: number | null;
                 near_lng?: number | null;
+                business_slug?: string | null;
             };
             header?: never;
             path?: never;
@@ -7722,6 +8400,8 @@ export interface operations {
                 lga?: string | null;
                 near_lat?: number | null;
                 near_lng?: number | null;
+                /** @description Show each business once instead of every branch */
+                group?: boolean;
                 page?: number;
                 page_size?: number;
             };
@@ -7738,6 +8418,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedVendorsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_business_vendors_business__slug__get: {
+        parameters: {
+            query?: {
+                near_lat?: number | null;
+                near_lng?: number | null;
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessDetailResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7948,6 +8662,177 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_business_vendors_me_business_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBusinessStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    suggest_business_vendors_me_business_suggest_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BusinessSuggestion"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    request_to_join_business_vendors_me_business_request_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JoinRequestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBusinessStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_business_request_vendors_me_business_request_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBusinessStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_business_vendors_me_business_leave_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyBusinessStatus"];
                 };
             };
             /** @description Validation Error */

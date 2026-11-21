@@ -1,6 +1,8 @@
 import logging
 from html import escape as html_escape
+
 import resend
+
 from core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -219,6 +221,19 @@ def build_order_status_email(
     </div>
     """
     return _wrap_in_template(content, preview_text=f"Order Update: {title}", role=role)
+
+def build_notice_email(name: str, heading: str, message: str, role: str | None = "vendor") -> str:
+    """A short plain notice (heading + text, both escaped) with no button."""
+    who = html_escape(name or "there")
+    content = f"""
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hi {who},</h2>
+    <div class="highlight-box">
+      <strong style="display: block; font-size: 16px; margin-bottom: 5px;">{html_escape(heading)}</strong>
+      <span>{html_escape(message).replace(chr(10), "<br>")}</span>
+    </div>
+    """
+    return _wrap_in_template(content, preview_text=heading, role=role)
+
 
 def build_vendor_message_email(name: str, message: str) -> str:
     """Email telling a vendor that AVDAN staff sent them a message (shown verbatim, escaped)."""

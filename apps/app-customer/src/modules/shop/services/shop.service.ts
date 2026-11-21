@@ -1,3 +1,4 @@
+import type { BusinessDetail } from '@avdan/types'
 import type { DeliveryQuote, OrderReviews, ReviewPage, SubmitReviewsInput } from '@avdan/types'
 import { apiClient } from '@avdan/mobile'
 
@@ -28,6 +29,8 @@ export interface ProductQuery {
   pageSize?: number
   categoryId?: string
   vendorId?: string
+  /** Every branch's products for one business. */
+  businessSlug?: string
   search?: string
   sort?: ProductSort
   state?: string
@@ -43,6 +46,7 @@ function productParams(q: ProductQuery): Record<string, string> {
   }
   if (q.categoryId) p.category_id = q.categoryId
   if (q.vendorId) p.vendor_id = q.vendorId
+  if (q.businessSlug) p.business_slug = q.businessSlug
   if (q.search) p.search = q.search
   if (q.sort) p.sort = q.sort
   if (q.state) p.state = q.state
@@ -72,6 +76,7 @@ export const shopService = {
     apiClient.get<{ items: Vendor[]; total: number }>('/vendors', {
       page: String(page),
       page_size: String(pageSize),
+      group: 'true', // a brand with several branches is listed once
       ...(where.state ? { state: where.state } : {}),
       ...(where.lga ? { lga: where.lga } : {}),
       ...(where.nearLat != null && where.nearLng != null
@@ -80,6 +85,8 @@ export const shopService = {
     }),
 
   getVendor: (slug: string) => apiClient.get<VendorDetail>(`/vendors/${slug}`),
+
+  getBusiness: (slug: string) => apiClient.get<BusinessDetail>(`/vendors/business/${slug}`),
 
   /** Semantic search — falls back to trigram matching server-side. */
   search: (q: string, type: 'all' | 'products' | 'vendors' = 'all', limit = 20) =>

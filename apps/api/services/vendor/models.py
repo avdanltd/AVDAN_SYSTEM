@@ -67,6 +67,12 @@ class Vendor(BaseModel):
         Numeric(3, 2), default=Decimal("0.00"), nullable=False
     )
     review_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    # Optional link to a Business: several independent vendor accounts (branches) that customers
+    # see as one brand. Orders, products, payouts and logins all stay per vendor; this only groups
+    # them for display, and only an admin can make or remove a link.
+    business_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     paystack_recipient_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     payout_account_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     payout_bank_name: Mapped[str | None] = mapped_column(String(150), nullable=True)
@@ -154,3 +160,39 @@ class VendorMessage(BaseModel):
     )
     body: Mapped[str] = mapped_column(Text, nullable=False)
     read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Business(BaseModel):
+    """One brand with several branches. Each branch is its own vendor account; the Business only
+    groups them for customers. No branch outranks another."""
+
+    __tablename__ = "businesses"
+
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    slug: Mapped[str] = mapped_column(String(300), unique=True, nullable=False, index=True)
+
+
+class BusinessLinkRequest(BaseModel):
+    """A vendor saying "we are a branch of X", waiting for an admin to vet and approve it.
+    The target is an existing business, a standalone vendor (a business is created from the two),
+    or just a brand name when the other branches are not on AVDAN yet."""
+
+    __tablename__ = "business_link_requests"
+
+    vendor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    target_business_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("businesses.id", ondelete="SET NULL"), nullable=True
+    )
+    target_vendor_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="SET NULL"), nullable=True
+    )
+    brand_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    note: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), nullable=False, default="pending", server_default="pending")
+    reviewed_by: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

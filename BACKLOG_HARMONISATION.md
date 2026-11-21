@@ -516,3 +516,35 @@ Open:
 - [ ] Remove or repurpose the unused "cancellation window" setting; mobile builds/OTA for mobile-side changes; mobile push.
 - [ ] Analytics + SEO kickoff (`ANALYTICS_SEO_PLAN.md`), key rotation, mailboxes, delivery-promotion switch-on.
 - [ ] Deploy speed: path filtering to skip unchanged apps (needs unchanged images re-tagged to the new commit).
+
+---
+
+## 12. Shipped 2026-11-21 to 22 and what is still open
+
+Shipped:
+- **Marketplace cards equal height** (web + customer app), **vendors see customer name + order ID only** (enforced in the API: no
+  address, phone, email, delivery quote or customer id on `/orders/vendor/*`), **app icon colours** (customer blue/orange, rider
+  orange/blue, vendor grey/blue; need a new build).
+- **Admin product review:** all photos, description, editable category (`PATCH /admin/products/{id}/category`), reject from the dialog;
+  a vendor changing a live product's name, description, photos or price sends it back to PENDING.
+- **Admin vendor profile** (`GET /admin/vendors/{id}`): checklist of what is missing (location, street, map pin, description, phone),
+  and **admin <-> vendor messaging** (`vendor_messages`, migration 0031; polled every 10 s; push + email to the vendor).
+- **Vendor order histogram** (web dashboard + app) from `GET /orders/vendor/stats`; **admin Products by vendor**
+  (`GET /admin/products/vendors`, "Awaiting approval" tab keeps the all-vendors queue).
+- **Faster deploys:** ~10-11 min down to ~3.5-4 min (parallel image builds, registry cache, real health check).
+- **Branches** (migration 0032): vendors stay independent accounts; a vendor says "we are a branch of X" (dashboard prompt / Branches
+  screen, web + app), an admin vets it (hints: similar name, same owner, same payout holder, same email domain; message the vendor for
+  proof) and approves or rejects. No codes, no head office. Customers see one brand card with "N branches" and a business page
+  (`/businesses/{slug}`, `GET /vendors/business/{slug}`); `GET /vendors?group=true`, `GET /products?business_slug=`. Admin can link /
+  unlink / rename by hand (fixes duplicates such as 20NINE SR / 20NINE STALLION).
+- **Vendor logo upload** (web profile + app storefront screen) using the existing `vendor-logos` upload prefix; `''` removes it.
+
+Open:
+- [ ] None of the above has been clicked through in a browser or on a phone. Mobile changes need a new build/OTA.
+- [ ] **Store blockers (verified in code):** no `production` EAS profile / submit config; no account deletion (Apple + Google require
+      it); no privacy / terms pages on avdanstore.com; no reviewer demo accounts; no report/block on reviews (UGC); rider
+      background-location declaration; push credentials (Firebase/APNs); Android Maps key; `runtimeVersion`/`updates` for OTA.
+- [ ] **App parity gaps:** vendor NEW ORDER alert + sound, rider NEW PICKUP alert, customer delivery-code chime, review pop-up,
+      in-app notification list for customer and vendor.
+- [ ] Branches v2: merge identical products across branches; business page ordering by distance in the apps; admin "Businesses" list page.
+- [ ] Security + code audit by an agent once the above is done (requested by the owner).

@@ -1,12 +1,17 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.address import address_fields
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
+from core.limiter import limiter
 from services.vendor.schemas import (
     BankResponse,
+    BusinessDetailResponse,
+    BusinessSuggestion,
     CreateProductRequest,
+    JoinRequestBody,
+    MyBusinessStatus,
     PaginatedProductsResponse,
     PaginatedVendorsResponse,
     PayoutAccountResponse,
@@ -27,6 +32,15 @@ from services.vendor.schemas import (
 from services.vendor.service import VendorService
 
 router = APIRouter()
+
+
+def _attach_business(resps: list[VendorResponse], vendors: list, info: dict) -> None:
+    """Fill each response's business label (slug, name, branch count, places) from `business_info`."""
+    for resp, v in zip(resps, vendors, strict=True):
+        biz = info.get(v.business_id) if v.business_id else None
+        if biz:
+            resp.business_slug, resp.business_name = biz["slug"], biz["name"]
+            resp.branch_count, resp.branch_places = biz["count"], biz["places"]
 
 
 def _message_response(m: object) -> VendorMessageResponse:
@@ -164,6 +178,7 @@ async def list_products(
     lga: str | None = Query(default=None, max_length=100),
     near_lat: float | None = Query(default=None, ge=-90, le=90),
     near_lng: float | None = Query(default=None, ge=-180, le=180),
+    business_slug: str | None = Query(default=None, max_length=300),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedProductsResponse:
     svc = VendorService(db)
@@ -180,6 +195,7 @@ async def list_products(
         lga=lga,
         near_lat=near_lat,
         near_lng=near_lng,
+        business_slug=business_slug,
     )
     return PaginatedProductsResponse(
         items=[_public_product_response(p) for p in products],
@@ -211,6 +227,7 @@ async def list_vendors(
     lga: str | None = Query(default=None, max_length=100),
     near_lat: float | None = Query(default=None, ge=-90, le=90),
     near_lng: float | None = Query(default=None, ge=-180, le=180),
+    group: bool = Query(default=False, description="Show each business once instead of every branch"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -222,9 +239,10 @@ async def list_vendors(
     svc = VendorService(db)
     vendors, total = await svc.list_vendors(
         zone_id=zone_id, search=search, page=page, page_size=page_size,
-        state=state, lga=lga, near_lat=near_lat, near_lng=near_lng,
+        state=state, lga=lga, near_lat=near_lat, near_lng=near_lng, group=group,
     )
     items = [_vendor_response(v) for v in vendors]
+    _attach_business(items, vendors, await svc.business_info(vendors))
     if near_lat is not None and near_lng is not None:
         for resp in items:
             if resp.lat is not None and resp.lng is not None:
@@ -234,6 +252,34 @@ async def list_vendors(
         total=total,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/business/{slug}", response_model=BusinessDetailResponse)
+async def get_business(
+    slug: str,
+    near_lat: float | None = Query(default=None, ge=-90, le=90),
+    near_lng: float | None = Query(default=None, ge=-180, le=180),
+    db: AsyncSession = Depends(get_db),
+) -> BusinessDetailResponse:
+    """One brand and its active branches (nearest first when a location is given)."""
+    from services.orders.service import _haversine_km
+
+    svc = VendorService(db)
+    biz, branches = await svc.get_business_by_slug(slug)
+    items = [_vendor_response(v) for v in branches]
+    for resp in items:
+        if near_lat is not None and near_lng is not None and resp.lat is not None and resp.lng is not None:
+            resp.distance_km = round(_haversine_km(near_lat, near_lng, resp.lat, resp.lng), 1)
+    if near_lat is not None:
+        items.sort(key=lambda r: (r.distance_km is None, r.distance_km or 0))
+    reviews = sum(b.review_count for b in branches)
+    rating = sum(float(b.rating) * b.review_count for b in branches) / reviews if reviews else 0.0
+    lead = next((b for b in branches if b.description), branches[0])
+    return BusinessDetailResponse(
+        id=str(biz.id), name=biz.name, slug=biz.slug, description=lead.description,
+        logo_url=next((b.logo_url for b in branches if b.logo_url), None),
+        rating=round(rating, 2), review_count=reviews, branch_count=len(branches), branches=items,
     )
 
 
@@ -291,6 +337,74 @@ async def send_my_message(
 
     vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
     return _message_response(await post_message(db, vendor, "vendor", current_user.user_id, data.body))
+
+
+@router.get("/me/business", response_model=MyBusinessStatus)
+async def my_business(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> MyBusinessStatus:
+    """Is this store part of a business, and is a request to join one waiting?"""
+    from services.vendor import business as biz
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    return MyBusinessStatus(**await biz.my_status(db, vendor))
+
+
+@router.get("/me/business/suggest", response_model=list[BusinessSuggestion])
+async def suggest_business(
+    q: str = Query(min_length=2, max_length=100),
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> list[BusinessSuggestion]:
+    from services.vendor import business as biz
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    return [BusinessSuggestion(**s) for s in await biz.suggest(db, q, vendor.id)]
+
+
+@router.post("/me/business/request", response_model=MyBusinessStatus, status_code=201)
+@limiter.limit("10/hour")
+async def request_to_join_business(
+    request: Request,
+    data: JoinRequestBody,
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> MyBusinessStatus:
+    """"We are a branch of ...": goes to an AVDAN admin, who vets it before anything is linked."""
+    from services.vendor import business as biz
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    await biz.request_join(
+        db, vendor, business_id=data.business_id, vendor_id=data.vendor_id,
+        brand_name=data.brand_name, note=data.note,
+    )
+    return MyBusinessStatus(**await biz.my_status(db, vendor))
+
+
+@router.delete("/me/business/request", response_model=MyBusinessStatus)
+async def cancel_business_request(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> MyBusinessStatus:
+    from services.vendor import business as biz
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    await biz.cancel_request(db, vendor)
+    return MyBusinessStatus(**await biz.my_status(db, vendor))
+
+
+@router.post("/me/business/leave", response_model=MyBusinessStatus)
+async def leave_business(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> MyBusinessStatus:
+    """This store steps out of its business. Other branches are not affected."""
+    from services.vendor import business as biz
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    await biz.leave(db, vendor)
+    return MyBusinessStatus(**await biz.my_status(db, vendor))
 
 
 @router.patch("/me", response_model=VendorResponse)
