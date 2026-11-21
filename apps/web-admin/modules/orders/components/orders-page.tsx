@@ -20,8 +20,8 @@ import type { AdminOrder } from "../types";
 import { formatKobo, formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
 import { ROUTES } from "@/config/routes";
-import { presetRange, type RangePreset } from "@/modules/shared/lib/date-range";
-import { DateRangeBar } from "@/modules/shared/components/date-range-bar";
+import { DateRangeBar } from "@avdan/ui";
+import { presetRange, type RangePreset } from "@avdan/types";
 import { OrderStatsPanel } from "./order-stats-panel";
 
 const STATUS_OPTIONS = [

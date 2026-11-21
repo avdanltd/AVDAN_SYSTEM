@@ -529,6 +529,26 @@ export interface paths {
         patch: operations["update_vendor_status_admin_vendors__vendor_id__status_patch"];
         trace?: never;
     };
+    "/admin/products/vendors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Product Vendors
+         * @description Vendors with their product counts (live / awaiting / rejected): the Products landing page.
+         */
+        get: operations["list_product_vendors_admin_products_vendors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/products": {
         parameters: {
             query?: never;
@@ -1650,6 +1670,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/orders/vendor/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vendor Order Stats
+         * @description This vendor's order numbers for a period (Lagos dates): counts per status group and a
+         *     day/week/month series, for the dashboard chart. Must stay above /vendor/{order_id}.
+         */
+        get: operations["vendor_order_stats_orders_vendor_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/orders/vendor/{order_id}": {
         parameters: {
             query?: never;
@@ -2514,6 +2555,28 @@ export interface components {
             special_delivery_fee_kobo: number;
             /** Created At */
             created_at: string;
+        };
+        /**
+         * AdminProductVendorSummary
+         * @description One row of the admin Products landing page: a vendor and what they have listed.
+         */
+        AdminProductVendorSummary: {
+            /** Vendor Id */
+            vendor_id: string;
+            /** Name */
+            name: string;
+            /** Status */
+            status: string;
+            /** Logo Url */
+            logo_url?: string | null;
+            /** Total */
+            total: number;
+            /** Live */
+            live: number;
+            /** Pending */
+            pending: number;
+            /** Rejected */
+            rejected: number;
         };
         /** AdminReviewResponse */
         AdminReviewResponse: {
@@ -3572,6 +3635,17 @@ export interface components {
             pending_count: number;
             /** Pending Kobo */
             pending_kobo: number;
+        };
+        /** PaginatedProductVendorsResponse */
+        PaginatedProductVendorsResponse: {
+            /** Items */
+            items: components["schemas"]["AdminProductVendorSummary"][];
+            /** Total */
+            total: number;
+            /** Page */
+            page: number;
+            /** Page Size */
+            page_size: number;
         };
         /** PaginatedProductsResponse */
         PaginatedProductsResponse: {
@@ -5733,6 +5807,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminVendorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_product_vendors_admin_products_vendors_get: {
+        parameters: {
+            query?: {
+                search?: string | null;
+                page?: number;
+                page_size?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaginatedProductVendorsResponse"];
                 };
             };
             /** @description Validation Error */
@@ -8445,6 +8556,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedOrdersResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    vendor_order_stats_orders_vendor_stats_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+                group?: string | null;
+                bucket?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderStatsResponse"];
                 };
             };
             /** @description Validation Error */

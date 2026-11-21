@@ -22,6 +22,7 @@ import { dashboardService } from '../services/dashboard.service'
 import { ordersService } from '@/modules/orders/services/orders.service'
 import type { VendorOrder } from '@/modules/orders/types'
 import { formatPrice, formatRelativeTime } from '@/lib/format'
+import { OrderStatsPanel } from '@/modules/orders/components/order-stats-panel'
 
 // Quick filters over the recent-orders list, so a long list stays easy to scan.
 const ORDER_FILTERS = [
@@ -133,6 +134,9 @@ export function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Orders at a glance: counts by status and a histogram for the chosen period */}
+      <OrderStatsPanel />
 
       {/* Recent orders */}
       <Card className="shadow-card">

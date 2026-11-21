@@ -1,6 +1,6 @@
 import { apiClient } from '@/lib/api-client'
 import type { PaginatedResponse } from '@avdan/types'
-import type { AdminProduct } from '../types'
+import type { AdminProduct, ProductVendorSummary } from '../types'
 
 export interface ApproveBody {
   price_kobo: number
@@ -10,6 +10,9 @@ export interface ApproveBody {
 }
 
 export const productsService = {
+  getVendors: (params?: Record<string, string>) =>
+    apiClient.get<PaginatedResponse<ProductVendorSummary>>('/admin/products/vendors', params),
+
   getProducts: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminProduct>>('/admin/products', params),
 
