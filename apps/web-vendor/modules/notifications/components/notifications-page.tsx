@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Bell, BellOff, CheckCheck } from 'lucide-react'
 
@@ -8,6 +9,7 @@ import { useNotifications } from '../hooks/use-notifications'
 import { notificationsService } from '../services/notifications.service'
 import type { Notification } from '../services/notifications.service'
 import { formatRelativeTime } from '@/lib/format'
+import { ROUTES } from '@/config/routes'
 
 function NotificationItem({ notification }: { notification: Notification }) {
   const queryClient = useQueryClient()
@@ -43,6 +45,11 @@ function NotificationItem({ notification }: { notification: Notification }) {
         <p className="mt-0.5 text-sm text-muted-foreground line-clamp-2">{notification.content.body}</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {formatRelativeTime(notification.created_at)}
+          {notification.type === 'vendor_message' && (
+            <Link href={ROUTES.messages} className="ml-2 font-medium text-primary hover:underline">
+              Open messages
+            </Link>
+          )}
         </p>
       </div>
 

@@ -156,8 +156,8 @@ class VendorService:
         return product, related
 
     async def attention_counts(self, user_id: str) -> dict:
-        """What is waiting on this vendor: paid orders to accept or reject, and products the
-        admin rejected (which they need to fix). Drives the menu badges."""
+        """What is waiting on this vendor: paid orders to accept or reject, products the admin
+        rejected (which they need to fix), and unread messages from AVDAN. Drives the menu badges."""
         from services.orders.models import Order
         from services.orders.state_machine import OrderStatus
 
@@ -170,7 +170,10 @@ class VendorService:
             select(func.count()).select_from(Product)
             .where(Product.vendor_id == vendor.id, Product.approval_status == "REJECTED")
         )).scalar_one()
-        return {"orders": int(orders), "products": int(products)}
+        from services.vendor.messages import unread_count
+
+        messages = await unread_count(self.db, vendor.id, "vendor")
+        return {"orders": int(orders), "products": int(products), "messages": int(messages)}
 
     # ── Public vendors ────────────────────────────────────────────────────────
 

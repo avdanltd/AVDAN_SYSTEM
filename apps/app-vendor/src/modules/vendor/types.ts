@@ -158,3 +158,12 @@ export interface PayoutAccount {
   bank_name: string | null
   account_name: string | null
 }
+
+/** One message between this store and the AVDAN team (GET /vendors/me/messages). */
+export interface VendorMessage {
+  id: string
+  sender_role: 'admin' | 'vendor'
+  body: string
+  created_at: string
+  read: boolean
+}

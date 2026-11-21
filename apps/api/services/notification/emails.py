@@ -220,6 +220,21 @@ def build_order_status_email(
     """
     return _wrap_in_template(content, preview_text=f"Order Update: {title}", role=role)
 
+def build_vendor_message_email(name: str, message: str) -> str:
+    """Email telling a vendor that AVDAN staff sent them a message (shown verbatim, escaped)."""
+    who = html_escape(name or "there")
+    text = html_escape(message).replace("\n", "<br>")
+    content = f"""
+    <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hi {who},</h2>
+    <p>The AVDAN team sent you a message about your store:</p>
+    <div class="highlight-box"><span>{text}</span></div>
+    <div style="text-align: center;">
+      <a href="https://vendor.avdanstore.com/messages" class="button">Reply to AVDAN</a>
+    </div>
+    """
+    return _wrap_in_template(content, preview_text="A message from AVDAN", role="vendor")
+
+
 def send_email_via_resend(
     to_email: str, subject: str, html_content: str, reply_to: str | None = None
 ) -> bool:

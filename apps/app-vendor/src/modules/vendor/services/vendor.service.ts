@@ -6,6 +6,7 @@ import type {
   Product,
   VendorAnalytics,
   VendorDetail,
+  VendorMessage,
   PayoutAccount,
   VendorOrder,
   VerifiedAccount,
@@ -67,7 +68,12 @@ export const vendorService = {
   setAvailability: (productId: string, available: boolean) =>
     apiClient.patch<Product>(`/vendors/me/products/${productId}/availability`, { available }),
 
-  getAttention: () => apiClient.get<{ orders: number; products: number }>('/vendors/me/attention'),
+  getAttention: () =>
+    apiClient.get<{ orders: number; products: number; messages: number }>('/vendors/me/attention'),
+
+  /* ── Messages with AVDAN staff ──────────────────────────────────────────── */
+  getMessages: () => apiClient.get<VendorMessage[]>('/vendors/me/messages'),
+  sendMessage: (body: string) => apiClient.post<VendorMessage>('/vendors/me/messages', { body }),
   getCategories: () => apiClient.get<Category[]>('/categories'),
 
   /* ── Earnings ───────────────────────────────────────────────────────────── */

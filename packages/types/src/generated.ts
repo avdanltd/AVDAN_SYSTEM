@@ -469,6 +469,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/vendors/{vendor_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Vendor Profile
+         * @description The full profile of a vendor, with a checklist of what is filled in and what is missing,
+         *     so an admin can decide on an application (or chase the vendor to fix it).
+         */
+        get: operations["get_vendor_profile_admin_vendors__vendor_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vendors/{vendor_id}/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vendor Messages */
+        get: operations["list_vendor_messages_admin_vendors__vendor_id__messages_get"];
+        put?: never;
+        /**
+         * Send Vendor Message
+         * @description Message a vendor (e.g. about a missing pickup location). They get it in the app and portal,
+         *     by push and by email, and can reply in the same thread.
+         */
+        post: operations["send_vendor_message_admin_vendors__vendor_id__messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/vendors/{vendor_id}/status": {
         parameters: {
             query?: never;
@@ -1309,6 +1352,44 @@ export interface paths {
          * @description Counts of items waiting on this vendor, for the menu badges.
          */
         get: operations["my_attention_vendors_me_attention_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Messages
+         * @description The conversation with AVDAN staff. Opening it marks their messages as read.
+         */
+        get: operations["my_messages_vendors_me_messages_get"];
+        put?: never;
+        /** Send My Message */
+        post: operations["send_my_message_vendors_me_messages_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vendors/me/messages/unread": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Unread Messages */
+        get: operations["my_unread_messages_vendors_me_messages_unread_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2465,6 +2546,81 @@ export interface components {
             /** Created At */
             created_at: string;
         };
+        /** AdminVendorProfileResponse */
+        AdminVendorProfileResponse: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Slug */
+            slug: string;
+            /** Status */
+            status: string;
+            /** Description */
+            description: string | null;
+            /** Logo Url */
+            logo_url: string | null;
+            /** Is Open */
+            is_open: boolean;
+            /** Created At */
+            created_at: string;
+            /** Address */
+            address?: string | null;
+            /** Street */
+            street?: string | null;
+            /** City */
+            city?: string | null;
+            /** Lga */
+            lga?: string | null;
+            /** State */
+            state?: string | null;
+            /** Country */
+            country?: string | null;
+            /** Landmark */
+            landmark?: string | null;
+            /** Lat */
+            lat?: number | null;
+            /** Lng */
+            lng?: number | null;
+            /** Owner Name */
+            owner_name?: string | null;
+            /** Owner Email */
+            owner_email?: string | null;
+            /** Owner Phone */
+            owner_phone?: string | null;
+            /** Owner Status */
+            owner_status?: string | null;
+            /** Payout Bank Name */
+            payout_bank_name?: string | null;
+            /** Payout Account Name */
+            payout_account_name?: string | null;
+            /** Payout Account Last4 */
+            payout_account_last4?: string | null;
+            /**
+             * Product Total
+             * @default 0
+             */
+            product_total: number;
+            /**
+             * Product Approved
+             * @default 0
+             */
+            product_approved: number;
+            /**
+             * Product Pending
+             * @default 0
+             */
+            product_pending: number;
+            /** Checklist */
+            checklist: components["schemas"]["VendorChecklistItem"][];
+            /** Missing */
+            missing: string[];
+            /**
+             * Unread From Vendor
+             * @default 0
+             */
+            unread_from_vendor: number;
+        };
         /** AdminVendorResponse */
         AdminVendorResponse: {
             /** Id */
@@ -3570,6 +3726,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** PostVendorMessageRequest */
+        PostVendorMessageRequest: {
+            /** Body */
+            body: string;
+        };
         /** PresignUploadRequest */
         PresignUploadRequest: {
             /**
@@ -4141,6 +4302,22 @@ export interface components {
             /** Rejection Rate Pct */
             rejection_rate_pct: number;
         };
+        /** VendorChecklistItem */
+        VendorChecklistItem: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Ok */
+            ok: boolean;
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /** Detail */
+            detail?: string | null;
+        };
         /** VendorDetailResponse */
         VendorDetailResponse: {
             /** Id */
@@ -4205,6 +4382,19 @@ export interface components {
             payout_bank_name?: string | null;
             /** Payout Account Name */
             payout_account_name?: string | null;
+        };
+        /** VendorMessageResponse */
+        VendorMessageResponse: {
+            /** Id */
+            id: string;
+            /** Sender Role */
+            sender_role: string;
+            /** Body */
+            body: string;
+            /** Created At */
+            created_at: string;
+            /** Read */
+            read: boolean;
         };
         /** VendorResponse */
         VendorResponse: {
@@ -5395,6 +5585,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaginatedVendorsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vendor_profile_admin_vendors__vendor_id__get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vendor_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminVendorProfileResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vendor_messages_admin_vendors__vendor_id__messages_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vendor_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorMessageResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_vendor_message_admin_vendors__vendor_id__messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                vendor_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostVendorMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorMessageResponse"];
                 };
             };
             /** @description Validation Error */
@@ -7412,6 +7711,111 @@ export interface operations {
         };
     };
     my_attention_vendors_me_attention_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_messages_vendors_me_messages_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorMessageResponse"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    send_my_message_vendors_me_messages_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PostVendorMessageRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VendorMessageResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_unread_messages_vendors_me_messages_unread_get: {
         parameters: {
             query?: never;
             header?: {
