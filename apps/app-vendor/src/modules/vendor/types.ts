@@ -167,3 +167,5 @@ export interface VendorMessage {
   created_at: string
   read: boolean
 }
+
+export type { BusinessSuggestion, MyBusinessStatus } from '@avdan/types'

@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { LocateFixed, MapPin } from 'lucide-react'
+import { LogoField } from './logo-field'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
 import {
@@ -244,6 +245,12 @@ function BusinessForm() {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <LogoField
+          logoUrl={vendor?.logo_url}
+          name={vendor?.name ?? ''}
+          saving={isPending}
+          onChange={(url) => updateVendor({ logo_url: url })}
+        />
         <FormField
           control={form.control}
           name="name"

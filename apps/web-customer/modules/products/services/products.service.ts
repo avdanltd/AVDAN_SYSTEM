@@ -9,6 +9,7 @@ export const productsService = {
     if (params?.limit) query.page_size = String(params.limit)
     if (params?.category_id) query.category_id = params.category_id
     if (params?.vendor_id) query.vendor_id = params.vendor_id
+    if (params?.business_slug) query.business_slug = params.business_slug
     if (params?.search) query.search = params.search
     if (params?.min_price_kobo) query.min_price_kobo = String(params.min_price_kobo)
     if (params?.max_price_kobo) query.max_price_kobo = String(params.max_price_kobo)

@@ -71,6 +71,7 @@ export default function MainLayout() {
         />
         {/* Registered routes, hidden from the tab bar — reached via push, not a tab */}
         <Tabs.Screen name="products" options={{ href: null }} />
+        <Tabs.Screen name="businesses" options={{ href: null }} />
         <Tabs.Screen name="categories" options={{ href: null }} />
         <Tabs.Screen name="search" options={{ href: null }} />
         <Tabs.Screen name="checkout" options={{ href: null }} />

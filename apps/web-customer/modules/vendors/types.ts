@@ -15,6 +15,11 @@ export interface Vendor {
   distance_km?: number | null
   zone_id: string | null
   created_at: string
+  /** Set when this vendor is one branch of a business: show one brand card with N branches. */
+  business_slug?: string | null
+  business_name?: string | null
+  branch_count?: number
+  branch_places?: string[]
 }
 
 export interface Product {

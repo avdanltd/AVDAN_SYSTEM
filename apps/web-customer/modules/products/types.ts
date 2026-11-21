@@ -34,6 +34,8 @@ export interface ProductsParams {
   limit?: number
   category_id?: string
   vendor_id?: string
+  /** Every branch's products for one business. */
+  business_slug?: string
   search?: string
   min_price_kobo?: number
   max_price_kobo?: number

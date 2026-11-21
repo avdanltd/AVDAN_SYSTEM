@@ -9,6 +9,8 @@ export interface UpdateUserPayload {
 
 export interface UpdateVendorPayload {
   name?: string
+  /** A new logo URL, or '' to remove the logo. */
+  logo_url?: string
   description?: string
   address?: string
   street?: string

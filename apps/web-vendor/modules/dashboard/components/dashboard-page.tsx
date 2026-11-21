@@ -23,6 +23,7 @@ import { ordersService } from '@/modules/orders/services/orders.service'
 import type { VendorOrder } from '@/modules/orders/types'
 import { formatPrice, formatRelativeTime } from '@/lib/format'
 import { OrderStatsPanel } from '@/modules/orders/components/order-stats-panel'
+import { BranchPrompt } from '@/modules/branches/components/branch-prompt'
 
 // Quick filters over the recent-orders list, so a long list stays easy to scan.
 const ORDER_FILTERS = [
@@ -96,6 +97,8 @@ export function DashboardPage() {
           Welcome back — here&apos;s what&apos;s happening today.
         </p>
       </div>
+
+      <BranchPrompt />
 
       {/* Stats grid */}
       {statsError ? (

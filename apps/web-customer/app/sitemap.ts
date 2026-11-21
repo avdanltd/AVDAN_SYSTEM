@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const [vendorsRes, categoriesRes, productsRes] = await Promise.all([
-      vendorsService.getVendors({ per_page: '500' }).catch(() => ({ items: [] })),
+      vendorsService.getVendors({ per_page: '500', group: 'false' }).catch(() => ({ items: [] })),
       categoriesService.getCategories().catch(() => []),
       productsService.getProducts({ limit: 500 }).catch(() => ({ items: [] })),
     ])

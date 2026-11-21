@@ -13,6 +13,6 @@ export interface PresignUploadResponse {
 }
 
 export const uploadsService = {
-  presign: (params: { prefix: 'products'; content_type: string; content_length: number }) =>
+  presign: (params: { prefix: 'products' | 'vendor-logos'; content_type: string; content_length: number }) =>
     apiClient.post<PresignUploadResponse>('/uploads/presign', params),
 }

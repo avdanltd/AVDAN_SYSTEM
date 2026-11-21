@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router'
 import {
   ChevronRight,
   CircleUser,
+  GitBranch,
   KeyRound,
   LogOut,
   Mail,
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
-import { useAttention, useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
+import { useAttention, useMyBusiness, useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
 import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
@@ -56,6 +57,7 @@ export function Profile() {
   const { colors, preference } = useTheme()
   const { data: vendor } = useVendorProfile()
   const { data: attention } = useAttention()
+  const { data: myBusiness } = useMyBusiness()
   const { data: analytics } = useVendorAnalytics()
   const router = useRouter()
 
@@ -157,6 +159,13 @@ export function Profile() {
             label="Messages from AVDAN"
             value={attention?.messages ? `${attention.messages} new` : undefined}
             onPress={() => router.push('/profile/messages')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<GitBranch size={17} color={colors.primary} />}
+            label="Branches"
+            value={myBusiness?.business ? myBusiness.business.name : myBusiness?.request?.status === 'pending' ? 'Waiting' : undefined}
+            onPress={() => router.push('/profile/branches')}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow

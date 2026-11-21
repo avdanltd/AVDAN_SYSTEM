@@ -50,6 +50,15 @@ export interface VendorProfile {
   /** Labels of required items that are not done yet. */
   missing: string[]
   unread_from_vendor: number
+  /** The business this store belongs to, with every branch. */
+  business: {
+    id: string
+    name: string
+    slug: string
+    branches: { vendor_id: string; name: string; place: string; status: string; is_you: boolean }[]
+  } | null
+  /** The latest request to join a business, if any. */
+  link_request: { id: string; status: string; target_name: string | null; note: string | null; reason: string | null; created_at: string } | null
 }
 
 export interface VendorMessage {

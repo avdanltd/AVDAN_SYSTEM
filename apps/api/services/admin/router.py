@@ -12,14 +12,20 @@ from services.admin.finance import FinanceService
 from services.admin.schemas import (
     AdminProductResponse,
     AdminVendorProfileResponse,
+    ApproveBranchRequest,
     ApproveProductRequest,
     AttentionResponse,
+    BranchRequestResponse,
+    BusinessSummary,
     NewUserStatsResponse,
     OrderStatsResponse,
     PaginatedAdminProductsResponse,
     PaginatedProductVendorsResponse,
+    RejectBranchRequest,
     RejectProductRequest,
+    RenameBusinessRequest,
     SetProductCategoryRequest,
+    SetVendorBusinessRequest,
 )
 from services.admin.service import AdminService
 from services.analytics.audit import record_audit
@@ -264,6 +270,99 @@ async def list_vendors(
         page=page,
         page_size=page_size,
     )
+
+
+# ── Branches: requests to join a business, and tidy-up tools ────────────────────
+
+@router.get("/branch-requests", response_model=list[BranchRequestResponse])
+async def list_branch_requests(
+    status: str | None = Query(default="pending", pattern="^(pending|approved|rejected|cancelled)$"),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[BranchRequestResponse]:
+    from services.vendor import business as biz
+
+    return [BranchRequestResponse(**r) for r in await biz.list_requests(db, status)]
+
+
+@router.post("/branch-requests/{request_id}/approve", response_model=BusinessSummary)
+async def approve_branch_request(
+    request_id: str,
+    data: ApproveBranchRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> BusinessSummary:
+    from services.vendor import business as biz
+
+    business = await biz.approve_request(db, request_id, current_user.user_id, data.business_name)
+    record_audit(db, current_user.user_id, "business.link_approve", "business_request", request_id, None, {"business_id": str(business.id)})
+    return BusinessSummary(**next(b for b in await biz.search_businesses(db, business.name) if b["id"] == str(business.id)))
+
+
+@router.post("/branch-requests/{request_id}/reject", status_code=204)
+async def reject_branch_request(
+    request_id: str,
+    data: RejectBranchRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from services.vendor import business as biz
+
+    await biz.reject_request(db, request_id, current_user.user_id, data.reason)
+    record_audit(db, current_user.user_id, "business.link_reject", "business_request", request_id, None, {"reason": data.reason})
+
+
+@router.get("/businesses", response_model=list[BusinessSummary])
+async def list_businesses(
+    search: str | None = Query(default=None, max_length=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[BusinessSummary]:
+    from services.vendor import business as biz
+
+    return [BusinessSummary(**b) for b in await biz.search_businesses(db, search)]
+
+
+@router.patch("/businesses/{business_id}", response_model=BusinessSummary)
+async def rename_business(
+    business_id: str,
+    data: RenameBusinessRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> BusinessSummary:
+    from services.vendor import business as biz
+
+    row = await biz.admin_rename(db, business_id, data.name)
+    record_audit(db, current_user.user_id, "business.rename", "business", business_id, None, {"name": row.name})
+    return BusinessSummary(**next(b for b in await biz.search_businesses(db, row.name) if b["id"] == business_id))
+
+
+@router.put("/vendors/{vendor_id}/business", response_model=BusinessSummary)
+async def set_vendor_business(
+    vendor_id: str,
+    data: SetVendorBusinessRequest,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> BusinessSummary:
+    """Link a vendor to a business (or start a new one from it): the fix for brands that were
+    registered separately before this existed."""
+    from services.vendor import business as biz
+
+    row = await biz.admin_set_business(db, vendor_id, data.business_id, data.name)
+    record_audit(db, current_user.user_id, "business.link", "vendor", vendor_id, None, {"business_id": str(row.id)})
+    return BusinessSummary(**next(b for b in await biz.search_businesses(db, row.name) if b["id"] == str(row.id)))
+
+
+@router.delete("/vendors/{vendor_id}/business", status_code=204)
+async def unlink_vendor_business(
+    vendor_id: str,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> None:
+    from services.vendor import business as biz
+
+    await biz.admin_unlink(db, vendor_id)
+    record_audit(db, current_user.user_id, "business.unlink", "vendor", vendor_id, None, None)
 
 
 @router.get("/vendors/{vendor_id}", response_model=AdminVendorProfileResponse)
