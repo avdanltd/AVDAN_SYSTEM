@@ -49,20 +49,21 @@ export function ProductCard({ product, width }: { product: Product; width?: numb
           <Text style={[styles.vendor, { color: colors.mutedForeground }]} numberOfLines={1}>
             {product.vendor_name}
           </Text>
-          {formatVendorLocation(product.vendor_city, product.vendor_state) ? (
-            <Text style={[styles.vendor, { color: colors.subtleForeground }]} numberOfLines={1}>
-              {formatVendorLocation(product.vendor_city, product.vendor_state)}
-            </Text>
-          ) : null}
+          {/* Optional lines keep their height when empty so every card in a row is the same size. */}
+          <Text style={[styles.vendor, styles.line, { color: colors.subtleForeground }]} numberOfLines={1}>
+            {formatVendorLocation(product.vendor_city, product.vendor_state) ?? ''}
+          </Text>
 
-          {(product.review_count ?? 0) > 0 ? (
-            <View style={styles.ratingLine}>
-              <Star size={11} color="#F59E0B" fill="#F59E0B" />
-              <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
-                {(product.rating ?? 0).toFixed(1)} ({product.review_count})
-              </Text>
-            </View>
-          ) : null}
+          <View style={[styles.ratingLine, styles.line]}>
+            {(product.review_count ?? 0) > 0 ? (
+              <>
+                <Star size={11} color="#F59E0B" fill="#F59E0B" />
+                <Text style={[styles.vendor, { color: colors.mutedForeground }]}>
+                  {(product.rating ?? 0).toFixed(1)} ({product.review_count})
+                </Text>
+              </>
+            ) : null}
+          </View>
 
           <View style={styles.footer}>
             <Text style={[styles.price, { color: colors.foreground }]}>
@@ -124,6 +125,7 @@ const styles = StyleSheet.create({
   // short title doesn't shrink the card and break grid uniformity with its neighbours.
   name: { fontFamily: fonts.sansSemiBold, fontSize: 14, lineHeight: 19, minHeight: 38 },
   vendor: { fontFamily: fonts.sans, fontSize: 12 },
+  line: { minHeight: 16 },
   ratingLine: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   footer: {
     flexDirection: 'row',

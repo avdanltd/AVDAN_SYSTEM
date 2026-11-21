@@ -77,18 +77,15 @@ export function VendorsList() {
               <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
                 {v.name}
               </Text>
-              {v.distance_km != null ? (
-                <Text style={[styles.desc, { color: colors.mutedForeground }]}>{v.distance_km} km away</Text>
-              ) : null}
-              {v.description ? (
-                <Text style={[styles.desc, { color: colors.mutedForeground }]} numberOfLines={2}>
-                  {v.description}
-                </Text>
-              ) : null}
+              {/* Always two lines tall, so a one-line (or empty) description doesn't shrink the card. */}
+              <Text style={[styles.desc, styles.descBox, { color: colors.mutedForeground }]} numberOfLines={2}>
+                {v.description ?? ''}
+              </Text>
               <View style={styles.ratingRow}>
                 <Star size={12} color={colors.accent} fill={colors.accent} />
                 <Text style={[styles.rating, { color: colors.mutedForeground }]}>
                   {(v.review_count ?? 0) > 0 ? `${v.rating.toFixed(1)} (${v.review_count})` : 'No reviews yet'}
+                  {v.distance_km != null ? ` · ${v.distance_km} km away` : ''}
                 </Text>
               </View>
             </View>
@@ -109,6 +106,7 @@ const styles = StyleSheet.create({
   body: { flex: 1, gap: 3 },
   name: { fontFamily: fonts.sansSemiBold, fontSize: 15.5 },
   desc: { fontFamily: fonts.sans, fontSize: 12.5, lineHeight: 17 },
+  descBox: { minHeight: 34 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   rating: { fontFamily: fonts.sansMedium, fontSize: 12 },
 })
