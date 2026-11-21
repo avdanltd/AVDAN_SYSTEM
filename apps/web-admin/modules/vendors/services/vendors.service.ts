@@ -6,6 +6,8 @@ export const vendorsService = {
   getVendors: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminVendor>>('/admin/vendors', params),
 
+  getCounts: () => apiClient.get<Record<string, number>>('/admin/vendors/counts'),
+
   getProfile: (id: string) => apiClient.get<VendorProfile>(`/admin/vendors/${id}`),
 
   getMessages: (id: string) => apiClient.get<VendorMessage[]>(`/admin/vendors/${id}/messages`),

@@ -23,6 +23,7 @@ import { ROUTES } from "@/config/routes";
 import { DateRangeBar } from "@avdan/ui";
 import { presetRange, type RangePreset } from "@avdan/types";
 import { OrderStatsPanel } from "./order-stats-panel";
+import { useOrderStatusCounts } from "../hooks/use-order-status-counts";
 
 const STATUS_OPTIONS = [
   { value: "__all__", label: "All Statuses" },
@@ -77,6 +78,10 @@ export function OrdersPage() {
   if (range.from) statsParams.date_from = range.from;
   if (range.to) statsParams.date_to = range.to;
 
+  const { data: statusCounts } = useOrderStatusCounts({
+    ...(range.from ? { date_from: range.from } : {}),
+    ...(range.to ? { date_to: range.to } : {}),
+  });
   const { data, isLoading, isError, refetch } = useAdminOrders(params);
   const orders = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -244,6 +249,7 @@ export function OrdersPage() {
           <SelectContent>
             {STATUS_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
+                {statusCounts ? `${statusCounts[opt.value === "__all__" ? "__all__" : opt.value] ?? 0} · ` : ""}
                 {opt.label}
               </SelectItem>
             ))}

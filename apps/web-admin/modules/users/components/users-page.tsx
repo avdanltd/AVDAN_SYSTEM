@@ -50,6 +50,7 @@ import { CreateAdminDialog } from "./create-admin-dialog";
 import { AssignHubDialog } from "./assign-hub-dialog";
 
 import { NewUsersPanel } from "./new-users-panel";
+import { useUserCounts } from "../hooks/use-user-counts";
 import { DateRangeBar } from "@avdan/ui";
 import { presetRange, type RangePreset } from "@avdan/types";
 
@@ -104,6 +105,7 @@ export function UsersPage() {
   if (range.from) statsParams.date_from = range.from;
   if (range.to) statsParams.date_to = range.to;
 
+  const { data: userCounts } = useUserCounts();
   const { data, isLoading, isError, refetch } = useUsers(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateUserStatus();
   const { mutate: resendInvite, isPending: resending } = useResendInvite();
@@ -325,6 +327,7 @@ export function UsersPage() {
           <SelectContent>
             {ROLE_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
+                {userCounts ? `${opt.value === "__all__" ? userCounts.total : (userCounts.by_role[opt.value] ?? 0)} · ` : ""}
                 {opt.label}
               </SelectItem>
             ))}
