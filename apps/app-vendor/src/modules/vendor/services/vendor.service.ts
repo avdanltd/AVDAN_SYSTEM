@@ -1,4 +1,4 @@
-import type { OrderStats, PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
+import type { BusinessSuggestion, MyBusinessStatus, OrderStats, PaginatedResponse, PayoutRequest, WalletEntry, WalletSummary } from '@avdan/types'
 import type {
   Bank,
   Category,
@@ -70,6 +70,14 @@ export const vendorService = {
 
   getOrderStats: (params: Record<string, string>) =>
     apiClient.get<OrderStats>('/orders/vendor/stats', params),
+
+  /* ── Branches ───────────────────────────────────────────────────────────── */
+  getMyBusiness: () => apiClient.get<MyBusinessStatus>('/vendors/me/business'),
+  suggestBusiness: (q: string) => apiClient.get<BusinessSuggestion[]>('/vendors/me/business/suggest', { q }),
+  requestBranchLink: (payload: { business_id?: string; vendor_id?: string; brand_name?: string; note?: string }) =>
+    apiClient.post<MyBusinessStatus>('/vendors/me/business/request', payload),
+  cancelBranchRequest: () => apiClient.delete<MyBusinessStatus>('/vendors/me/business/request'),
+  leaveBusiness: () => apiClient.post<MyBusinessStatus>('/vendors/me/business/leave', {}),
 
   getAttention: () =>
     apiClient.get<{ orders: number; products: number; messages: number }>('/vendors/me/attention'),

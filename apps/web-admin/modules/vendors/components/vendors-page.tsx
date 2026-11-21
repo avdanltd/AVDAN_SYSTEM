@@ -40,6 +40,7 @@ import type { AdminVendor } from "../types";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
 import { ROUTES } from "@/config/routes";
+import { BranchRequestsPanel } from "./branch-requests-panel";
 
 const STATUS_OPTIONS = [
   { value: "__all__", label: "All" },
@@ -209,6 +210,8 @@ export function VendorsPage() {
           <p className="text-sm text-muted-foreground">{total} vendors</p>
         </div>
       </div>
+
+      <BranchRequestsPanel />
 
       {/* Filters */}
       <div className="flex items-center gap-3">

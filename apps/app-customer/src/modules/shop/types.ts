@@ -59,6 +59,11 @@ export interface Vendor {
   /** 0 = nobody has reviewed this vendor yet (then `rating` is meaningless). */
   review_count?: number
   created_at: string
+  /** Set when this store is one branch of a business: show one brand row with N branches. */
+  business_slug?: string | null
+  business_name?: string | null
+  branch_count?: number
+  branch_places?: string[]
 }
 
 export interface VendorDetail extends Vendor {

@@ -336,3 +336,44 @@ export function useOrderStats(params: Record<string, string>) {
     refetchInterval: 60_000,
   })
 }
+
+/* ── Branches ─────────────────────────────────────────────────────────────── */
+export function useMyBusiness() {
+  return useQuery({ queryKey: ['my-business'], queryFn: () => vendorService.getMyBusiness(), refetchInterval: 60_000 })
+}
+
+export function useBusinessSuggestions(q: string) {
+  return useQuery({
+    queryKey: ['business-suggest', q],
+    queryFn: () => vendorService.suggestBusiness(q),
+    enabled: q.trim().length >= 2,
+    staleTime: 30_000,
+  })
+}
+
+export function useBranchActions() {
+  const qc = useQueryClient()
+  const done = () => void qc.invalidateQueries({ queryKey: ['my-business'] })
+  return {
+    request: useMutation({
+      mutationFn: (p: { business_id?: string; vendor_id?: string; brand_name?: string; note?: string }) =>
+        vendorService.requestBranchLink(p),
+      onSettled: done,
+    }),
+    cancel: useMutation({ mutationFn: () => vendorService.cancelBranchRequest(), onSettled: done }),
+    leave: useMutation({ mutationFn: () => vendorService.leaveBusiness(), onSettled: done }),
+  }
+}
+
+/** Save (or remove, with '') the store logo straight away, without leaving the screen. */
+export function useUpdateLogo() {
+  const invalidate = useCatalogInvalidation()
+  return useMutation({
+    mutationFn: (logoUrl: string) => vendorService.updateProfile({ logo_url: logoUrl }),
+    onSuccess: () => {
+      invalidate()
+      toast.success('Logo updated')
+    },
+    onError: (e: Error) => toast.error('Could not save the logo', e.message),
+  })
+}

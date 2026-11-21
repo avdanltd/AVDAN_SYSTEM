@@ -14,4 +14,5 @@ export const ROUTES = {
   profile: '/profile',
   notifications: '/notifications',
   messages: '/messages',
+  branches: '/branches',
 } as const

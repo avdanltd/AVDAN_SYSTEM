@@ -188,6 +188,42 @@ async def _notify_vendor_message_async(user_id: str, message: str) -> None:
                 )
 
 
+@celery_app.task(name="workers.tasks.notifications.notify_user_notice")
+def notify_user_notice(user_id: str, title: str, body: str) -> None:
+    """Push + email for a short notice to one user (the in-app row is already saved)."""
+    asyncio.run(run_and_dispose(_notify_user_notice_async(user_id, title, body)))
+
+
+async def _notify_user_notice_async(user_id: str, title: str, body: str) -> None:
+    import uuid
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from core.database import AsyncSessionLocal
+    from services.auth.models import User
+    from services.notification.emails import (
+        build_notice_email,
+        contact_email_for,
+        send_email_via_resend,
+    )
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            user = (await db.execute(select(User).where(User.id == uuid.UUID(user_id)))).scalar_one_or_none()
+            if not user:
+                return
+            now = datetime.now(UTC)
+            short = " ".join(body.split())
+            short = short if len(short) <= 140 else short[:139] + "…"
+            await _push(db, user.id, "notice", title, short, {"title": title, "body": short}, now)
+            if user.email:
+                send_email_via_resend(
+                    user.email, title, build_notice_email(user.name or "", title, body, user.role),
+                    reply_to=contact_email_for(user.role),
+                )
+
+
 @celery_app.task(name="workers.tasks.notifications.notify_rider_assigned")
 def notify_rider_assigned(order_id: str, rider_user_id: str) -> None:
     """Separate from send_order_notification: assigning a rider is not an order state

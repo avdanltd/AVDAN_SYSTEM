@@ -26,6 +26,7 @@ import { ROUTES } from '@/config/routes'
 import { formatDate } from '@/lib/format'
 import { useUpdateVendorStatus } from '../hooks/use-update-vendor-status'
 import { useVendorProfile } from '../hooks/use-vendor-profile'
+import { VendorBusinessCard } from './vendor-business-card'
 import { VendorMessages } from './vendor-messages'
 
 const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -252,6 +253,8 @@ export function VendorProfilePage({ vendorId }: { vendorId: string }) {
           </CardContent>
         </Card>
       </div>
+
+      <VendorBusinessCard vendor={v} />
 
       <VendorMessages vendorId={v.id} vendorName={v.name} />
 

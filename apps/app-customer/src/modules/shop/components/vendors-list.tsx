@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, type Href } from 'expo-router'
 import { Star, Store as StoreIcon } from 'lucide-react-native'
 import { Button, Card, EmptyState, Skeleton, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
@@ -59,10 +59,14 @@ export function VendorsList() {
   return (
     <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
       <LocationFilter value={where} onChange={setWhere} />
-      {vendors.map((v) => (
+      {vendors.map((v) => {
+        // A brand with several branches is one row ("Bokku Mart · 3 branches") that opens the business.
+        const isBrand = (v.branch_count ?? 1) > 1 && Boolean(v.business_slug)
+        const title = isBrand ? (v.business_name ?? v.name) : v.name
+        return (
         <Pressable
           key={v.id}
-          onPress={() => router.push(`/vendors/${v.slug}`)}
+          onPress={() => router.push((isBrand ? `/businesses/${v.business_slug}` : `/vendors/${v.slug}`) as Href)}
           style={({ pressed }) => pressed && styles.pressed}
         >
           <Card style={styles.row}>
@@ -74,12 +78,19 @@ export function VendorsList() {
               </View>
             )}
             <View style={styles.body}>
-              <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
-                {v.name}
-              </Text>
+              <View style={styles.nameRow}>
+                <Text style={[styles.name, styles.nameText, { color: colors.foreground }]} numberOfLines={1}>
+                  {title}
+                </Text>
+                {isBrand ? (
+                  <View style={[styles.branchBadge, { backgroundColor: colors.primaryMuted }]}>
+                    <Text style={[styles.branchBadgeText, { color: colors.primary }]}>{v.branch_count} branches</Text>
+                  </View>
+                ) : null}
+              </View>
               {/* Always two lines tall, so a one-line (or empty) description doesn't shrink the card. */}
               <Text style={[styles.desc, styles.descBox, { color: colors.mutedForeground }]} numberOfLines={2}>
-                {v.description ?? ''}
+                {isBrand ? (v.branch_places ?? []).join(' · ') : (v.description ?? '')}
               </Text>
               <View style={styles.ratingRow}>
                 <Star size={12} color={colors.accent} fill={colors.accent} />
@@ -91,7 +102,8 @@ export function VendorsList() {
             </View>
           </Card>
         </Pressable>
-      ))}
+        )
+      })}
     </ScrollView>
   )
 }
@@ -105,6 +117,10 @@ const styles = StyleSheet.create({
   logoEmpty: { alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 3 },
   name: { fontFamily: fonts.sansSemiBold, fontSize: 15.5 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  nameText: { flexShrink: 1 },
+  branchBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full },
+  branchBadgeText: { fontFamily: fonts.sansSemiBold, fontSize: 11 },
   desc: { fontFamily: fonts.sans, fontSize: 12.5, lineHeight: 17 },
   descBox: { minHeight: 34 },
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },

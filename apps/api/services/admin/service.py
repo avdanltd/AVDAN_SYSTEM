@@ -254,6 +254,9 @@ class AdminService:
         counts = dict((await self.db.execute(
             select(Product.approval_status, func.count()).where(Product.vendor_id == vendor.id).group_by(Product.approval_status)
         )).all())
+        from services.vendor.business import my_status
+
+        branch = await my_status(self.db, vendor)
         checklist = self.vendor_checklist(vendor, vendor.user)
         acct = vendor.payout_account_number
         return {
@@ -277,6 +280,8 @@ class AdminService:
             "checklist": checklist,
             "missing": [c["label"] for c in checklist if c["required"] and not c["ok"]],
             "unread_from_vendor": await unread_count(self.db, vendor.id, "admin"),
+            "business": branch["business"],
+            "link_request": branch["request"],
         }
 
     async def get_vendor(self, vendor_id: str) -> Vendor:

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from services.vendor.schemas import LinkRequestInfo, MyBusiness
+
 # ── Product approval ─────────────────────────────────────────────────────────
 
 class AdminProductResponse(BaseModel):
@@ -144,6 +146,9 @@ class AdminVendorProfileResponse(BaseModel):
     checklist: list[VendorChecklistItem]
     missing: list[str]  # labels of required items that are not done
     unread_from_vendor: int = 0
+    # The business this store belongs to (and its branches), and the latest request to join one.
+    business: MyBusiness | None = None
+    link_request: LinkRequestInfo | None = None
 
 
 
@@ -165,3 +170,50 @@ class PaginatedProductVendorsResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+# ── Branch link requests and businesses ────────────────────────────────────────
+
+class BranchRequestResponse(BaseModel):
+    id: str
+    status: str
+    note: str | None = None
+    reason: str | None = None
+    target_name: str | None = None
+    created_at: str
+    vendor_id: str
+    vendor_name: str
+    vendor_place: str
+    vendor_status: str
+    hints: list[str] = []  # things that suggest the vendor really belongs (or not); a person decides
+
+
+class ApproveBranchRequest(BaseModel):
+    business_name: str | None = Field(default=None, max_length=255)
+
+
+class RejectBranchRequest(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class BusinessBranchSummary(BaseModel):
+    vendor_id: str
+    name: str
+    place: str
+
+
+class BusinessSummary(BaseModel):
+    id: str
+    name: str
+    slug: str
+    branch_count: int
+    branches: list[BusinessBranchSummary]
+
+
+class SetVendorBusinessRequest(BaseModel):
+    business_id: str | None = None  # null = start a new business from this vendor
+    name: str | None = Field(default=None, max_length=255)
+
+
+class RenameBusinessRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=255)

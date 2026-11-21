@@ -120,6 +120,11 @@ class VendorResponse(BaseModel):
     rating: float
     review_count: int = 0
     created_at: str
+    # Set when the vendor is one branch of a business: customers see one brand with N branches.
+    business_slug: str | None = None
+    business_name: str | None = None
+    branch_count: int = 1
+    branch_places: list[str] = []
 
     model_config = {"from_attributes": True}
 
@@ -226,3 +231,62 @@ class VendorMessageResponse(BaseModel):
 
 class PostVendorMessageRequest(BaseModel):
     body: str = Field(min_length=1, max_length=2000)
+
+
+# ── Branches (businesses made of independent vendor accounts) ──────────────────
+
+class BusinessSuggestion(BaseModel):
+    kind: str  # "business" | "vendor"
+    id: str
+    name: str
+    detail: str
+
+
+class BusinessBranchInfo(BaseModel):
+    vendor_id: str
+    name: str
+    place: str
+    status: str
+    is_you: bool = False
+
+
+class MyBusiness(BaseModel):
+    id: str
+    name: str
+    slug: str
+    branches: list[BusinessBranchInfo]
+
+
+class LinkRequestInfo(BaseModel):
+    id: str
+    status: str  # pending | approved | rejected | cancelled
+    target_name: str | None = None
+    note: str | None = None
+    reason: str | None = None  # why it was rejected
+    created_at: str
+
+
+class MyBusinessStatus(BaseModel):
+    business: MyBusiness | None = None
+    request: LinkRequestInfo | None = None
+
+
+class JoinRequestBody(BaseModel):
+    business_id: str | None = None
+    vendor_id: str | None = None
+    brand_name: str | None = Field(default=None, max_length=255)
+    note: str | None = Field(default=None, max_length=1000)
+
+
+class BusinessDetailResponse(BaseModel):
+    """What customers see for a brand: its branches, with the combined rating."""
+
+    id: str
+    name: str
+    slug: str
+    description: str | None = None
+    logo_url: str | None = None
+    rating: float = 0
+    review_count: int = 0
+    branch_count: int
+    branches: list[VendorResponse]
