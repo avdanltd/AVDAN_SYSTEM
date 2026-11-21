@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, ShoppingBag, Package, TrendingUp, User } from 'lucide-react'
+import { LayoutDashboard, MessageSquare, ShoppingBag, Package, TrendingUp, User } from 'lucide-react'
 
 import { Avatar, AvatarFallback, Separator, cn, Logo } from '@avdan/ui'
 import { ROUTES } from '@/config/routes'
@@ -19,6 +19,7 @@ export const navItems: {
   { label: 'Dashboard', href: ROUTES.home, icon: LayoutDashboard },
   { label: 'Orders', href: ROUTES.orders, icon: ShoppingBag, attention: 'orders' as const },
   { label: 'Products', href: ROUTES.products, icon: Package, attention: 'products' as const },
+  { label: 'Messages', href: ROUTES.messages, icon: MessageSquare, attention: 'messages' as const },
   { label: 'Earnings', href: ROUTES.earnings, icon: TrendingUp },
   { label: 'Profile', href: ROUTES.profile, icon: User },
 ]

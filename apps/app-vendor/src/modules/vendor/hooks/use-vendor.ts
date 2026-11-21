@@ -302,3 +302,27 @@ export function useWalletExport(range: WalletRangeValue) {
     onError: () => toast.error('Could not prepare the file', 'Please try again.'),
   })
 }
+
+/** The conversation with AVDAN staff. Polled every 10 s; opening it marks their messages read. */
+export function useMessages() {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['vendor-messages'],
+    queryFn: async () => {
+      const rows = await vendorService.getMessages()
+      void qc.invalidateQueries({ queryKey: ['attention'] })
+      return rows
+    },
+    refetchInterval: 10_000,
+  })
+}
+
+export function useSendMessage() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: string) => vendorService.sendMessage(body),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['vendor-messages'] })
+    },
+  })
+}

@@ -11,6 +11,7 @@ from core.redis import get_redis
 from services.admin.finance import FinanceService
 from services.admin.schemas import (
     AdminProductResponse,
+    AdminVendorProfileResponse,
     ApproveProductRequest,
     AttentionResponse,
     NewUserStatsResponse,
@@ -54,7 +55,9 @@ from services.qa.schemas import AssignHubRequest, CreateHubRequest, HubResponse,
 from services.vendor.schemas import (
     AdminVendorResponse,
     PaginatedVendorsResponse,
+    PostVendorMessageRequest,
     UpdateVendorStatusRequest,
+    VendorMessageResponse,
 )
 
 router = APIRouter()
@@ -260,6 +263,56 @@ async def list_vendors(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/vendors/{vendor_id}", response_model=AdminVendorProfileResponse)
+async def get_vendor_profile(
+    vendor_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminVendorProfileResponse:
+    """The full profile of a vendor, with a checklist of what is filled in and what is missing,
+    so an admin can decide on an application (or chase the vendor to fix it)."""
+    return AdminVendorProfileResponse(**await AdminService(db).vendor_profile(vendor_id))
+
+
+def _message_resp(m: object) -> VendorMessageResponse:
+    from services.vendor.models import VendorMessage
+
+    msg: VendorMessage = m  # type: ignore[assignment]
+    return VendorMessageResponse(
+        id=str(msg.id), sender_role=msg.sender_role, body=msg.body,
+        created_at=msg.created_at.isoformat(), read=msg.read_at is not None,
+    )
+
+
+@router.get("/vendors/{vendor_id}/messages", response_model=list[VendorMessageResponse])
+async def list_vendor_messages(
+    vendor_id: str,
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> list[VendorMessageResponse]:
+    from services.vendor.messages import list_thread
+
+    vendor = await AdminService(db).get_vendor(vendor_id)
+    return [_message_resp(m) for m in await list_thread(db, vendor.id, "admin")]
+
+
+@router.post("/vendors/{vendor_id}/messages", response_model=VendorMessageResponse, status_code=201)
+async def send_vendor_message(
+    vendor_id: str,
+    data: PostVendorMessageRequest,
+    current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> VendorMessageResponse:
+    """Message a vendor (e.g. about a missing pickup location). They get it in the app and portal,
+    by push and by email, and can reply in the same thread."""
+    from services.vendor.messages import post_message
+
+    vendor = await AdminService(db).get_vendor(vendor_id)
+    msg = await post_message(db, vendor, "admin", current_user.user_id, data.body)
+    record_audit(db, current_user.user_id, "vendor.message", "vendor", vendor_id, None, {"length": len(msg.body)})
+    return _message_resp(msg)
 
 
 @router.patch("/vendors/{vendor_id}/status", response_model=AdminVendorResponse)

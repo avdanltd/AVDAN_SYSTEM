@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   DataTable,
@@ -38,6 +39,7 @@ import { useUpdateVendorStatus } from "../hooks/use-update-vendor-status";
 import type { AdminVendor } from "../types";
 import { formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
+import { ROUTES } from "@/config/routes";
 
 const STATUS_OPTIONS = [
   { value: "__all__", label: "All" },
@@ -63,6 +65,7 @@ interface PendingAction {
 }
 
 export function VendorsPage() {
+  const router = useRouter();
   const [page, setPage] = useState(1);
   const [status, setStatus] = useState("__all__");
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(
@@ -166,6 +169,10 @@ export function VendorsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => router.push(ROUTES.vendor(row.id))}>
+              View full profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             {row.status !== "active" && (
               <DropdownMenuItem onClick={() => handleApprove(row)}>
                 <CheckCircle className="mr-2 h-4 w-4 text-success" />
@@ -235,6 +242,7 @@ export function VendorsPage() {
           errorMessage="Couldn't load vendors."
           onRetry={() => refetch()}
           emptyMessage="No vendors found."
+          onRowClick={(row) => router.push(ROUTES.vendor(row.id))}
         />
         <Pagination
           page={page}

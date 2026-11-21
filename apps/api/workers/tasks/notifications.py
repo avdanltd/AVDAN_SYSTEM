@@ -150,6 +150,44 @@ async def create_new_user_alerts(db, user_id: str) -> int:  # type: ignore[no-un
     return len(admins)
 
 
+@celery_app.task(name="workers.tasks.notifications.notify_vendor_message")
+def notify_vendor_message(user_id: str, message: str) -> None:
+    """Push + email to a vendor when AVDAN staff message them (the in-app row is already saved)."""
+    asyncio.run(run_and_dispose(_notify_vendor_message_async(user_id, message)))
+
+
+async def _notify_vendor_message_async(user_id: str, message: str) -> None:
+    import uuid
+    from datetime import UTC, datetime
+
+    from sqlalchemy import select
+
+    from core.database import AsyncSessionLocal
+    from services.auth.models import User
+    from services.notification.emails import (
+        build_vendor_message_email,
+        contact_email_for,
+        send_email_via_resend,
+    )
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            user = (await db.execute(select(User).where(User.id == uuid.UUID(user_id)))).scalar_one_or_none()
+            if not user:
+                return
+            now = datetime.now(UTC)
+            snippet = " ".join(message.split())
+            snippet = snippet if len(snippet) <= 140 else snippet[:139] + "…"
+            await _push(db, user.id, "vendor_message", "Message from AVDAN", snippet,
+                        {"title": "Message from AVDAN", "body": snippet}, now)
+            if user.email:
+                send_email_via_resend(
+                    user.email, "A message from AVDAN about your store",
+                    build_vendor_message_email(user.name or "", message),
+                    reply_to=contact_email_for("vendor"),
+                )
+
+
 @celery_app.task(name="workers.tasks.notifications.notify_rider_assigned")
 def notify_rider_assigned(order_id: str, rider_user_id: str) -> None:
     """Separate from send_order_notification: assigning a rider is not an order state

@@ -13,4 +13,5 @@ export const ROUTES = {
   earnings: '/earnings',
   profile: '/profile',
   notifications: '/notifications',
+  messages: '/messages',
 } as const

@@ -214,3 +214,15 @@ class AdminVendorResponse(VendorResponse):
     @classmethod
     def user_id_to_str(cls, v: object) -> str:
         return str(v)
+
+
+class VendorMessageResponse(BaseModel):
+    id: str
+    sender_role: str  # "admin" | "vendor"
+    body: str
+    created_at: str
+    read: bool
+
+
+class PostVendorMessageRequest(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)

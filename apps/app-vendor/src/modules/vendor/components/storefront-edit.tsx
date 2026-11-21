@@ -154,8 +154,9 @@ export function StorefrontEdit() {
           <View style={styles.field}>
             <Text style={[styles.label, { color: colors.foreground }]}>Pickup address</Text>
             <Text style={[styles.hint, { color: colors.subtleForeground }]}>
-              Used to find the nearest rider and hub for your orders, and shown to customers as your
-              town and state so they can choose vendors close to them.
+              This is where riders will come to collect your goods, and it decides the delivery fee your
+              customers pay, so it must be the place the goods are actually picked up from. It is also
+              shown to customers as your town and state so they can choose vendors close to them.
             </Text>
             {vendor?.address && !vendor.street ? (
               <Text style={[styles.hint, { color: colors.subtleForeground }]}>
@@ -178,9 +179,9 @@ export function StorefrontEdit() {
             </Text>
             {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) ? (
               <Text style={[styles.error, { color: colors.warning }]}>
-                Your location isn&apos;t set, so customers are charged only the flat delivery fee.
-                Stand at your pickup point and tap &quot;Use my current location&quot;, or enter a more
-                specific street address.
+                Your pickup location isn&apos;t pinned, so customers are charged only the flat delivery fee.
+                Stand at the exact spot riders will collect from and tap &quot;Use my current location&quot;,
+                or enter a more specific street address.
               </Text>
             ) : null}
           </View>

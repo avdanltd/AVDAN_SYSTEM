@@ -100,3 +100,48 @@ class OrderStatsResponse(BaseModel):
 
 class SetProductCategoryRequest(BaseModel):
     category_id: str | None = None  # null = no category
+
+
+# ── Vendor profile (application review) and the admin <-> vendor conversation ───────────────
+
+class VendorChecklistItem(BaseModel):
+    key: str
+    label: str
+    ok: bool
+    # A required item that is not ok is what the admin should chase before approving.
+    required: bool = True
+    detail: str | None = None
+
+
+class AdminVendorProfileResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    status: str
+    description: str | None
+    logo_url: str | None
+    is_open: bool
+    created_at: str
+    address: str | None = None
+    street: str | None = None
+    city: str | None = None
+    lga: str | None = None
+    state: str | None = None
+    country: str | None = None
+    landmark: str | None = None
+    lat: float | None = None
+    lng: float | None = None
+    owner_name: str | None = None
+    owner_email: str | None = None
+    owner_phone: str | None = None
+    owner_status: str | None = None
+    payout_bank_name: str | None = None
+    payout_account_name: str | None = None
+    payout_account_last4: str | None = None  # never the full number
+    product_total: int = 0
+    product_approved: int = 0
+    product_pending: int = 0
+    checklist: list[VendorChecklistItem]
+    missing: list[str]  # labels of required items that are not done
+    unread_from_vendor: int = 0
+

@@ -4,6 +4,8 @@ import { apiClient } from '@/lib/api-client'
 export interface Attention {
   orders: number
   products: number
+  /** Unread messages from AVDAN staff. */
+  messages: number
 }
 
 export const attentionService = {

@@ -19,6 +19,7 @@ export default function ProfileLayout() {
       <Stack.Screen name="storefront" options={{ title: 'Storefront' }} />
       <Stack.Screen name="wallet" options={{ title: 'Earnings & Withdrawals' }} />
       <Stack.Screen name="payout" options={{ title: 'Payout Account' }} />
+      <Stack.Screen name="messages" options={{ title: 'Messages from AVDAN' }} />
       <Stack.Screen name="appearance" options={{ title: 'Appearance' }} />
     </Stack>
   )
