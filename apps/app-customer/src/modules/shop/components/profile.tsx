@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, type Href } from 'expo-router'
 import {
   ChevronRight,
   CircleUser,
@@ -10,7 +10,7 @@ import {
   Moon,
   Package,
   Phone,
-  ShieldCheck,
+  ShieldCheck, Bell,
 } from 'lucide-react-native'
 import {
   AvdanMark,
@@ -24,7 +24,9 @@ import {
   useSession,
   useLogout,
   useTheme,
-  ContactSupport, AccountLegal,
+  ContactSupport,
+  AccountLegal,
+  useUnreadNotifications,
 } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
@@ -63,6 +65,7 @@ export function Profile() {
   const { mutate: logout, isPending } = useLogout()
   const { colors, preference } = useTheme()
   const router = useRouter()
+  const { data: unread } = useUnreadNotifications()
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false)
 
   const themeLabel = preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'
@@ -114,6 +117,13 @@ export function Profile() {
             icon={<KeyRound size={17} color={colors.primary} />}
             label="Change password"
             onPress={() => router.push('/profile/password')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<Bell size={17} color={colors.primary} />}
+            label="Notifications"
+            value={unread ? `${unread} new` : undefined}
+            onPress={() => router.push('/profile/notifications' as Href)}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow

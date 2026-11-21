@@ -1,6 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useState } from 'react'
-import { useRouter } from 'expo-router'
+import { useRouter, type Href } from 'expo-router'
 import {
   ChevronRight,
   CircleUser,
@@ -13,12 +13,12 @@ import {
   Phone,
   ShieldCheck,
   Store,
-  Wallet,
+  Wallet, Bell,
 } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
 import { useAttention, useMyBusiness, useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
-import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport, AccountLegal } from '@avdan/mobile'
+import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport, AccountLegal, useUnreadNotifications } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
 function NavRow({
@@ -60,6 +60,7 @@ export function Profile() {
   const { data: myBusiness } = useMyBusiness()
   const { data: analytics } = useVendorAnalytics()
   const router = useRouter()
+  const { data: unread } = useUnreadNotifications()
 
   const [confirmingLogout, setConfirmingLogout] = useState(false)
 
@@ -197,6 +198,13 @@ export function Profile() {
             label="Payout account"
             value={vendor?.has_payout_account ? 'Active' : 'Not set'}
             onPress={() => router.push('/profile/payout')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<Bell size={17} color={colors.primary} />}
+            label="Notifications"
+            value={unread ? `${unread} new` : undefined}
+            onPress={() => router.push('/profile/notifications' as Href)}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow
