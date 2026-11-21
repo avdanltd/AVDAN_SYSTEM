@@ -16,6 +16,9 @@ export const productsService = {
   approve: (id: string, body: ApproveBody) =>
     apiClient.post<AdminProduct>(`/admin/products/${id}/approve`, body),
 
+  setCategory: (id: string, categoryId: string | null) =>
+    apiClient.patch<AdminProduct>(`/admin/products/${id}/category`, { category_id: categoryId }),
+
   reject: (id: string, reason: string) =>
     apiClient.post<AdminProduct>(`/admin/products/${id}/reject`, { reason }),
 }

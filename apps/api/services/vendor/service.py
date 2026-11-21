@@ -341,23 +341,29 @@ class VendorService:
     ) -> Product:
         product = await self._get_product_for_user(user_id, product_id)
 
-        if data.name is not None:
+        # Anything customers read or judge a product by (its name, description, photos, or the
+        # price) needs an admin's say-so. If the vendor changes one of those, a live product goes
+        # back to review, so customers never see words, pictures or a price nobody signed off.
+        # Stock and category changes don't: the vendor's stock is theirs, and admins fix categories.
+        needs_review = False
+        if data.name is not None and data.name != product.name:
             product.name = data.name
-        if data.description is not None:
+            needs_review = True
+        if data.description is not None and data.description != (product.description or ""):
             product.description = data.description
+            needs_review = True
+        if data.image_urls is not None and list(data.image_urls) != list(product.image_urls or []):
+            product.image_urls = data.image_urls
+            needs_review = True
         if data.price_kobo is not None and data.price_kobo != product.vendor_price_kobo:
-            # A new vendor price means a new markup decision: the product leaves the site until
-            # an admin approves it again, so customers never see a price nobody signed off.
             product.vendor_price_kobo = data.price_kobo
+            needs_review = True
+        if needs_review or product.approval_status == "REJECTED":
+            # A rejected product the vendor edited is resubmitted; a live one goes back for review.
             product.approval_status = "PENDING"
-            product.rejection_reason = None
-        elif product.approval_status == "REJECTED":
-            product.approval_status = "PENDING"  # the vendor edited it: resubmit for review
             product.rejection_reason = None
         if data.stock_qty is not None:
             product.stock_qty = data.stock_qty
-        if data.image_urls is not None:
-            product.image_urls = data.image_urls
         if data.category_id is not None:
             product.category_id = uuid.UUID(data.category_id)
 
