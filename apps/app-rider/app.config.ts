@@ -15,9 +15,12 @@ const config: ExpoConfig = {
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
-  scheme: 'apprider',
+  scheme: 'avdanrider',
   userInterfaceStyle: 'automatic',
   backgroundColor: '#ffffff',
+  // OTA updates (EAS Update): a build only receives updates made for the same app version.
+  runtimeVersion: { policy: 'appVersion' },
+  updates: { url: 'https://u.expo.dev/4001e53f-af61-43fd-9475-2a64a162345e' },
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
@@ -34,10 +37,11 @@ const config: ExpoConfig = {
     bundleIdentifier: 'com.avdanstore.rider',
     supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:
         'AVDAN Rider uses your location to broadcast your position to dispatch while you are online.',
       NSLocationAlwaysAndWhenInUseUsageDescription:
-        'AVDAN Rider needs background location so dispatch can track you en route even when the app is not open.',
+        'AVDAN Rider shares your location with dispatch and the customer while you are online and on a delivery, even when the app is closed, so they can follow the order.',
       NSCameraUsageDescription: 'AVDAN Rider uses the camera to capture delivery proof photos.',
       UIBackgroundModes: ['location'],
     },
@@ -95,7 +99,7 @@ const config: ExpoConfig = {
       'expo-location',
       {
         locationAlwaysAndWhenInUsePermission:
-          'AVDAN Rider needs background location so dispatch can track you en route even when the app is not open.',
+          'AVDAN Rider shares your location with dispatch and the customer while you are online and on a delivery, even when the app is closed, so they can follow the order.',
         isAndroidBackgroundLocationEnabled: true,
         isAndroidForegroundServiceEnabled: true,
       },

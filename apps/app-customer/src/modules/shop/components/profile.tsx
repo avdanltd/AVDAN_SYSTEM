@@ -24,7 +24,7 @@ import {
   useSession,
   useLogout,
   useTheme,
-  ContactSupport,
+  ContactSupport, AccountLegal,
 } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
@@ -147,6 +147,7 @@ export function Profile() {
         }}
       />
 
+      <AccountLegal />
       <ContactSupport email={CONTACT_EMAILS.customer} />
 
       <View style={styles.footer}>

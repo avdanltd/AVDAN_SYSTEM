@@ -250,6 +250,27 @@ export interface paths {
         patch: operations["update_me_auth_me_patch"];
         trace?: never;
     };
+    "/auth/me/delete-account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Delete My Account
+         * @description Delete (anonymise) the signed-in person's own account after re-entering their password.
+         *     Refused while orders are in progress or a wallet still holds money. See services/auth/deletion.py.
+         */
+        post: operations["delete_my_account_auth_me_delete_account_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/me/push-token": {
         parameters: {
             query?: never;
@@ -1154,6 +1175,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/reviews/{review_id}/dismiss-reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Admin Dismiss Reports
+         * @description The review is fine: close its open reports and leave it up.
+         */
+        post: operations["admin_dismiss_reports_admin_reviews__review_id__dismiss_reports_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/reviews/{review_id}/unhide": {
         parameters: {
             query?: never;
@@ -1209,6 +1250,26 @@ export interface paths {
          * @description Rate the vendor and/or products of an ended order. Each can be rated once.
          */
         post: operations["submit_order_reviews_reviews_orders__order_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/reviews/{review_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Report Review
+         * @description Flag a review (offensive, spam, false, other) for an admin to look at.
+         */
+        post: operations["report_review_reviews__review_id__report_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2813,6 +2874,16 @@ export interface components {
             hidden_by_name: string | null;
             /** Created At */
             created_at: string;
+            /**
+             * Report Count
+             * @default 0
+             */
+            report_count: number;
+            /**
+             * Report Reasons
+             * @default []
+             */
+            report_reasons: string[];
         };
         /** AdminVendorProfileResponse */
         AdminVendorProfileResponse: {
@@ -3278,6 +3349,11 @@ export interface components {
             image_urls?: string[];
             /** Category Id */
             category_id?: string | null;
+        };
+        /** DeleteAccountRequest */
+        DeleteAccountRequest: {
+            /** Password */
+            password: string;
         };
         /**
          * DeliverRequest
@@ -4439,6 +4515,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** ReportReviewRequest */
+        ReportReviewRequest: {
+            /** Reason */
+            reason: string;
+            /** Details */
+            details?: string | null;
+        };
         /** ResolveDisputeRequest */
         ResolveDisputeRequest: {
             /**
@@ -5553,6 +5636,45 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UserResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_my_account_auth_me_delete_account_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */
@@ -7649,6 +7771,8 @@ export interface operations {
                 status?: string | null;
                 target_type?: string | null;
                 max_rating?: number | null;
+                /** @description Only reviews with open reports */
+                reported?: boolean;
                 page?: number;
                 page_size?: number;
             };
@@ -7700,6 +7824,41 @@ export interface operations {
                 "application/json": components["schemas"]["HideReviewRequest"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminReviewResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    admin_dismiss_reports_admin_reviews__review_id__dismiss_reports_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -7850,6 +8009,47 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OrderReviewsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    report_review_reviews__review_id__report_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                review_id: string;
+            };
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

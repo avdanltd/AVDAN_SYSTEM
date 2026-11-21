@@ -28,6 +28,9 @@ const supportLinks = [
   { label: 'Help Center', href: '#' },
   { label: 'Contact Us', href: `mailto:${CONTACT_EMAILS.customer}` },
   { label: 'Raise a Dispute', href: '#' },
+  { label: 'Privacy Policy', href: '/privacy' },
+  { label: 'Terms of Service', href: '/terms' },
+  { label: 'Delete my account', href: '/delete-account' },
 ]
 
 const CARE_LINE = '020 1330 0269'

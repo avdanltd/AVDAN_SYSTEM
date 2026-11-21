@@ -33,3 +33,15 @@ export function useUnhideReview() {
     onError: (error: Error) => toast.error(error.message ?? 'Could not restore this review'),
   })
 }
+
+export function useDismissReports() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => reviewsService.dismissReports(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-reviews'] })
+      toast.success('Reports dismissed. The review stays up.')
+    },
+    onError: (error: Error) => toast.error(error.message ?? 'Could not dismiss the reports'),
+  })
+}

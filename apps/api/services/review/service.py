@@ -9,10 +9,10 @@ import uuid
 from datetime import UTC, datetime
 from decimal import ROUND_HALF_UP, Decimal
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.exceptions import AppError, NotFoundException
+from core.exceptions import AppError, NotFoundException, ValidationException
 from services.orders.models import Order, OrderEvent
 from services.orders.state_machine import OrderStatus
 from services.review.models import Review, ReviewStatus, ReviewTarget
@@ -303,10 +303,64 @@ class ReviewService:
 
     # ── Admin moderation ─────────────────────────────────────────────────────
 
+    async def report(self, review_id: str, reporter_id: str, reason: str, details: str | None) -> None:
+        """Flag a visible review. A person can flag a review once, and not their own."""
+        from sqlalchemy.exc import IntegrityError
+
+        from services.auth.models import User
+        from services.notification.models import Notification
+        from services.review.models import ReviewReport
+
+        try:
+            rid = uuid.UUID(review_id)
+        except ValueError as exc:
+            raise NotFoundException("Review not found") from exc
+        review = (await self.db.execute(select(Review).where(Review.id == rid))).scalar_one_or_none()
+        if not review or review.status != ReviewStatus.VISIBLE:
+            raise NotFoundException("Review not found")
+        if review.customer_id == uuid.UUID(reporter_id):
+            raise ValidationException("You can't report your own review.")
+        try:
+            async with self.db.begin_nested():
+                self.db.add(ReviewReport(
+                    review_id=rid, reporter_id=uuid.UUID(reporter_id), reason=reason,
+                    details=(details or "").strip()[:500] or None,
+                ))
+                await self.db.flush()
+        except IntegrityError:
+            raise ValidationException("You have already reported this review.") from None
+        now = datetime.now(UTC)
+        for admin_id in (await self.db.execute(
+            select(User.id).where(User.role == "admin", User.status == "active")
+        )).scalars().all():
+            self.db.add(Notification(user_id=admin_id, type="review_report", channel="in_app", sent_at=now, content={
+                "title": "Review reported", "body": f"A review was reported as {reason}. Open Reviews to look at it.",
+                "review_id": review_id,
+            }))
+
+    async def dismiss_reports(self, review_id: str, admin_id: str) -> Review:
+        from services.analytics.audit import record_audit
+        from services.review.models import ReviewReport
+
+        rid = uuid.UUID(review_id)
+        review = (await self.db.execute(select(Review).where(Review.id == rid))).scalar_one_or_none()
+        if not review:
+            raise NotFoundException("Review not found")
+        await self.db.execute(
+            update(ReviewReport).where(ReviewReport.review_id == rid, ReviewReport.status == "open").values(status="dismissed")
+        )
+        record_audit(self.db, admin_id, "review.dismiss_reports", "review", review.id, None, None)
+        return review
+
     async def admin_list(
-        self, status: str | None, target_type: str | None, max_rating: int | None, page: int, page_size: int
+        self, status: str | None, target_type: str | None, max_rating: int | None, page: int, page_size: int,
+        reported: bool = False,
     ) -> dict:
+        from services.review.models import ReviewReport
+
         conds = []
+        if reported:
+            conds.append(Review.id.in_(select(ReviewReport.review_id).where(ReviewReport.status == "open")))
         if status:
             conds.append(Review.status == status)
         if target_type:
@@ -350,6 +404,14 @@ class ReviewService:
         products = {pid: n for pid, n in (await self.db.execute(
             select(Product.id, Product.name).where(Product.id.in_(pids))
         )).all()} if pids else {}
+        from services.review.models import ReviewReport
+
+        reports: dict = {}
+        for rid, reason in (await self.db.execute(
+            select(ReviewReport.review_id, ReviewReport.reason)
+            .where(ReviewReport.review_id.in_([r.id for r in rows]), ReviewReport.status == "open")
+        )).all():
+            reports.setdefault(rid, []).append(reason)
         return [{
             "id": str(r.id), "target_type": r.target_type, "rating": r.rating, "comment": r.comment,
             "status": r.status, "order_id": str(r.order_id), "order_outcome": r.order_outcome,
@@ -359,6 +421,7 @@ class ReviewService:
             "hidden_reason": r.hidden_reason,
             "hidden_by_name": users.get(r.hidden_by) if r.hidden_by else None,
             "created_at": r.created_at.isoformat(),
+            "report_count": len(reports.get(r.id, [])), "report_reasons": sorted(set(reports.get(r.id, []))),
         } for r in rows]
 
     async def _moderate(self, review_id: str, admin_id: str, hide: bool, reason: str | None) -> Review:
@@ -373,6 +436,11 @@ class ReviewService:
             raise NotFoundException("Review not found")
         before = {"status": review.status}
         if hide:
+            from services.review.models import ReviewReport
+
+            await self.db.execute(
+                update(ReviewReport).where(ReviewReport.review_id == review.id, ReviewReport.status == "open").values(status="actioned")
+            )
             review.status, review.hidden_by, review.hidden_at, review.hidden_reason = (
                 ReviewStatus.HIDDEN, uuid.UUID(admin_id), datetime.now(UTC), reason,
             )

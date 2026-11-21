@@ -53,6 +53,9 @@ export const authService = {
   resendOtp: (userId: string) =>
     apiClient.post<{ message: string }>('/auth/resend-otp', { user_id: userId, otp: '' }),
 
+  deleteAccount: (password: string) =>
+    apiClient.post<{ message: string }>('/auth/me/delete-account', { password }),
+
   logout: () => apiClient.post<{ message: string }>('/auth/logout', {}),
 
   getMe: () => apiClient.get<User>('/auth/me'),

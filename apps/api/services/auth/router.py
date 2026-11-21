@@ -9,6 +9,7 @@ from core.limiter import limiter
 from core.redis import get_redis
 from services.auth.schemas import (
     ChangePasswordRequest,
+    DeleteAccountRequest,
     ForgotPasswordRequest,
     InvitePreviewResponse,
     LoginRequest,
@@ -264,6 +265,25 @@ async def update_me(
     svc = AuthService(db, redis)
     user = await svc.update_profile(current_user.user_id, data)
     return _user_response(user)
+
+
+@router.post("/me/delete-account", response_model=dict)
+@limiter.limit("5/hour")
+async def delete_my_account(
+    request: Request,
+    data: DeleteAccountRequest,
+    response: Response,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Delete (anonymise) the signed-in person's own account after re-entering their password.
+    Refused while orders are in progress or a wallet still holds money. See services/auth/deletion.py."""
+    from services.auth.deletion import delete_account
+
+    await delete_account(db, current_user.user_id, data.password)
+    response.delete_cookie("avdan_token", path="/")
+    response.delete_cookie("avdan_refresh_token", path="/")
+    return {"message": "Your account has been deleted."}
 
 
 @router.patch("/me/push-token", response_model=dict)

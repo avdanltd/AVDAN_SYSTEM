@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from core.dependencies import CurrentUser, require_role
+from core.dependencies import CurrentUser, get_current_user, require_role
 from services.review.schemas import (
     AdminReviewResponse,
     HideReviewRequest,
@@ -10,6 +10,7 @@ from services.review.schemas import (
     PaginatedAdminReviewsResponse,
     PaginatedReviewsResponse,
     PendingReviewResponse,
+    ReportReviewRequest,
     SubmitReviewsRequest,
 )
 from services.review.service import ReviewService
@@ -51,6 +52,18 @@ async def submit_order_reviews(
     return OrderReviewsResponse(**await ReviewService(db).submit(order_id, current_user.user_id, data))
 
 
+@router.post("/{review_id}/report", response_model=dict, status_code=201)
+async def report_review(
+    review_id: str,
+    data: ReportReviewRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Flag a review (offensive, spam, false, other) for an admin to look at."""
+    await ReviewService(db).report(review_id, current_user.user_id, data.reason, data.details)
+    return {"message": "Thanks. Our team will look at this review."}
+
+
 @router.get("/products/{product_id}", response_model=PaginatedReviewsResponse)
 async def list_product_reviews(
     product_id: str,
@@ -76,13 +89,14 @@ async def admin_list_reviews(
     status: str | None = Query(default=None, pattern="^(visible|hidden)$"),
     target_type: str | None = Query(default=None, pattern="^(product|vendor)$"),
     max_rating: int | None = Query(default=None, ge=1, le=5),
+    reported: bool = Query(default=False, description="Only reviews with open reports"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     _current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedAdminReviewsResponse:
     return PaginatedAdminReviewsResponse(
-        **await ReviewService(db).admin_list(status, target_type, max_rating, page, page_size)
+        **await ReviewService(db).admin_list(status, target_type, max_rating, page, page_size, reported=reported)
     )
 
 
@@ -96,6 +110,18 @@ async def admin_hide_review(
     """Take a review down (abuse, spam, wrong target). It stops counting toward averages."""
     svc = ReviewService(db)
     review = await svc.hide(review_id, current_user.user_id, data.reason)
+    return AdminReviewResponse(**await svc.admin_one(review))
+
+
+@admin_router.post("/{review_id}/dismiss-reports", response_model=AdminReviewResponse)
+async def admin_dismiss_reports(
+    review_id: str,
+    current_user: CurrentUser = Depends(require_role("admin")),
+    db: AsyncSession = Depends(get_db),
+) -> AdminReviewResponse:
+    """The review is fine: close its open reports and leave it up."""
+    svc = ReviewService(db)
+    review = await svc.dismiss_reports(review_id, current_user.user_id)
     return AdminReviewResponse(**await svc.admin_one(review))
 
 

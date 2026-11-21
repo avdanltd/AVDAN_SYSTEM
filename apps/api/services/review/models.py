@@ -73,3 +73,33 @@ class Review(BaseModel):
     )
     hidden_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     hidden_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ReportReason:
+    OFFENSIVE = "offensive"  # abusive, hateful or sexual
+    SPAM = "spam"
+    FALSE = "false"  # fake, or about the wrong thing
+    OTHER = "other"
+    ALL = (OFFENSIVE, SPAM, FALSE, OTHER)
+
+
+class ReviewReport(BaseModel):
+    """Someone flagging a review for an admin to look at (required by app-store rules for
+    user-generated content). One report per person per review; an admin hides the review (reports
+    become "actioned") or dismisses the reports."""
+
+    __tablename__ = "review_reports"
+    __table_args__ = (
+        Index("uq_review_reports_one_per_person", "review_id", "reporter_id", unique=True),
+        Index("ix_review_reports_status", "status"),
+    )
+
+    review_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("reviews.id", ondelete="CASCADE"), nullable=False
+    )
+    reporter_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reason: Mapped[str] = mapped_column(String(12), nullable=False)
+    details: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="open", server_default="open")  # open | actioned | dismissed

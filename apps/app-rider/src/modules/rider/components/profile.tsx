@@ -18,7 +18,7 @@ import {
 
 import { useRiderProfile } from '../hooks/use-availability'
 import { usePayoutAccount } from '../hooks/use-payout'
-import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport } from '@avdan/mobile'
+import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport, AccountLegal } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
 function NavRow({
@@ -182,6 +182,7 @@ export function Profile() {
         }}
       />
 
+      <AccountLegal />
       <ContactSupport email={CONTACT_EMAILS.business} />
 
       <View style={styles.footer}>

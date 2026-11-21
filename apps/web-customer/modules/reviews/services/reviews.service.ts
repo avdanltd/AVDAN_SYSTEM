@@ -6,6 +6,8 @@ export type ReviewTarget = 'product' | 'vendor'
 export const reviewsService = {
   list: (target: ReviewTarget, id: string, page: number) =>
     apiClient.get<ReviewPage>(`/reviews/${target}s/${id}`, { page: String(page), page_size: '5' }),
+  report: (reviewId: string, reason: string, details?: string) =>
+    apiClient.post<{ message: string }>(`/reviews/${reviewId}/report`, { reason, details: details || null }),
   getPending: () => apiClient.get<PendingReview[]>('/reviews/pending'),
   getForOrder: (orderId: string) => apiClient.get<OrderReviews>(`/reviews/orders/${orderId}`),
   submitForOrder: (orderId: string, body: SubmitReviewsInput) =>

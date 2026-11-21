@@ -541,9 +541,16 @@ Shipped:
 
 Open:
 - [ ] None of the above has been clicked through in a browser or on a phone. Mobile changes need a new build/OTA.
-- [ ] **Store blockers (verified in code):** no `production` EAS profile / submit config; no account deletion (Apple + Google require
-      it); no privacy / terms pages on avdanstore.com; no reviewer demo accounts; no report/block on reviews (UGC); rider
-      background-location declaration; push credentials (Firebase/APNs); Android Maps key; `runtimeVersion`/`updates` for OTA.
+- [x] **Store blockers, code side (2026-11-22):** account deletion (`POST /auth/me/delete-account`, in all three apps + web profile, refuses
+      while orders are in progress or a wallet holds money), public `/privacy`, `/terms`, `/delete-account` pages on avdanstore.com (linked
+      from every app's sign-in and profile screens), report-a-review (`POST /reviews/{id}/report`, admin "Reported by users" queue),
+      `production` EAS profile + `submit` block, `runtimeVersion`/`updates` (expo-updates added), export-compliance flag, iPad off, vendor
+      photo permission trimmed, rider scheme `avdanrider`, `scripts/seed_review_accounts.py` for reviewer logins.
+- [ ] **Store blockers, still the owner's:** have a lawyer review the privacy/terms text (drafted from what the code collects; check the
+      `hello@`/`info@` mailboxes it names really exist); run `seed_review_accounts.py` on production with a strong
+      `REVIEW_ACCOUNT_PASSWORD` and paste the logins into App Store Connect / Play Console; Apple Developer (D-U-N-S) + Google Play
+      accounts; Firebase `google-services.json`, APNs key, Android Maps key as EAS secrets; app listings, screenshots, data-safety and
+      privacy-nutrition forms; Play background-location declaration + video for the rider app (or drop background tracking).
 - [ ] **App parity gaps:** vendor NEW ORDER alert + sound, rider NEW PICKUP alert, customer delivery-code chime, review pop-up,
       in-app notification list for customer and vendor.
 - [ ] Branches v2: merge identical products across branches; business page ordering by distance in the apps; admin "Businesses" list page.

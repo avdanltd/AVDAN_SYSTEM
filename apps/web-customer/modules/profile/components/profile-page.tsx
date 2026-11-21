@@ -32,6 +32,7 @@ import { useSession } from '@/modules/auth/hooks/use-session'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 import type { User as UserType } from '@/modules/auth/services/auth.service'
 import { ChangePasswordCard } from './change-password-card'
+import { DeleteAccountCard } from './delete-account-card'
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -182,6 +183,7 @@ export function ProfilePage() {
         </Card>
       </div>
       <ChangePasswordCard />
+      <DeleteAccountCard />
       <ContactSupport email={CONTACT_EMAILS.customer} />
     </div>
   )
