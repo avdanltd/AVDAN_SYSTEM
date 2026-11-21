@@ -13,6 +13,9 @@ export const productsService = {
   getVendors: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<ProductVendorSummary>>('/admin/products/vendors', params),
 
+  getCounts: (vendorId?: string) =>
+    apiClient.get<Record<string, number>>('/admin/products/counts', vendorId ? { vendor_id: vendorId } : undefined),
+
   getProducts: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminProduct>>('/admin/products', params),
 
