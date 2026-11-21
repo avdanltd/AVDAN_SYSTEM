@@ -10,6 +10,7 @@ from services.vendor.schemas import (
     PaginatedProductsResponse,
     PaginatedVendorsResponse,
     PayoutAccountResponse,
+    PostVendorMessageRequest,
     ProductResponse,
     PublicProductResponse,
     SavePayoutAccountRequest,
@@ -18,6 +19,7 @@ from services.vendor.schemas import (
     UpdateProductRequest,
     UpdateVendorProfileRequest,
     VendorDetailResponse,
+    VendorMessageResponse,
     VendorResponse,
     VerifyAccountRequest,
     VerifyAccountResponse,
@@ -25,6 +27,16 @@ from services.vendor.schemas import (
 from services.vendor.service import VendorService
 
 router = APIRouter()
+
+
+def _message_response(m: object) -> VendorMessageResponse:
+    from services.vendor.models import VendorMessage
+
+    msg: VendorMessage = m  # type: ignore[assignment]
+    return VendorMessageResponse(
+        id=str(msg.id), sender_role=msg.sender_role, body=msg.body,
+        created_at=msg.created_at.isoformat(), read=msg.read_at is not None,
+    )
 
 
 def _vendor_response(vendor: object) -> VendorResponse:
@@ -244,6 +256,41 @@ async def my_attention(
 ) -> dict[str, int]:
     """Counts of items waiting on this vendor, for the menu badges."""
     return await VendorService(db).attention_counts(current_user.user_id)
+
+
+@router.get("/me/messages", response_model=list[VendorMessageResponse])
+async def my_messages(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> list[VendorMessageResponse]:
+    """The conversation with AVDAN staff. Opening it marks their messages as read."""
+    from services.vendor.messages import list_thread
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    return [_message_response(m) for m in await list_thread(db, vendor.id, "vendor")]
+
+
+@router.get("/me/messages/unread")
+async def my_unread_messages(
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    from services.vendor.messages import unread_count
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    return {"unread": await unread_count(db, vendor.id, "vendor")}
+
+
+@router.post("/me/messages", response_model=VendorMessageResponse, status_code=201)
+async def send_my_message(
+    data: PostVendorMessageRequest,
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> VendorMessageResponse:
+    from services.vendor.messages import post_message
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    return _message_response(await post_message(db, vendor, "vendor", current_user.user_id, data.body))
 
 
 @router.patch("/me", response_model=VendorResponse)

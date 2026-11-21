@@ -154,5 +154,5 @@ def test_vendor_and_hub_badges() -> None:
             db.add(Order(customer_id=cust.id, vendor_id=vendor.id, status=st, total_kobo=1000,
                          delivery_fee_kobo=500, delivery_address={"street": "s"}))
         await db.flush()
-        assert await VendorService(db).attention_counts(str(vu.id)) == {"orders": 2, "products": 1}
+        assert await VendorService(db).attention_counts(str(vu.id)) == {"orders": 2, "products": 1, "messages": 0}
     run(body)

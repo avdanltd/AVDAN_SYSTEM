@@ -192,6 +192,99 @@ class AdminService:
         result = await self.db.execute(query)
         return list(result.scalars().all()), total
 
+    # ── Vendor application review ─────────────────────────────────────────────
+
+    @staticmethod
+    def vendor_checklist(v: Vendor, owner: User | None) -> list[dict]:
+        """What an admin checks before approving a vendor. `required` items that are not ok are
+        what to chase; the rest are worth knowing but don't block a store opening."""
+        place = [x for x in (v.state, v.lga, v.city) if x and x.strip()]
+        missing_place = [lbl for lbl, val in (("state", v.state), ("LGA", v.lga), ("city", v.city)) if not (val and val.strip())]
+        desc = (v.description or "").strip()
+        return [
+            {
+                "key": "location", "label": "Location (state, LGA, city)", "required": True,
+                "ok": not missing_place,
+                "detail": " · ".join(reversed(place)) if not missing_place else f"Missing: {', '.join(missing_place)}",
+            },
+            {
+                "key": "street", "label": "Street address", "required": True,
+                "ok": bool(v.street and v.street.strip()),
+                "detail": (v.street or None) if v.street and v.street.strip() else (
+                    f"Only a free-text address is saved: {v.address}" if v.address else "Not entered"
+                ),
+            },
+            {
+                "key": "pickup_pin", "label": "Pickup point pinned on the map", "required": True,
+                "ok": v.lat is not None and v.lng is not None,
+                "detail": f"{float(v.lat):.5f}, {float(v.lng):.5f}" if v.lat is not None and v.lng is not None
+                else "Not pinned: riders can't be matched by distance and customers pay only the flat delivery fee",
+            },
+            {
+                "key": "description", "label": "Business description", "required": True,
+                "ok": len(desc) >= 20,
+                "detail": f"{len(desc)} characters" if desc else "Not written",
+            },
+            {
+                "key": "phone", "label": "Contact phone number", "required": True,
+                "ok": bool(owner and owner.phone), "detail": owner.phone if owner and owner.phone else "Not set",
+            },
+            {
+                "key": "logo", "label": "Logo", "required": False,
+                "ok": bool(v.logo_url), "detail": None if v.logo_url else "No logo uploaded",
+            },
+            {
+                "key": "payout", "label": "Payout bank account", "required": False,
+                "ok": bool(v.payout_account_number),
+                "detail": v.payout_bank_name if v.payout_account_number else "Not added yet (needed before a payout)",
+            },
+        ]
+
+    async def vendor_profile(self, vendor_id: str) -> dict:
+        """Everything an admin needs to decide on a vendor: what they filled in, who they are,
+        what they've listed, and what is still missing."""
+        from services.vendor.messages import unread_count
+
+        vendor = (await self.db.execute(
+            select(Vendor).where(Vendor.id == uuid.UUID(vendor_id)).options(selectinload(Vendor.user))
+        )).scalar_one_or_none()
+        if not vendor:
+            raise NotFoundException("Vendor not found")
+
+        counts = dict((await self.db.execute(
+            select(Product.approval_status, func.count()).where(Product.vendor_id == vendor.id).group_by(Product.approval_status)
+        )).all())
+        checklist = self.vendor_checklist(vendor, vendor.user)
+        acct = vendor.payout_account_number
+        return {
+            "id": str(vendor.id), "name": vendor.name, "slug": vendor.slug, "status": vendor.status,
+            "description": vendor.description, "logo_url": vendor.logo_url, "is_open": vendor.is_open,
+            "created_at": vendor.created_at.isoformat(),
+            "address": vendor.address, "street": vendor.street, "city": vendor.city, "lga": vendor.lga,
+            "state": vendor.state, "country": vendor.country, "landmark": vendor.landmark,
+            "lat": float(vendor.lat) if vendor.lat is not None else None,
+            "lng": float(vendor.lng) if vendor.lng is not None else None,
+            "owner_name": vendor.user.name if vendor.user else None,
+            "owner_email": vendor.user.email if vendor.user else None,
+            "owner_phone": vendor.user.phone if vendor.user else None,
+            "owner_status": vendor.user.status if vendor.user else None,
+            "payout_bank_name": vendor.payout_bank_name,
+            "payout_account_name": vendor.payout_account_name,
+            "payout_account_last4": acct[-4:] if acct else None,
+            "product_total": sum(counts.values()),
+            "product_approved": counts.get("APPROVED", 0),
+            "product_pending": counts.get("PENDING", 0),
+            "checklist": checklist,
+            "missing": [c["label"] for c in checklist if c["required"] and not c["ok"]],
+            "unread_from_vendor": await unread_count(self.db, vendor.id, "admin"),
+        }
+
+    async def get_vendor(self, vendor_id: str) -> Vendor:
+        vendor = (await self.db.execute(select(Vendor).where(Vendor.id == uuid.UUID(vendor_id)))).scalar_one_or_none()
+        if not vendor:
+            raise NotFoundException("Vendor not found")
+        return vendor
+
     async def update_vendor_status(self, vendor_id: str, new_status: str) -> tuple[Vendor, str]:
         result = await self.db.execute(
             select(Vendor).where(Vendor.id == uuid.UUID(vendor_id))

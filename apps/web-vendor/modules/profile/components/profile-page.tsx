@@ -278,8 +278,9 @@ function BusinessForm() {
           <div>
             <p className="text-sm font-medium text-foreground">Pickup Address</p>
             <p className="text-xs text-muted-foreground">
-              Used to find the nearest rider and hub for your orders, and shown to customers as your
-              town and state so they can choose vendors close to them.
+              This is where riders will come to collect your goods, and it decides the delivery fee your
+              customers pay, so it must be the place the goods are actually picked up from. It is also
+              shown to customers as your town and state so they can choose vendors close to them.
             </p>
           </div>
           {vendor?.address && !vendor.street && (
@@ -307,9 +308,9 @@ function BusinessForm() {
           </div>
           {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) && (
             <p className="text-xs text-amber-600">
-              Your location isn&apos;t set, so customers are charged only the flat delivery fee and riders can&apos;t
-              be matched by distance. Stand at your pickup point and press &quot;Use my current location&quot;, or
-              enter a more specific street address and save.
+              Your pickup location isn&apos;t pinned, so customers are charged only the flat delivery fee and riders
+              can&apos;t be matched by distance. Stand at the exact spot riders will collect from and press
+              &quot;Use my current location&quot;, or enter a more specific street address and save.
             </p>
           )}
         </div>

@@ -1,8 +1,9 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, ForeignKey, Integer, Numeric, String, Text, true
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, true
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -134,3 +135,22 @@ class Product(BaseModel):
             from services.categories.models import Category as _Category  # noqa: F401
         cat = self.__dict__.get("category")
         return cat.name if cat is not None else None
+
+
+class VendorMessage(BaseModel):
+    """One message in the conversation between AVDAN staff and a vendor, mainly used while a
+    vendor application is being reviewed ("your pickup location isn't set") so it can be fixed
+    straight away. One thread per vendor; `read_at` is when the *other* side opened it."""
+
+    __tablename__ = "vendor_messages"
+    __table_args__ = (Index("ix_vendor_messages_vendor_created", "vendor_id", "created_at"),)
+
+    vendor_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("vendors.id", ondelete="CASCADE"), nullable=False
+    )
+    sender_role: Mapped[str] = mapped_column(String(10), nullable=False)  # "admin" | "vendor"
+    sender_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

@@ -56,7 +56,7 @@ export default function MainLayout() {
         />
         <Tabs.Screen
           name="profile"
-          options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
+          options={{ title: 'Profile', tabBarBadge: attention?.messages ? attention.messages : undefined, tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }}
         />
       </Tabs>
     </View>

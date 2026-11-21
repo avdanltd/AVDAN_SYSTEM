@@ -88,6 +88,9 @@ export function NotificationsPage() {
                 onClick={() => {
                   if (!n.read_at) markRead(n.id)
                   if (isNewUser) router.push(ROUTES.users)
+                  else if (n.type === 'vendor_message' && typeof n.content.vendor_id === 'string') {
+                    router.push(ROUTES.vendor(n.content.vendor_id))
+                  }
                 }}
               >
                 <div

@@ -7,6 +7,7 @@ import {
   KeyRound,
   LogOut,
   Mail,
+  MessageSquare,
   Moon,
   Phone,
   ShieldCheck,
@@ -15,7 +16,7 @@ import {
 } from 'lucide-react-native'
 
 import { statusLabel } from '@/constants/status'
-import { useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
+import { useAttention, useVendorAnalytics, useVendorProfile } from '../hooks/use-vendor'
 import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, formatKobo, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
@@ -54,6 +55,7 @@ export function Profile() {
   const { mutate: logout, isPending } = useLogout()
   const { colors, preference } = useTheme()
   const { data: vendor } = useVendorProfile()
+  const { data: attention } = useAttention()
   const { data: analytics } = useVendorAnalytics()
   const router = useRouter()
 
@@ -150,6 +152,13 @@ export function Profile() {
       <View style={styles.section}>
         <Text style={[styles.sectionLabel, { color: colors.mutedForeground }]}>SETTINGS</Text>
         <Card style={styles.groupTight}>
+          <NavRow
+            icon={<MessageSquare size={17} color={colors.primary} />}
+            label="Messages from AVDAN"
+            value={attention?.messages ? `${attention.messages} new` : undefined}
+            onPress={() => router.push('/profile/messages')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow
             icon={<Store size={17} color={colors.primary} />}
             label="Storefront details"
