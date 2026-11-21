@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Search } from 'lucide-react'
+import { ArrowLeft, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 import {
   Badge,
   Button,
@@ -51,9 +52,19 @@ function naira(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
 }
 
-export function ProductsPage() {
+interface ProductsPageProps {
+  /** Show only this vendor's products (the page reached by clicking a vendor). */
+  vendorId?: string
+  vendorName?: string
+  /** Hide the page heading when shown inside another page (the "Awaiting approval" tab). */
+  embedded?: boolean
+}
+
+export function ProductsPage({ vendorId, vendorName, embedded = false }: ProductsPageProps = {}) {
+  const router = useRouter()
   const [page, setPage] = useState(1)
-  const [status, setStatus] = useState('PENDING')
+  // A vendor's own page opens on everything they have; the all-vendors queue opens on what is waiting.
+  const [status, setStatus] = useState(vendorId ? '__all__' : 'PENDING')
   const [query, setQuery] = useState('')
   // Wait for a short pause in typing before asking the server, so each keystroke isn't a request.
   const [search, setSearch] = useState('')
@@ -76,6 +87,7 @@ export function ProductsPage() {
   const params: Record<string, string> = { page: String(page), page_size: '20' }
   if (status !== '__all__') params.approval_status = status
   if (search) params.search = search
+  if (vendorId) params.vendor_id = vendorId
 
   const { data, isLoading, isError, refetch } = useAdminProducts(params)
   const { approve, reject } = useReviewProduct()
@@ -228,12 +240,21 @@ export function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-4 p-6">
-      <div>
-        <h1 className="font-display text-2xl font-semibold text-foreground">Products</h1>
-        <p className="text-sm text-muted-foreground">
-          {total} products. Set the price customers see; the difference from the vendor&apos;s price is the platform&apos;s gain.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          {vendorId && (
+            <Button variant="ghost" size="sm" className="-ml-2 mb-1 w-fit" onClick={() => router.push('/products')}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> All vendors
+            </Button>
+          )}
+          <h1 className="font-display text-2xl font-semibold text-foreground">
+            {vendorName ? `${vendorName}: products` : 'Products'}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {total} products. Set the price customers see; the difference from the vendor&apos;s price is the platform&apos;s gain.
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative w-full max-w-md">

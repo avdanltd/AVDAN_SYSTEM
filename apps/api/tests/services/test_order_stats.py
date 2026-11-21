@@ -77,3 +77,45 @@ def test_order_list_honours_search_and_dates() -> None:
         _, total = await svc.list_orders(None, None, None, 1, 50, search="%")  # wildcard is literal
         assert total == 0
     run(body)
+
+
+def test_vendor_scoped_stats_only_count_that_vendors_orders_at_their_price() -> None:
+    async def body(db):  # type: ignore[no-untyped-def]
+        cust, mine = await _party(db)
+        _, other = await _party(db)
+        base = datetime(2034, 6, 10, 12, 0, tzinfo=UTC)
+        a = await _order(db, cust, mine, "COMPLETED", base)
+        a.vendor_total_kobo = 800  # what the vendor earns; the customer paid 1000 + 500 delivery
+        await _order(db, cust, mine, "PAID", base)  # vendor_total_kobo null -> falls back to total
+        await _order(db, cust, other, "COMPLETED", base)  # someone else's: must not count
+
+        res = await AdminService(db).order_stats(
+            date(2034, 6, 10), date(2034, 6, 10), None, None, vendor_id=mine.id
+        )
+        assert res["total"] == 2
+        assert res["value_kobo"] == 800 + 1000
+        counts = {g["key"]: g["count"] for g in res["groups"]}
+        assert counts["completed"] == 1 and counts["in_progress"] == 1
+    run(body)
+
+
+def test_product_vendor_summaries_count_by_status_and_put_pending_first() -> None:
+    from services.vendor.models import Product
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        _, quiet = await _party(db)
+        _, busy = await _party(db)
+        for status in ("APPROVED", "APPROVED", "REJECTED"):
+            db.add(Product(vendor_id=quiet.id, name="q", price_kobo=1, vendor_price_kobo=1, approval_status=status))
+        for status in ("PENDING", "PENDING", "APPROVED"):
+            db.add(Product(vendor_id=busy.id, name="b", price_kobo=1, vendor_price_kobo=1, approval_status=status))
+        await db.flush()
+        rows, total = await AdminService(db).product_vendor_summaries(None, 1, 500)
+        by_id = {r["vendor_id"]: r for r in rows}
+        assert (by_id[str(busy.id)]["total"], by_id[str(busy.id)]["live"], by_id[str(busy.id)]["pending"]) == (3, 1, 2)
+        assert (by_id[str(quiet.id)]["live"], by_id[str(quiet.id)]["rejected"], by_id[str(quiet.id)]["pending"]) == (2, 1, 0)
+        order = [r["vendor_id"] for r in rows]
+        assert order.index(str(busy.id)) < order.index(str(quiet.id))  # waiting work first
+        only, n = await AdminService(db).product_vendor_summaries(busy.name, 1, 20)
+        assert n == 1 and only[0]["vendor_id"] == str(busy.id)
+    run(body)

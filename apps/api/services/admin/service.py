@@ -329,6 +329,43 @@ class AdminService:
         query = query.order_by(Product.created_at.asc()).offset((page - 1) * page_size).limit(page_size)
         return list((await self.db.execute(query)).scalars().all()), total
 
+    async def product_vendor_summaries(
+        self, search: str | None, page: int, page_size: int
+    ) -> tuple[list[dict], int]:
+        """Vendors that have products, with how many are live / awaiting approval / rejected, so
+        admins review one vendor's catalogue at a time instead of one giant list. Vendors with
+        something waiting come first."""
+        counts = (
+            select(
+                Product.vendor_id.label("vendor_id"),
+                func.count().label("total"),
+                func.count().filter(Product.approval_status == "APPROVED").label("live"),
+                func.count().filter(Product.approval_status == "PENDING").label("pending"),
+                func.count().filter(Product.approval_status == "REJECTED").label("rejected"),
+            )
+            .group_by(Product.vendor_id)
+            .subquery()
+        )
+        q = select(Vendor, counts.c.total, counts.c.live, counts.c.pending, counts.c.rejected).join(
+            counts, counts.c.vendor_id == Vendor.id
+        )
+        cq = select(func.count()).select_from(Vendor).join(counts, counts.c.vendor_id == Vendor.id)
+        if search and search.strip():
+            pattern = f"%{search.strip()}%"
+            q = q.where(Vendor.name.ilike(pattern))
+            cq = cq.where(Vendor.name.ilike(pattern))
+        total = (await self.db.execute(cq)).scalar_one()
+        rows = (await self.db.execute(
+            q.order_by(counts.c.pending.desc(), Vendor.name.asc()).offset((page - 1) * page_size).limit(page_size)
+        )).all()
+        return [
+            {
+                "vendor_id": str(v.id), "name": v.name, "status": v.status, "logo_url": v.logo_url,
+                "total": t, "live": live, "pending": pending, "rejected": rejected,
+            }
+            for v, t, live, pending, rejected in rows
+        ], total
+
     async def _get_product(self, product_id: str) -> Product:
         product = (await self.db.execute(
             select(Product)
@@ -443,7 +480,12 @@ class AdminService:
         return conds
 
     async def order_stats(
-        self, date_from: date | None, date_to: date | None, group: str | None, bucket: str | None
+        self,
+        date_from: date | None,
+        date_to: date | None,
+        group: str | None,
+        bucket: str | None,
+        vendor_id: uuid.UUID | None = None,
     ) -> dict:
         """How many orders were placed in a period: counts per status group plus a time series.
 
@@ -451,6 +493,12 @@ class AdminService:
         `total`, `value_kobo` and the series follow the selected `group`."""
         local = func.timezone(_LAGOS, Order.created_at)
         conds = self._ordered_between(date_from, date_to)
+        # Scoped to one vendor (their own dashboard): same numbers, same groups, and the value is
+        # what the vendor earns from the goods (their own price), not what the customer paid.
+        value_col = Order.total_kobo + Order.delivery_fee_kobo
+        if vendor_id is not None:
+            conds.append(Order.vendor_id == vendor_id)
+            value_col = func.coalesce(Order.vendor_total_kobo, Order.total_kobo)
 
         status_rows = (await self.db.execute(
             select(Order.status, func.count()).where(*conds).group_by(Order.status)
@@ -475,7 +523,7 @@ class AdminService:
 
         total = (await self.db.execute(select(func.count()).select_from(Order).where(*conds))).scalar_one()
         value = (await self.db.execute(
-            select(func.coalesce(func.sum(Order.total_kobo + Order.delivery_fee_kobo), 0))
+            select(func.coalesce(func.sum(value_col), 0))
             .where(*conds, Order.status.notin_(self._NO_VALUE))
         )).scalar_one()
 

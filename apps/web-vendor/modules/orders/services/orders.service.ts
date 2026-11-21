@@ -1,8 +1,12 @@
+import type { OrderStats } from '@avdan/types'
 import { apiClient } from '@/lib/api-client'
 import type { PaginatedResponse } from '@avdan/types'
 import type { VendorOrder } from '../types'
 
 export const ordersService = {
+  getOrderStats: (params: Record<string, string>) =>
+    apiClient.get<OrderStats>('/orders/vendor/stats', params),
+
   getOrders: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<VendorOrder>>('/orders/vendor/incoming', params),
 

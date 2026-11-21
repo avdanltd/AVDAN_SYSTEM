@@ -17,6 +17,7 @@ from services.admin.schemas import (
     NewUserStatsResponse,
     OrderStatsResponse,
     PaginatedAdminProductsResponse,
+    PaginatedProductVendorsResponse,
     RejectProductRequest,
     SetProductCategoryRequest,
 )
@@ -355,6 +356,19 @@ def _admin_product_response(p: object) -> AdminProductResponse:
         special_delivery_fee_kobo=product.special_delivery_fee_kobo,
         created_at=product.created_at.isoformat(),
     )
+
+
+@router.get("/products/vendors", response_model=PaginatedProductVendorsResponse)
+async def list_product_vendors(
+    search: str | None = Query(default=None, max_length=100),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> PaginatedProductVendorsResponse:
+    """Vendors with their product counts (live / awaiting / rejected): the Products landing page."""
+    items, total = await AdminService(db).product_vendor_summaries(search, page, page_size)
+    return PaginatedProductVendorsResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 @router.get("/products", response_model=PaginatedAdminProductsResponse)

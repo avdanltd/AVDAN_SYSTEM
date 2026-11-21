@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.database import get_db
 from core.dependencies import CurrentUser, require_role
 from core.exceptions import ValidationException
+from services.admin.schemas import OrderStatsResponse
 from services.orders.schemas import (
     CreateOrderRequest,
     DeliveryQuoteResponse,
@@ -280,6 +282,25 @@ async def list_vendor_orders(
         page=page,
         page_size=page_size,
     )
+
+
+@router.get("/vendor/stats", response_model=OrderStatsResponse)
+async def vendor_order_stats(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    group: str | None = Query(default=None),
+    bucket: str | None = Query(default=None, pattern="^(day|week|month)$"),
+    current_user: CurrentUser = Depends(require_role("vendor")),
+    db: AsyncSession = Depends(get_db),
+) -> OrderStatsResponse:
+    """This vendor's order numbers for a period (Lagos dates): counts per status group and a
+    day/week/month series, for the dashboard chart. Must stay above /vendor/{order_id}."""
+    from services.admin.service import AdminService
+    from services.vendor.service import VendorService
+
+    vendor = await VendorService(db).get_or_create_vendor_for_user(current_user.user_id)
+    data = await AdminService(db).order_stats(date_from, date_to, group, bucket, vendor_id=vendor.id)
+    return OrderStatsResponse(**data)
 
 
 @router.get("/vendor/{order_id}", response_model=OrderDetailResponse)

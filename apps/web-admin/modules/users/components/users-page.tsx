@@ -50,8 +50,8 @@ import { CreateAdminDialog } from "./create-admin-dialog";
 import { AssignHubDialog } from "./assign-hub-dialog";
 
 import { NewUsersPanel } from "./new-users-panel";
-import { presetRange, type RangePreset } from "@/modules/shared/lib/date-range";
-import { DateRangeBar } from "@/modules/shared/components/date-range-bar";
+import { DateRangeBar } from "@avdan/ui";
+import { presetRange, type RangePreset } from "@avdan/types";
 
 const ROLE_OPTIONS = [
   { value: "__all__", label: "All Roles" },

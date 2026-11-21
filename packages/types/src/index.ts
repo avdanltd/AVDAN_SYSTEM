@@ -77,6 +77,8 @@ export type TrackingStage = 'to_vendor' | 'to_hub' | 'to_customer' | 'at_hub'
 
 export * from './nigeria-locations'
 export * from './wallet-export'
+export * from './date-range'
+export * from './order-stats'
 
 /**
  * Where people reach AVDAN. Customers use hello@; vendors, riders, hub agents and investors use

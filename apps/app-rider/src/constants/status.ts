@@ -17,6 +17,7 @@ const RIDER_STATUS_LABELS: Record<string, string> = {
   FAILED_DELIVERY: 'Delivery failed',
   READY_FOR_PICKUP: 'Ready for pickup',
   OUT_FOR_DELIVERY: 'Out for delivery',
+  ARRIVED_AT_HUB: 'Arrived at hub',
   AT_HUB: 'At hub',
   PICKED_UP: 'Picked up',
 }

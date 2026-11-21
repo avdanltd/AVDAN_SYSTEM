@@ -13,6 +13,7 @@ export const ROUTES = {
 
   vendors: '/vendors',
   products: '/products',
+  productsOfVendor: (vendorId: string) => `/products/vendor/${vendorId}`,
   vendor: (id: string) => `/vendors/${id}`,
 
   disputes: '/disputes',
