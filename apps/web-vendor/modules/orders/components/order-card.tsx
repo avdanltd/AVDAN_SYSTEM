@@ -76,6 +76,9 @@ export function OrderCard({ order }: OrderCardProps) {
               <span className="font-mono text-xs font-semibold text-foreground">
                 #{order.id.slice(0, 8)}
               </span>
+              {order.customer_name && (
+                <p className="mt-0.5 text-sm font-medium text-foreground">{order.customer_name}</p>
+              )}
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {formatRelativeTime(order.created_at)}
               </p>
