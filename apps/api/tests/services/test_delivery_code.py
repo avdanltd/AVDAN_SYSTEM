@@ -17,6 +17,7 @@ class FakeRedis:
 
     async def incr(self, key):
         self.store[key] = self.store.get(key, 0) + 1
+        return self.store[key]
 
     async def expire(self, key, ttl):
         pass

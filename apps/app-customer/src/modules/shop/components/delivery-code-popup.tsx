@@ -3,7 +3,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { KeyRound } from 'lucide-react-native'
-import { Blink, Button, fonts, radius, spacing, useTheme } from '@avdan/mobile'
+import { Blink, Button, fonts, radius, spacing, useAlertChime, useTheme } from '@avdan/mobile'
 
 import { usePendingDeliveryCodes } from '../hooks/use-shop'
 
@@ -23,6 +23,8 @@ export function DeliveryCodePopup() {
   const { data } = usePendingDeliveryCodes()
   const codes = data ?? []
   const [expanded, setExpanded] = useState(false)
+  // The code is what the rider needs at the door: chime (and vibrate) while it is on screen.
+  useAlertChime({ active: expanded && codes.length > 0, storageKey: 'avdan_customer_code_sound' })
 
   const key = codes.map((c) => c.order_id).join(',')
   useEffect(() => {

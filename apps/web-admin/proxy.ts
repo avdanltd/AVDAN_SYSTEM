@@ -1,7 +1,15 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { jwtVerify } from 'jose'
 
-const SECRET = new TextEncoder().encode(process.env.JWT_SECRET ?? '')
+// Fail closed: with no real secret configured (an empty key still "verifies" a token signed with an
+// empty key), no token is accepted and every protected page sends the visitor to sign in.
+const SECRET_TEXT = process.env.JWT_SECRET ?? ''
+const SECRET = SECRET_TEXT.length >= 32 ? new TextEncoder().encode(SECRET_TEXT) : null
+
+function requireSecret(): Uint8Array {
+  if (!SECRET) throw new Error('JWT_SECRET is missing or too short')
+  return SECRET
+}
 const API_INTERNAL_URL = process.env.API_INTERNAL_URL ?? 'http://localhost:8000'
 
 export async function proxy(request: NextRequest): Promise<NextResponse> {
@@ -14,6 +22,8 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
     const token = request.cookies.get('avdan_token')?.value
     const headers = new Headers(request.headers)
+    headers.delete('x-user-id')
+    headers.delete('x-user-role')
     if (token) {
       headers.set('Authorization', `Bearer ${token}`)
     }
@@ -31,7 +41,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
   }
 
   try {
-    const { payload } = await jwtVerify(token, SECRET)
+    const { payload } = await jwtVerify(token, requireSecret())
     const role = String(payload.role ?? '')
 
     if (role !== 'admin' && role !== 'support') {
@@ -68,7 +78,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
           }
 
           if (newAccessToken) {
-            const { payload: newPayload } = await jwtVerify(newAccessToken, SECRET)
+            const { payload: newPayload } = await jwtVerify(newAccessToken, requireSecret())
             const role = String(newPayload.role ?? '')
             if (role !== 'admin' && role !== 'support') {
               const loginUrl = new URL('/login', request.url)

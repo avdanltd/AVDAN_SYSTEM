@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react-native'
-import { Button, fonts, loginSchema, radius, spacing, useLogin, useTheme } from '@avdan/mobile'
+import { Button, fonts, loginSchema, radius, spacing, useLogin, useTheme, LegalFooter } from '@avdan/mobile'
 
 export function LoginForm() {
   const { mutate: login, isPending } = useLogin()
@@ -104,6 +104,7 @@ export function LoginForm() {
         loading={isPending}
         size="lg"
       />
+      <LegalFooter />
     </View>
   )
 }

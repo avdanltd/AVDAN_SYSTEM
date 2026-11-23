@@ -5,6 +5,7 @@ import { fonts, useTheme } from '@avdan/mobile'
 
 import { cartCount, useCartStore } from '@/modules/shop/store/cart.store'
 import { DeliveryCodePopup } from '@/modules/shop/components/delivery-code-popup'
+import { ReviewPromptPopup } from '@/modules/shop/components/review-prompt-popup'
 import { usePendingDeliveryCodes } from '@/modules/shop/hooks/use-shop'
 
 // This app is publicly browsable — AVDAN is a storefront, not a members-only tool. Login is only
@@ -77,6 +78,7 @@ export default function MainLayout() {
         <Tabs.Screen name="checkout" options={{ href: null }} />
       </Tabs>
       <DeliveryCodePopup />
+      <ReviewPromptPopup />
     </>
   )
 }

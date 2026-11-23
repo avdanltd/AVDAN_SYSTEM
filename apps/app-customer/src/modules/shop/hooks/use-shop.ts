@@ -91,3 +91,14 @@ export function useOrder(id: string) {
     refetchInterval: 20_000,
   })
 }
+
+/** Orders that were delivered and haven't been reviewed yet (the API stops listing one once reviewed). */
+export function usePendingReviews() {
+  const { isAuthenticated } = useSession()
+  return useQuery({
+    queryKey: ['pending-reviews'],
+    queryFn: () => shopService.getPendingReviews(),
+    enabled: isAuthenticated,
+    refetchInterval: 60_000,
+  })
+}

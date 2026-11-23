@@ -1,3 +1,4 @@
+import type { PendingReview } from '@avdan/types'
 import type { BusinessDetail } from '@avdan/types'
 import type { DeliveryQuote, OrderReviews, ReviewPage, SubmitReviewsInput } from '@avdan/types'
 import { apiClient } from '@avdan/mobile'
@@ -66,6 +67,9 @@ export const shopService = {
   getProduct: (id: string) => apiClient.get<Product>(`/products/${id}`),
   getReviews: (target: 'product' | 'vendor', id: string, page: number) =>
     apiClient.get<ReviewPage>(`/reviews/${target}s/${id}`, { page: String(page), page_size: '5' }),
+  getPendingReviews: () => apiClient.get<PendingReview[]>('/reviews/pending'),
+  reportReview: (reviewId: string, reason: string) =>
+    apiClient.post<{ message: string }>(`/reviews/${reviewId}/report`, { reason }),
   getOrderReviews: (orderId: string) => apiClient.get<OrderReviews>(`/reviews/orders/${orderId}`),
   submitOrderReviews: (orderId: string, body: SubmitReviewsInput) =>
     apiClient.post<OrderReviews>(`/reviews/orders/${orderId}`, body),

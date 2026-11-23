@@ -349,10 +349,31 @@ class WalletService:
             actor_role=actor_role, amount_kobo=amount_kobo, note=note,
         ))
 
+    async def _assert_payout_account_settled(self, user_id: str) -> None:
+        """No withdrawal within 24 hours of REPLACING the payout account (setting it the first time
+        is fine). Someone who took over a session could otherwise swap the account and cash out at
+        once; the real owner is emailed when it changes and has a day to react."""
+        from datetime import UTC, datetime, timedelta
+
+        from services.analytics.models import AuditLog
+
+        changed = (await self.db.execute(
+            select(func.max(AuditLog.created_at)).where(
+                AuditLog.actor_id == uuid.UUID(user_id), AuditLog.action == "payout.account_change"
+            )
+        )).scalar_one_or_none()
+        if changed and datetime.now(UTC) - changed < timedelta(hours=24):
+            raise AppError(
+                422, "PAYOUT_ACCOUNT_RECENTLY_CHANGED",
+                "Your payout account was changed less than 24 hours ago. For your security, withdrawals resume 24 hours after a change.",
+            )
+
     async def request_withdrawal(self, owner_type: str, user_id: str, amount_kobo: int) -> PayoutRequest:
         owner = await self._get_owner(owner_type, user_id, lock=True)
         if not owner.paystack_recipient_code:  # type: ignore[attr-defined]
             raise AppError(422, "PAYOUT_ACCOUNT_NOT_SET", "Add a payout bank account before requesting a withdrawal")
+
+        await self._assert_payout_account_settled(user_id)
 
         summary = await self.get_summary(owner_type, owner.id, has_account=True)  # type: ignore[attr-defined]
         if amount_kobo < summary["min_withdrawal_kobo"]:

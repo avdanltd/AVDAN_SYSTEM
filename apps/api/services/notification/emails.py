@@ -138,6 +138,7 @@ def _wrap_in_template(
 
 def build_otp_email(name: str, otp: str, role: str | None = "customer") -> str:
     """Builds the OTP verification email HTML content."""
+    name = html_escape(name or "there")
     content = f"""
     <h2 style="margin-top: 0; font-size: 20px; font-weight: 600;">Hello {name},</h2>
     <p>Thank you for signing up on AVDAN. To complete your account registration, please verify your email address using the 6-digit verification code below:</p>

@@ -5,5 +5,6 @@ import { apiClient } from '@/lib/api-client'
 export const reviewsService = {
   list: (params: Record<string, string>) => apiClient.get<AdminReviewPage>('/admin/reviews', params),
   hide: (id: string, reason: string) => apiClient.post<AdminReview>(`/admin/reviews/${id}/hide`, { reason }),
+  dismissReports: (id: string) => apiClient.post<AdminReview>(`/admin/reviews/${id}/dismiss-reports`, {}),
   unhide: (id: string) => apiClient.post<AdminReview>(`/admin/reviews/${id}/unhide`, {}),
 }
