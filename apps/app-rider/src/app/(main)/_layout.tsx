@@ -1,7 +1,10 @@
+import { View } from 'react-native'
 import { Redirect, Tabs } from 'expo-router'
 import { Home, Package, User } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { fonts, useSession, useTheme } from '@avdan/mobile'
+
+import { NewPickupAlert } from '@/modules/rider/components/new-pickup-alert'
 
 export default function MainLayout() {
   const { isAuthenticated } = useSession()
@@ -13,6 +16,8 @@ export default function MainLayout() {
   }
 
   return (
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <NewPickupAlert />
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -57,5 +62,6 @@ export default function MainLayout() {
         }}
       />
     </Tabs>
+    </View>
   )
 }

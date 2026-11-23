@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { useRouter, type Href } from 'expo-router'
 import {
   BadgeDollarSign,
   ChevronRight,
@@ -13,12 +13,12 @@ import {
   ShieldCheck,
   Star,
   Truck,
-  Wallet,
+  Wallet, Bell,
 } from 'lucide-react-native'
 
 import { useRiderProfile } from '../hooks/use-availability'
 import { usePayoutAccount } from '../hooks/use-payout'
-import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport, AccountLegal } from '@avdan/mobile'
+import { AvdanMark, Badge, Button, Card, ConfirmDialog, fonts, initials, radius, spacing, useLogout, useSession, useTheme, ContactSupport, AccountLegal, useUnreadNotifications } from '@avdan/mobile'
 import { CONTACT_EMAILS } from '@avdan/types'
 
 function NavRow({
@@ -58,6 +58,7 @@ export function Profile() {
   const { data: rider } = useRiderProfile()
   const { data: payoutAccount } = usePayoutAccount()
   const router = useRouter()
+  const { data: unread } = useUnreadNotifications()
   const [confirmingLogout, setConfirmingLogout] = useState(false)
 
   const themeLabel = preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light'
@@ -136,6 +137,13 @@ export function Profile() {
             icon={<KeyRound size={17} color={colors.primary} />}
             label="Change password"
             onPress={() => router.push('/profile/password')}
+          />
+          <View style={[styles.sep, { backgroundColor: colors.border }]} />
+          <NavRow
+            icon={<Bell size={17} color={colors.primary} />}
+            label="Notifications"
+            value={unread ? `${unread} new` : undefined}
+            onPress={() => router.push('/profile/notifications' as Href)}
           />
           <View style={[styles.sep, { backgroundColor: colors.border }]} />
           <NavRow

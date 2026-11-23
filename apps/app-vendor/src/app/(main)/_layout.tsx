@@ -6,6 +6,7 @@ import { fonts, useSession, useTheme } from '@avdan/mobile'
 
 import { useAttention } from '@/modules/vendor/hooks/use-vendor'
 import { PayoutNudge } from '@/modules/vendor/components/payout-nudge'
+import { NewOrderAlert } from '@/modules/vendor/components/new-order-alert'
 
 export default function MainLayout() {
   const { isAuthenticated } = useSession()
@@ -20,6 +21,7 @@ export default function MainLayout() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <PayoutNudge />
+      <NewOrderAlert />
       <Tabs
         screenOptions={{
           headerShown: false,

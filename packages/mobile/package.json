@@ -13,7 +13,9 @@
   "peerDependencies": {
     "@react-native-community/netinfo": "*",
     "@tanstack/react-query": "^5.64.1",
+    "expo-audio": "*",
     "expo-constants": "*",
+    "expo-haptics": "*",
     "expo-notifications": "*",
     "expo-router": "*",
     "expo-secure-store": "*",
@@ -32,7 +34,9 @@
   "devDependencies": {
     "@react-native-community/netinfo": "^12.0.1",
     "@types/react": "~19.2.16",
+    "expo-audio": "~57.0.5",
     "expo-constants": "~57.0.18",
+    "expo-haptics": "~57.0.3",
     "expo-notifications": "~57.0.19",
     "expo-router": "~57.0.21",
     "expo-secure-store": "~57.0.4",
