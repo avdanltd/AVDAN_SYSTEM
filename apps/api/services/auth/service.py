@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 from datetime import UTC, datetime
 
@@ -18,6 +19,7 @@ from core.security import (
     hash_password,
     verify_password,
 )
+from core.session_guard import check_token, sign_out_everywhere
 from services.auth.models import User, VendorProfile
 from services.auth.schemas import (
     AdminCreateUserRequest,
@@ -99,9 +101,16 @@ class AuthService:
         notify_admins_new_user.apply_async(args=[str(user.id)], countdown=5)
 
     async def verify_otp(self, user_id: str, otp: str) -> User:
+        # Five wrong tries and the code is burnt: 6 digits is only a million possibilities, and
+        # the per-IP limit alone lets an attacker spread guesses across addresses.
+        attempts_key = f"otp_attempts:{user_id}"
         stored = await self.redis.get(f"otp:{user_id}")
-        if not stored or stored != otp:
+        if stored and int(await self.redis.incr(attempts_key)) > 5:
+            await self.redis.delete(f"otp:{user_id}")
+            raise ValidationException("Too many wrong codes. Please request a new one.")
+        if not stored or not hmac.compare_digest(str(stored), str(otp)):
             raise ValidationException("Invalid or expired OTP")
+        await self.redis.delete(attempts_key)
 
         result = await self.db.execute(select(User).where(User.id == user_id))  # type: ignore[arg-type]
         user = result.scalar_one_or_none()
@@ -130,11 +139,17 @@ class AuthService:
 
     async def login(self, data: LoginRequest) -> tuple[str, str, str]:
         """Returns (access_token, refresh_token, jti)."""
+        fail_key = f"login_fail:{data.email.strip().lower()}"
+        if int(await self.redis.get(fail_key) or 0) >= 10:
+            raise AuthException("Too many sign-in attempts. Please wait 15 minutes, or reset your password.")
         result = await self.db.execute(select(User).where(User.email == data.email))
         user = result.scalar_one_or_none()
 
         if not user or not verify_password(data.password, user.password_hash):
+            if int(await self.redis.incr(fail_key)) == 1:
+                await self.redis.expire(fail_key, 15 * 60)
             raise AuthException("Invalid credentials")
+        await self.redis.delete(fail_key)
 
         if user.status != "active":
             raise AuthException("Account is not active")
@@ -158,6 +173,7 @@ class AuthService:
         if await self.redis.exists(f"revoked:{jti}"):
             raise AuthException("Refresh token has been revoked")
 
+        await check_token(self.redis, payload)
         user = await self.get_user_by_id(user_id)
         if user.status != "active":
             raise AuthException("Account is not active")
@@ -371,6 +387,9 @@ class AuthService:
         user.password_hash = hash_password(password)
         await self.redis.delete(self._reset_key(token))
         await self.redis.delete(f"pwreset_user:{user.id}")
+        # Whoever held an old session (a stolen refresh token, say) is signed out: that is the
+        # point of resetting a password after a suspected break-in.
+        await sign_out_everywhere(self.redis, str(user.id))
         return user
 
     async def change_password(self, user_id: str, current_password: str, new_password: str) -> None:
@@ -392,4 +411,5 @@ class AuthService:
     async def _generate_otp(self, user_id: str) -> str:
         otp = str(secrets.randbelow(900000) + 100000)  # 6-digit, cryptographically secure
         await self.redis.setex(f"otp:{user_id}", _OTP_TTL, otp)
+        await self.redis.delete(f"otp_attempts:{user_id}")  # a fresh code gets a fresh set of tries
         return otp

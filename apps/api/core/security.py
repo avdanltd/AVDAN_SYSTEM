@@ -22,6 +22,7 @@ def create_access_token(user_id: str, role: str) -> str:
     payload = {
         "sub": user_id,
         "role": role,
+        "iat": datetime.now(UTC),
         "exp": expires,
         "type": "access",
         "jti": secrets.token_urlsafe(16),
@@ -35,6 +36,7 @@ def create_refresh_token(user_id: str) -> tuple[str, str]:
     expires = datetime.now(UTC) + timedelta(days=settings.refresh_token_expire_days)
     payload = {
         "sub": user_id,
+        "iat": datetime.now(UTC),
         "exp": expires,
         "type": "refresh",
         "jti": jti,
