@@ -39,7 +39,30 @@ def refund_rejected_order(self, order_id: str) -> None:  # type: ignore[override
     asyncio.run(run_and_dispose(_refund_rejected_async(order_id)))
 
 
+@celery_app.task(
+    name="workers.tasks.escrow.refund_duplicate_payment",
+    bind=True,
+    max_retries=5,
+    default_retry_delay=300,
+)
+def refund_duplicate_payment(self, escrow_id: str) -> None:  # type: ignore[override]
+    """Refund a payment taken for an order that was already paid or cancelled. Idempotent."""
+    try:
+        asyncio.run(run_and_dispose(_refund_duplicate_async(escrow_id)))
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Duplicate-payment refund failed for escrow %s", escrow_id)
+        raise self.retry(exc=exc) from exc
+
+
 # ── Async implementations ─────────────────────────────────────────────────────
+
+async def _refund_duplicate_async(escrow_id: str) -> None:
+    from core.database import AsyncSessionLocal
+    from services.payment.service import PaymentService
+
+    async with AsyncSessionLocal() as db:
+        async with db.begin():
+            await PaymentService(db).refund_duplicate(escrow_id)
 
 async def _check_async() -> None:
     from sqlalchemy import select
@@ -82,16 +105,20 @@ async def _refund_rejected_async(order_id: str) -> None:
             escrow = await svc._get_escrow_for_order(order_id)
             if not escrow:
                 return
-            # Transition to REFUND_INITIATED and attempt Paystack refund
+            # Move the order to REFUND_INITIATED and refund through Paystack. A savepoint, so that if
+            # anything fails the order stays VENDOR_REJECTED (and Celery retries) instead of the
+            # task committing "refund initiated" with no refund. The failure is logged, not hidden.
             try:
-                await svc.process_refund(
-                    order_id,
-                    escrow.amount_kobo,
-                    admin_id="00000000-0000-0000-0000-000000000000",
-                    reason="Vendor rejected the order — automatic refund",
-                )
+                async with db.begin_nested():
+                    await svc.process_refund(
+                        order_id,
+                        escrow.amount_kobo,
+                        admin_id=None,
+                        reason="Vendor rejected the order — automatic refund",
+                    )
             except Exception:
-                pass
+                logger.exception("Automatic refund failed for order %s; will retry", order_id)
+                raise
 
 
 async def _release_async(order_id: str) -> None:

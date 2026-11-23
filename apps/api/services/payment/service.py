@@ -90,7 +90,7 @@ class PaymentService:
         if not escrow:
             return  # unknown reference, ignore silently
 
-        if escrow.status == EscrowStatus.HELD:
+        if escrow.status in (EscrowStatus.HELD, EscrowStatus.DUPLICATE, EscrowStatus.REFUNDED):
             return  # already processed
 
         # Same amount guard as verify_and_apply: never mark an order paid for a different amount
@@ -105,6 +105,25 @@ class PaymentService:
             )
             return
 
+        order = await self._get_order(str(escrow.order_id))
+        if order.status != OrderStatus.PENDING:
+            # The order is already paid (the customer opened two checkouts) or was cancelled before
+            # this payment landed. Nothing can be done with the money except give it back, and
+            # answering the webhook with an error would only make Paystack retry for days.
+            escrow.status = EscrowStatus.DUPLICATE
+            escrow.provider_metadata = {
+                **(escrow.provider_metadata or {}), **raw_data, "duplicate_of_order_status": order.status,
+            }
+            await self.db.flush()
+            logger.warning("Duplicate/late payment %s for order %s (%s): refund queued", provider_ref, order.id, order.status)
+            try:
+                from workers.tasks.escrow import refund_duplicate_payment
+
+                refund_duplicate_payment.apply_async(args=[str(escrow.id)], countdown=5)
+            except Exception:  # noqa: BLE001 - the DUPLICATE row is saved; the sweep task retries it
+                logger.exception("Could not queue the duplicate-payment refund for %s", escrow.id)
+            return
+
         escrow.status = EscrowStatus.HELD
         escrow.provider_metadata = {**(escrow.provider_metadata or {}), **raw_data}
 
@@ -116,6 +135,24 @@ class PaymentService:
             actor_role="system",
             metadata={"provider": "paystack", "provider_ref": provider_ref},
         )
+
+    async def refund_duplicate(self, escrow_id: str) -> bool:
+        """Give back a payment that turned out to be a duplicate or late. Idempotent: only a
+        DUPLICATE escrow is refunded, once. Returns True if money was refunded now."""
+        import uuid as _uuid
+
+        escrow = (await self.db.execute(
+            select(EscrowTransaction).where(EscrowTransaction.id == _uuid.UUID(escrow_id)).with_for_update()
+        )).scalar_one_or_none()
+        if not escrow or escrow.status != EscrowStatus.DUPLICATE:
+            return False
+        result = await get_provider(escrow.provider).refund(escrow.provider_ref, escrow.amount_kobo)
+        escrow.status = EscrowStatus.REFUNDED
+        escrow.provider_metadata = {
+            **(escrow.provider_metadata or {}), "refund_ref": result.refund_ref,
+            "refund_amount_kobo": escrow.amount_kobo, "refund_reason": "duplicate or late payment",
+        }
+        return True
 
     async def verify_and_apply(self, reference: str, customer_id: str | None = None) -> dict:
         """
@@ -244,8 +281,10 @@ class PaymentService:
         await WalletService(self.db).handle_transfer_webhook(event_type, reference)
 
     async def process_refund(
-        self, order_id: str, amount_kobo: int, admin_id: str, reason: str
+        self, order_id: str, amount_kobo: int, admin_id: str | None, reason: str
     ) -> EscrowTransaction:
+        """`admin_id` is None when the system refunds on its own (e.g. a vendor rejected the order):
+        the audit log needs a real user as actor, so no entry is written for those."""
         escrow = await self._get_escrow_for_order(order_id)
         if not escrow:
             raise NotFoundException("No escrow found for order")
@@ -280,12 +319,13 @@ class PaymentService:
             "refund_reason": reason,
         }
 
-        from services.analytics.audit import record_audit
+        if admin_id:
+            from services.analytics.audit import record_audit
 
-        record_audit(
-            self.db, admin_id, "payment.refund", "order", order_id, None,
-            {"amount_kobo": amount_kobo, "reason": reason, "refund_ref": result.refund_ref},
-        )
+            record_audit(
+                self.db, admin_id, "payment.refund", "order", order_id, None,
+                {"amount_kobo": amount_kobo, "reason": reason, "refund_ref": result.refund_ref},
+            )
         return escrow
 
     # ── Private helpers ───────────────────────────────────────────────────────

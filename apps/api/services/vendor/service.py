@@ -9,7 +9,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core.exceptions import NotFoundException
+from core.exceptions import NotFoundException, ValidationException
 from services.vendor.models import Business, Product, Vendor
 from services.vendor.schemas import (
     CreateProductRequest,
@@ -465,12 +465,50 @@ class VendorService:
         from services.payment.providers.registry import get_provider
         vendor = await self._get_vendor_for_user(user_id)
         provider = get_provider("paystack")
+        # The holder's name is whatever the bank says it is, never what the client typed, so a
+        # hijacked session cannot label someone else's account with the vendor's legal name.
+        try:
+            verified = await provider.resolve_account(account_number, bank_code)
+        except Exception as exc:  # noqa: BLE001
+            raise ValidationException("We could not confirm that bank account. Check the number and the bank.") from exc
+        account_name = verified.account_name
         result = await provider.create_transfer_recipient(account_name, account_number, bank_code)
+        previous = vendor.payout_account_number
         vendor.paystack_recipient_code = result.recipient_code
         vendor.payout_account_number = account_number
         vendor.payout_bank_name = bank_name
         vendor.payout_account_name = account_name
+        if previous and previous != account_number:
+            await self._announce_payout_change(user_id, "vendor", vendor.id, f"••••{previous[-4:]}", f"••••{account_number[-4:]}")
         return vendor
+
+    async def _announce_payout_change(self, user_id: str, kind: str, owner_id: object, before: str | None, after: str) -> None:
+        """Tell the owner their payout account was replaced, and leave the entry the withdrawal
+        cooling-off period reads. Someone who has hijacked a session can swap the account, so the
+        real owner must hear about it, and the money cannot leave for 24 hours."""
+        from datetime import UTC, datetime
+
+        from services.analytics.audit import record_audit
+        from services.notification.models import Notification
+
+        record_audit(self.db, user_id, "payout.account_change", kind, str(owner_id), {"account": before}, {"account": after})
+        self.db.add(Notification(
+            user_id=uuid.UUID(user_id), type="payout_account_changed", channel="in_app", sent_at=datetime.now(UTC),
+            content={"title": "Payout account changed",
+                     "body": "Your payout bank account was changed. If this was not you, change your password and contact AVDAN now. "
+                             "For your security, withdrawals are paused for 24 hours after a change."},
+        ))
+        try:
+            from workers.tasks.notifications import notify_user_notice
+
+            notify_user_notice.apply_async(
+                args=[user_id, "Your payout account was changed",
+                      "Your AVDAN payout bank account was just changed. If this was not you, reset your password and contact AVDAN "
+                      "immediately. Withdrawals are paused for 24 hours after a change."],
+                countdown=3,
+            )
+        except Exception:  # noqa: BLE001 - the in-app notice and the cooling-off are already recorded
+            pass
 
     async def get_payout_account(self, user_id: str) -> Vendor:
         return await self._get_vendor_for_user(user_id)

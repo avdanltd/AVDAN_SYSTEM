@@ -197,9 +197,14 @@ async def update_user_status(
     data: UpdateUserStatusRequest,
     current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> UserResponse:
+    from core.session_guard import block_user, unblock_user
+
     svc = AdminService(db)
     user, before = await svc.update_user_status(user_id, data.status)
+    # Take effect now, not when the person's current 15-minute token runs out.
+    await (unblock_user if user.status == "active" else block_user)(redis, user_id)
     record_audit(db, current_user.user_id, "user.status", "user", user_id, {"status": before}, {"status": user.status})
     return _user_response(user)
 
