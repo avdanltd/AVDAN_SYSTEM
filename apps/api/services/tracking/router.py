@@ -92,6 +92,20 @@ async def order_tracking(websocket: WebSocket, order_id: str) -> None:
         return
 
     user_id, role = payload.get("sub"), payload.get("role")
+    import redis.asyncio as _aioredis
+
+    from core.exceptions import AuthException
+    from core.redis import redis_pool as _pool
+    from core.session_guard import check_token
+
+    _check_client = _aioredis.Redis(connection_pool=_pool)
+    try:
+        await check_token(_check_client, payload)
+    except AuthException:
+        await websocket.close(code=1008, reason="Session ended")
+        return
+    finally:
+        await _check_client.aclose()
     order, _rider_row = await _load_order_and_rider(order_id)
     if not order:
         await websocket.close(code=1008, reason="Order not found")

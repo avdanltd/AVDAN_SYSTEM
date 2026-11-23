@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 import sentry_sdk
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -77,9 +77,10 @@ def create_app() -> FastAPI:
         title="AVDAN API",
         description="AVDAN logistics and commerce platform",
         version="0.1.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
-        openapi_url="/openapi.json",
+        # The interactive docs and schema hand an attacker the whole route map: development only.
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
+        openapi_url=None if settings.is_production else "/openapi.json",
         lifespan=lifespan,
     )
 
@@ -105,8 +106,21 @@ def create_app() -> FastAPI:
     from fastapi.exceptions import RequestValidationError
     app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
 
-    # Prometheus metrics at /metrics
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    # Prometheus metrics at /metrics. Open in development; in production only with the secret
+    # METRICS_TOKEN in an `X-Metrics-Token` header (404 otherwise), so the public cannot read them.
+    Instrumentator().instrument(app)
+
+    @app.get("/metrics", include_in_schema=False)
+    async def metrics(request: Request) -> Response:
+        import hmac
+
+        from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
+
+        if settings.is_production:
+            supplied = request.headers.get("x-metrics-token", "")
+            if not settings.metrics_token or not hmac.compare_digest(supplied, settings.metrics_token):
+                return Response(status_code=404)
+        return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
     # Static files for QA evidence uploads
     _MEDIA_DIR.mkdir(parents=True, exist_ok=True)

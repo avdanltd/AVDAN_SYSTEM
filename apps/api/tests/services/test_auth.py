@@ -101,11 +101,11 @@ class TestRegistration:
         email = _unique_email()
         client.post(
             "/auth/register/customer",
-            json={"email": email, "phone": _unique_phone(), "password": "pass", "name": "X"},
+            json={"email": email, "phone": _unique_phone(), "password": "Str0ng!Pass", "name": "X"},
         )
         resp = client.post(
             "/auth/register/customer",
-            json={"email": email, "phone": _unique_phone(), "password": "pass", "name": "Y"},
+            json={"email": email, "phone": _unique_phone(), "password": "Str0ng!Pass", "name": "Y"},
         )
         assert resp.status_code == 409
         assert resp.json()["error"]["code"] == "CONFLICT"
@@ -114,18 +114,18 @@ class TestRegistration:
         phone = _unique_phone()
         client.post(
             "/auth/register/customer",
-            json={"email": _unique_email(), "phone": phone, "password": "pass", "name": "X"},
+            json={"email": _unique_email(), "phone": phone, "password": "Str0ng!Pass", "name": "X"},
         )
         resp = client.post(
             "/auth/register/customer",
-            json={"email": _unique_email(), "phone": phone, "password": "pass", "name": "Y"},
+            json={"email": _unique_email(), "phone": phone, "password": "Str0ng!Pass", "name": "Y"},
         )
         assert resp.status_code == 409
 
     def test_invalid_otp_returns_400(self, client: TestClient) -> None:
         resp = client.post(
             "/auth/register/customer",
-            json={"email": _unique_email(), "phone": _unique_phone(), "password": "p", "name": "X"},
+            json={"email": _unique_email(), "phone": _unique_phone(), "password": "Str0ng!Pass", "name": "X"},
         )
         user_id = resp.json()["user_id"]
         verify_resp = client.post("/auth/verify-otp", json={"user_id": user_id, "otp": "000000"})
@@ -159,9 +159,9 @@ class TestLogin:
         email = _unique_email()
         client.post(
             "/auth/register/customer",
-            json={"email": email, "phone": _unique_phone(), "password": "pass", "name": "X"},
+            json={"email": email, "phone": _unique_phone(), "password": "Str0ng!Pass", "name": "X"},
         )
-        resp = client.post("/auth/login", json={"email": email, "password": "pass"})
+        resp = client.post("/auth/login", json={"email": email, "password": "Str0ng!Pass"})
         assert resp.status_code == 401
 
     def test_cookies_set_on_login(self, client: TestClient) -> None:

@@ -156,3 +156,24 @@ def test_marketplace_shows_one_card_per_business_and_search_finds_all_branches()
         _, branches = await svc.get_business_by_slug(business.slug)
         assert len(branches) == 2
     run(body)
+
+
+def test_incomplete_filter_matches_the_checklist_and_counts_agree() -> None:
+    from services.admin.service import AdminService
+
+    async def body(db):  # type: ignore[no-untyped-def]
+        bare = await _vendor(db, status="pending")  # nothing filled in
+        full = await _vendor(
+            db, phone="08099990000", state="Ogun", lga="Ota", city="Sango", street="1 Main St", lat=6.6, lng=3.2,
+            description="Retail of groceries and appliances for homes.",
+        )
+        svc = AdminService(db)
+        incomplete, n = await svc.list_vendors(None, 1, 500, incomplete=True)
+        ids = {v.id for v in incomplete}
+        assert bare.id in ids and full.id not in ids and n == len(incomplete)
+        # the SQL filter and the Python checklist must agree, or the red numbers would lie
+        for v in incomplete:
+            assert [c for c in svc.vendor_checklist(v, None) if c["required"] and not c["ok"]]
+        counts = await svc.vendor_counts()
+        assert counts["incomplete"] == n and counts["all"] >= 2 and counts["pending"] >= 1
+    run(body)

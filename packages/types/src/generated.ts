@@ -380,6 +380,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/users/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * User Counts
+         * @description Users per role and per status, for the numbers in the Users filter dropdowns.
+         */
+        get: operations["user_counts_admin_users_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/stats": {
         parameters: {
             query?: never;
@@ -468,6 +488,27 @@ export interface paths {
         post?: never;
         /** Revoke Invite */
         delete: operations["revoke_invite_admin_users__user_id__invite_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/vendors/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Vendor Counts
+         * @description Vendors per status plus how many have not filled all requirements: the numbers shown in the
+         *     Vendors filter dropdown.
+         */
+        get: operations["vendor_counts_admin_vendors_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -657,6 +698,26 @@ export interface paths {
         patch: operations["update_vendor_status_admin_vendors__vendor_id__status_patch"];
         trace?: never;
     };
+    "/admin/products/counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Product Counts
+         * @description Products per approval status (PENDING / APPROVED / REJECTED), for the Products dropdown.
+         */
+        get: operations["product_counts_admin_products_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/products/vendors": {
         parameters: {
             query?: never;
@@ -749,6 +810,26 @@ export interface paths {
          * @description Fix a product's category at any time (e.g. the vendor put it in the wrong one).
          */
         patch: operations["set_product_category_admin_products__product_id__category_patch"];
+        trace?: never;
+    };
+    "/admin/orders/status-counts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Order Status Counts
+         * @description Orders per exact status in a period (Lagos dates), for the numbers in the status dropdown.
+         */
+        get: operations["order_status_counts_admin_orders_status_counts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/admin/orders/stats": {
@@ -3028,6 +3109,11 @@ export interface components {
             branch_places: string[];
             /** User Id */
             user_id: string;
+            /**
+             * Missing
+             * @default []
+             */
+            missing: string[];
         };
         /** ApproveBranchRequest */
         ApproveBranchRequest: {
@@ -4801,6 +4887,19 @@ export interface components {
              */
             status: "active" | "suspended" | "rejected";
         };
+        /** UserCountsResponse */
+        UserCountsResponse: {
+            /** Total */
+            total: number;
+            /** By Role */
+            by_role: {
+                [key: string]: number;
+            };
+            /** By Status */
+            by_status: {
+                [key: string]: number;
+            };
+        };
         /** UserResponse */
         UserResponse: {
             /** Id */
@@ -5952,6 +6051,39 @@ export interface operations {
             };
         };
     };
+    user_counts_admin_users_counts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserCountsResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     new_user_stats_admin_users_stats_get: {
         parameters: {
             query?: {
@@ -6177,10 +6309,47 @@ export interface operations {
             };
         };
     };
+    vendor_counts_admin_vendors_counts_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_vendors_admin_vendors_get: {
         parameters: {
             query?: {
                 status?: string | null;
+                /** @description Only vendors that have not filled all requirements */
+                incomplete?: boolean;
                 page?: number;
                 page_size?: number;
             };
@@ -6619,6 +6788,43 @@ export interface operations {
             };
         };
     };
+    product_counts_admin_products_counts_get: {
+        parameters: {
+            query?: {
+                vendor_id?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_product_vendors_admin_products_vendors_get: {
         parameters: {
             query?: {
@@ -6799,6 +7005,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AdminProductResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    order_status_counts_admin_orders_status_counts_get: {
+        parameters: {
+            query?: {
+                date_from?: string | null;
+                date_to?: string | null;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
                 };
             };
             /** @description Validation Error */

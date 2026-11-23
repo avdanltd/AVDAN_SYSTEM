@@ -275,12 +275,17 @@ async def delete_my_account(
     response: Response,
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> dict:
     """Delete (anonymise) the signed-in person's own account after re-entering their password.
     Refused while orders are in progress or a wallet still holds money. See services/auth/deletion.py."""
     from services.auth.deletion import delete_account
 
     await delete_account(db, current_user.user_id, data.password)
+    # The person's current 15-minute access token must stop working now, not when it expires.
+    from core.session_guard import block_user
+
+    await block_user(redis, current_user.user_id)
     response.delete_cookie("avdan_token", path="/")
     response.delete_cookie("avdan_refresh_token", path="/")
     return {"message": "Your account has been deleted."}

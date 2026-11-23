@@ -27,6 +27,13 @@ class FakeRedis:
     async def delete(self, key):
         self.store.pop(key, None)
 
+    async def incr(self, key):
+        self.store[key] = int(self.store.get(key, 0)) + 1
+        return self.store[key]
+
+    async def expire(self, key, ttl):
+        return None
+
 
 @pytest.fixture
 def sent(monkeypatch):  # type: ignore[no-untyped-def]

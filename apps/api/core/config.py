@@ -51,6 +51,8 @@ class Settings(BaseSettings):
     # Object storage — Cloudflare R2 (S3-compatible)
     # Leave r2_bucket empty to disable uploads; the storage service raises a clear
     # 503 rather than failing deep inside boto3 with a credentials error.
+    # Secret for GET /metrics in production (sent as X-Metrics-Token). Empty = metrics stay off.
+    metrics_token: str = ""
     r2_account_id: str = ""
     r2_access_key_id: str = ""
     r2_secret_access_key: str = ""
@@ -100,6 +102,10 @@ class Settings(BaseSettings):
     def model_post_init(self, __context: object) -> None:
         if len(self.secret_key) < 32:
             raise ValueError("SECRET_KEY must be at least 32 characters")
+        # The example value is longer than 32 characters, so length alone would let a copied
+        # .env.example through; anyone who has seen the repo could then forge login tokens.
+        if self.is_production and "change-me" in self.secret_key.lower():
+            raise ValueError("SECRET_KEY is still the placeholder from .env.example; set a real secret")
 
 
 settings = Settings()  # type: ignore[call-arg]

@@ -41,13 +41,16 @@ import { formatDate } from "@/lib/format";
 import { Pagination } from "@/modules/shared/components/pagination";
 import { ROUTES } from "@/config/routes";
 import { BranchRequestsPanel } from "./branch-requests-panel";
+import { useVendorCounts } from "../hooks/use-vendor-counts";
 
+// `count` is the key into GET /admin/vendors/counts, so every option can show how many it holds.
 const STATUS_OPTIONS = [
-  { value: "__all__", label: "All" },
-  { value: "pending", label: "Pending" },
-  { value: "active", label: "Active" },
-  { value: "suspended", label: "Suspended" },
-  { value: "rejected", label: "Rejected" },
+  { value: "__all__", label: "All", count: "all" },
+  { value: "__incomplete__", label: "Incomplete profile", count: "incomplete" },
+  { value: "pending", label: "Pending", count: "pending" },
+  { value: "active", label: "Active", count: "active" },
+  { value: "suspended", label: "Suspended", count: "suspended" },
+  { value: "rejected", label: "Rejected", count: "rejected" },
 ];
 
 const STATUS_VARIANTS: Record<
@@ -77,10 +80,13 @@ export function VendorsPage() {
     useState<AdminVendor | null>(null);
 
   const params: Record<string, string> = { page: String(page), limit: "20" };
-  if (status) params.status = status;
+  // "All" and "Incomplete profile" are filters of their own, never a status the API should match.
+  if (status === "__incomplete__") params.incomplete = "true";
+  else if (status && status !== "__all__") params.status = status;
 
   const { data, isLoading, isError, refetch } = useAdminVendors(params);
   const { mutate: updateStatus, isPending: updating } = useUpdateVendorStatus();
+  const { data: counts } = useVendorCounts();
 
   const vendors = data?.items ?? [];
   const total = data?.total ?? 0;
@@ -124,6 +130,14 @@ export function VendorsPage() {
         <div>
           <p className="font-medium text-foreground">{row.name}</p>
           <p className="text-xs text-muted-foreground">{row.id.slice(0, 8)}…</p>
+          {(row.missing?.length ?? 0) > 0 && (
+            <span
+              className="mt-1 inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground"
+              title={`Not filled in yet: ${row.missing?.join(", ")}`}
+            >
+              {row.missing?.length} missing
+            </span>
+          )}
         </div>
       ),
     },
@@ -211,6 +225,19 @@ export function VendorsPage() {
         </div>
       </div>
 
+      {(counts?.incomplete ?? 0) > 0 && status !== "__incomplete__" && (
+        <button
+          type="button"
+          onClick={() => { setStatus("__incomplete__"); setPage(1); }}
+          className="flex w-full items-center gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-2 text-left text-sm text-destructive hover:bg-destructive/15"
+        >
+          <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-destructive px-1.5 text-xs font-semibold text-destructive-foreground">
+            {counts?.incomplete}
+          </span>
+          vendor{counts?.incomplete === 1 ? "" : "s"} haven&apos;t filled in all the requirements. Tap to see who.
+        </button>
+      )}
+
       <BranchRequestsPanel />
 
       {/* Filters */}
@@ -222,12 +249,13 @@ export function VendorsPage() {
             setPage(1);
           }}
         >
-          <SelectTrigger className="w-40">
+          <SelectTrigger className="w-56">
             <SelectValue placeholder="All" />
           </SelectTrigger>
           <SelectContent>
             {STATUS_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
+                {counts ? `${counts[opt.count] ?? 0} · ` : ""}
                 {opt.label}
               </SelectItem>
             ))}

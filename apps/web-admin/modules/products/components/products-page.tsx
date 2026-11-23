@@ -26,6 +26,7 @@ import {
 import { useAdminProducts } from '../hooks/use-admin-products'
 import { useReviewProduct } from '../hooks/use-review-product'
 import { ProductDetails } from './product-details'
+import { useProductCounts } from '../hooks/use-product-counts'
 import type { AdminProduct } from '../types'
 import { Pagination } from '@/modules/shared/components/pagination'
 
@@ -89,6 +90,7 @@ export function ProductsPage({ vendorId, vendorName, embedded = false }: Product
   if (search) params.search = search
   if (vendorId) params.vendor_id = vendorId
 
+  const { data: productCounts } = useProductCounts(vendorId)
   const { data, isLoading, isError, refetch } = useAdminProducts(params)
   const { approve, reject } = useReviewProduct()
 
@@ -281,6 +283,7 @@ export function ProductsPage({ vendorId, vendorName, embedded = false }: Product
           <SelectContent>
             {STATUS_OPTIONS.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
+                {productCounts ? `${productCounts[opt.value] ?? 0} · ` : ''}
                 {opt.label}
               </SelectItem>
             ))}

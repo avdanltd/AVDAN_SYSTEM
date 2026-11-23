@@ -166,15 +166,25 @@ class OrderService:
         if not vendor.is_open:
             raise ValidationException(f"{vendor.name} is closed right now and isn't taking orders.")
 
-        # Validate all products and snapshot prices
-        product_ids = [uuid.UUID(item.product_id) for item in data.items]
+        # The same product listed twice in one order is one line: otherwise each line would be
+        # checked against the same stock and together they could exceed it.
+        merged: dict[str, int] = {}
+        for item in data.items:
+            merged[item.product_id] = merged.get(item.product_id, 0) + item.quantity
+        for item in data.items:
+            item.quantity = merged.get(item.product_id, item.quantity)
+        data.items = list({item.product_id: item for item in data.items}.values())
+
+        # Validate all products and snapshot prices. The rows are locked until this transaction
+        # ends, so two customers ordering the last unit at the same moment cannot both succeed.
+        product_ids = sorted(uuid.UUID(item.product_id) for item in data.items)
         products_result = await self.db.execute(
             select(Product).where(
                 Product.id.in_(product_ids),
                 Product.vendor_id == vendor.id,
                 Product.available.is_(True),
                 Product.approval_status == "APPROVED",
-            )
+            ).order_by(Product.id).with_for_update()
         )
         products_by_id = {str(p.id): p for p in products_result.scalars().all()}
 

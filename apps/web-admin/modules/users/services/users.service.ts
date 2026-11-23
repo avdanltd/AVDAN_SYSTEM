@@ -6,6 +6,9 @@ export const usersService = {
   getUsers: (params?: Record<string, string>) =>
     apiClient.get<PaginatedResponse<AdminUser>>('/admin/users', params),
 
+  getCounts: () =>
+    apiClient.get<{ total: number; by_role: Record<string, number>; by_status: Record<string, number> }>('/admin/users/counts'),
+
   getNewUserStats: (params: Record<string, string>) =>
     apiClient.get<NewUserStats>('/admin/users/stats', params),
 
