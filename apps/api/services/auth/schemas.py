@@ -11,18 +11,18 @@ class LoginRequest(BaseModel):
 class RegisterCustomerRequest(BaseModel):
     email: EmailStr
     phone: str
-    password: str
-    name: str
+    password: str = Field(min_length=8, max_length=128)
+    name: str = Field(min_length=1, max_length=100)
 
 
 class RegisterVendorRequest(BaseModel):
     email: EmailStr
     phone: str
-    password: str
-    name: str
-    business_name: str
-    business_type: str
-    description: str
+    password: str = Field(min_length=8, max_length=128)
+    name: str = Field(min_length=1, max_length=100)
+    business_name: str = Field(min_length=1, max_length=255)
+    business_type: str = Field(max_length=100)
+    description: str = Field(max_length=2000)
 
 
 class VerifyOtpRequest(BaseModel):

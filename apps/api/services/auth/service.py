@@ -108,12 +108,18 @@ class AuthService:
         if not user:
             raise ValidationException("User not found")
 
+        # Only an account still waiting for verification can be activated this way. Without this, a
+        # suspended or banned person could "verify" themselves back to active.
+        if user.status != "pending":
+            raise ValidationException("Invalid or expired OTP")
         user.status = "active"
         await self.redis.delete(f"otp:{user_id}")
         return user
 
     async def resend_otp(self, user_id: str) -> str:
         user = await self.get_user_by_id(user_id)
+        if user.status != "pending":
+            raise ValidationException("This account does not need verification.")
         otp = await self._generate_otp(str(user.id))
 
         if user.email:

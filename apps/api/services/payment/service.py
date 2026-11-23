@@ -170,8 +170,13 @@ class PaymentService:
     ) -> EscrowTransaction:
         order = await self._get_order(order_id)
 
-        # Customers may only see their own orders' escrow
-        if requesting_role == "customer" and str(order.customer_id) != requesting_user_id:
+        # The escrow holds what the customer paid and the provider reference: only that customer
+        # and AVDAN staff may read it (vendors, riders and hub agents must not).
+        if requesting_role in ("admin", "support"):
+            pass
+        elif requesting_role == "customer" and str(order.customer_id) == requesting_user_id:
+            pass
+        else:
             raise ForbiddenException("Access denied")
 
         escrow = await self._get_escrow_for_order(order_id)
@@ -251,6 +256,19 @@ class PaymentService:
         if amount_kobo > escrow.amount_kobo:
             raise ValidationException("Refund amount cannot exceed original payment amount")
 
+        # Record the order's state change BEFORE the money moves. The state machine only lets the
+        # system perform this transition (the admin's right to refund was already checked by the
+        # route), and if it is refused nothing has been refunded yet. If the provider call below
+        # fails, the whole request rolls back, so the order never says "refund initiated" without one.
+        order_svc = OrderService(self.db)
+        await order_svc.transition(
+            order_id=order_id,
+            to_state=OrderStatus.REFUND_INITIATED,
+            actor_id=admin_id,
+            actor_role="system",
+            metadata={"reason": reason, "refund_amount_kobo": amount_kobo},
+        )
+
         provider = get_provider(escrow.provider)
         result = await provider.refund(escrow.provider_ref, amount_kobo)
 
@@ -267,15 +285,6 @@ class PaymentService:
         record_audit(
             self.db, admin_id, "payment.refund", "order", order_id, None,
             {"amount_kobo": amount_kobo, "reason": reason, "refund_ref": result.refund_ref},
-        )
-
-        order_svc = OrderService(self.db)
-        await order_svc.transition(
-            order_id=order_id,
-            to_state=OrderStatus.REFUND_INITIATED,
-            actor_id=admin_id,
-            actor_role="admin",
-            metadata={"reason": reason, "refund_amount_kobo": amount_kobo},
         )
         return escrow
 

@@ -153,9 +153,10 @@ def _vendor_detail_response(vendor: object, public: bool = False) -> VendorDetai
         ]
         if public
         else [_product_response(p) for p in v.products],
-        has_payout_account=bool(v.paystack_recipient_code),
-        payout_bank_name=v.payout_bank_name,
-        payout_account_name=v.payout_account_name,
+        # Bank details belong to the vendor (and admins), never to the public store page.
+        has_payout_account=False if public else bool(v.paystack_recipient_code),
+        payout_bank_name=None if public else v.payout_bank_name,
+        payout_account_name=None if public else v.payout_account_name,
     )
 
 

@@ -129,9 +129,14 @@ class QAService:
         order = result.scalar_one_or_none()
         if not order:
             raise NotFoundException("Order not found")
-        # Allow access to orders in transit (hub_id not yet set) or already at this hub
-        if order.hub_id and order.hub_id != hub.id:
-            raise ForbiddenException("Order belongs to a different hub")
+        # An agent may open orders already at their hub, or orders still on their way to a hub
+        # (hub_id not set until arrival). Any other order, e.g. one that is only PAID, carries the
+        # customer's address and is none of a hub's business.
+        if order.hub_id:
+            if order.hub_id != hub.id:
+                raise ForbiddenException("Order belongs to a different hub")
+        elif order.status not in ("PICKED_UP", "IN_TRANSIT_TO_HUB", "ARRIVED_AT_HUB"):
+            raise ForbiddenException("This order is not on its way to a hub")
         return order
 
     async def receive_order(self, agent_user_id: str, order_id: str) -> Order:
