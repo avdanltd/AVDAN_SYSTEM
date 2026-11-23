@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     # Object storage — Cloudflare R2 (S3-compatible)
     # Leave r2_bucket empty to disable uploads; the storage service raises a clear
     # 503 rather than failing deep inside boto3 with a credentials error.
+    # Base URL of our OSRM routing server (e.g. http://osrm:5000). Empty = routing off, and the apps
+    # draw straight lines. The public demo server is refused: it is not for production use.
+    routing_osrm_url: str = ""
     # Secret for GET /metrics in production (sent as X-Metrics-Token). Empty = metrics stay off.
     metrics_token: str = ""
     r2_account_id: str = ""

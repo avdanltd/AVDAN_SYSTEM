@@ -53,6 +53,15 @@ export { AccountLegal } from './components/account-legal'
 export { LegalFooter } from './components/legal-footer'
 export { AttentionBanner, useAlertChime } from './components/attention-alert'
 export { NotificationsScreen, useUnreadNotifications } from './components/notifications-screen'
+export { MAPS_AVAILABLE } from './lib/maps'
+export {
+  fetchRoadRoute,
+  fetchRoadRouteDetails,
+  haversineKm,
+  REFETCH_DISTANCE_KM,
+  type RoadRoute,
+  type RoutePoint,
+} from './lib/road-route'
 export { StarRating } from './components/star-rating'
 export { WalletPanel, type WalletPanelProps } from './components/wallet-panel'
 
