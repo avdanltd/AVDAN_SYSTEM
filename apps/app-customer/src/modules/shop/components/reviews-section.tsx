@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native'
 import { Button, Card, Skeleton, StarRating, fonts, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { useReviews } from '../hooks/use-reviews'
+import { ReportReview } from './report-review'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -64,6 +65,7 @@ export function ReviewsSection({ target, id, title }: { target: 'product' | 'ven
                 Verified purchase · {formatDate(r.created_at)}
               </Text>
               {r.comment ? <Text style={[styles.comment, { color: colors.foreground }]}>{r.comment}</Text> : null}
+              <ReportReview reviewId={r.id} />
             </View>
           ))}
 

@@ -66,6 +66,8 @@ export const shopService = {
   getProduct: (id: string) => apiClient.get<Product>(`/products/${id}`),
   getReviews: (target: 'product' | 'vendor', id: string, page: number) =>
     apiClient.get<ReviewPage>(`/reviews/${target}s/${id}`, { page: String(page), page_size: '5' }),
+  reportReview: (reviewId: string, reason: string) =>
+    apiClient.post<{ message: string }>(`/reviews/${reviewId}/report`, { reason }),
   getOrderReviews: (orderId: string) => apiClient.get<OrderReviews>(`/reviews/orders/${orderId}`),
   submitOrderReviews: (orderId: string, body: SubmitReviewsInput) =>
     apiClient.post<OrderReviews>(`/reviews/orders/${orderId}`, body),

@@ -20,6 +20,9 @@ const config: ExpoConfig = {
   scheme: 'avdancustomer',
   userInterfaceStyle: 'automatic',
   backgroundColor: '#ffffff',
+  // OTA updates (EAS Update): a build only receives updates made for the same app version.
+  runtimeVersion: { policy: 'appVersion' },
+  updates: { url: 'https://u.expo.dev/3bb6b962-86e7-4622-b6be-45febf7e8dfa' },
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
@@ -31,10 +34,11 @@ const config: ExpoConfig = {
   ios: {
     icon: './assets/images/icon.png',
     bundleIdentifier: 'com.avdanstore.customer',
-    supportsTablet: true,
+    supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSLocationWhenInUseUsageDescription:
-        'AVDAN uses your location to suggest a delivery address and show where your order is.',
+        'AVDAN uses your location to suggest a delivery address and to work out delivery fees by distance.',
     },
   },
   android: {
@@ -58,7 +62,7 @@ const config: ExpoConfig = {
     'expo-secure-store',
     [
       'expo-location',
-      { locationWhenInUsePermission: 'AVDAN uses your location to price delivery by distance.' },
+      { locationWhenInUsePermission: 'AVDAN uses your location to suggest a delivery address and to work out delivery fees by distance.' },
     ],
     ['expo-notifications', { color: '#0A2480' }],
     // expo-web-browser ships no config plugin — it's a pure JS API (openAuthSessionAsync),

@@ -5,6 +5,7 @@ import { Button, Skeleton, StarRating } from '@avdan/ui'
 
 import { useReviews } from '../hooks/use-reviews'
 import type { ReviewTarget } from '../services/reviews.service'
+import { ReportReviewButton } from './report-review-button'
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -70,6 +71,9 @@ export function ReviewList({ target, id, title }: { target: ReviewTarget; id: st
                   <span className="text-sm font-medium text-foreground">{r.reviewer_name}</span>
                   <span className="text-xs text-muted-foreground">
                     · Verified purchase · {formatDate(r.created_at)}
+                  </span>
+                  <span className="ml-auto">
+                    <ReportReviewButton reviewId={r.id} />
                   </span>
                 </div>
                 {r.comment && <p className="text-sm text-muted-foreground">{r.comment}</p>}

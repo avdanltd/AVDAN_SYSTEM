@@ -93,6 +93,9 @@ class AdminReviewResponse(BaseModel):
     hidden_reason: str | None
     hidden_by_name: str | None
     created_at: str
+    # Open reports from users, so moderators see what has been flagged and why.
+    report_count: int = 0
+    report_reasons: list[str] = []
 
 
 class PaginatedAdminReviewsResponse(BaseModel):
@@ -104,3 +107,8 @@ class PaginatedAdminReviewsResponse(BaseModel):
 
 class HideReviewRequest(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
+
+class ReportReviewRequest(BaseModel):
+    reason: str = Field(pattern="^(offensive|spam|false|other)$")
+    details: str | None = Field(default=None, max_length=500)

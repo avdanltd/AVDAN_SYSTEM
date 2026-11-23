@@ -21,7 +21,7 @@ import {
 } from '@avdan/ui'
 import { formatDate } from '@/lib/format'
 import { Pagination } from '@/modules/shared/components/pagination'
-import { useAdminReviews, useHideReview, useUnhideReview } from '../hooks/use-reviews'
+import { useAdminReviews, useDismissReports, useHideReview, useUnhideReview } from '../hooks/use-reviews'
 
 const OUTCOME_LABEL: Record<string, string> = {
   COMPLETED: 'Delivered',
@@ -38,16 +38,19 @@ export function ReviewsPage() {
   const [status, setStatus] = useState('visible')
   const [target, setTarget] = useState('ALL')
   const [lowOnly, setLowOnly] = useState(false)
+  const [reportedOnly, setReportedOnly] = useState(false)
   const [page, setPage] = useState(1)
   const [hiding, setHiding] = useState<AdminReview | null>(null)
   const [reason, setReason] = useState('')
   const hide = useHideReview()
   const unhide = useUnhideReview()
+  const dismiss = useDismissReports()
 
   const params: Record<string, string> = { page: String(page), page_size: '20' }
   if (status !== 'ALL') params.status = status
   if (target !== 'ALL') params.target_type = target
   if (lowOnly) params.max_rating = '2'
+  if (reportedOnly) params.reported = 'true'
   const query = useAdminReviews(params)
   const items = query.data?.items ?? []
   const pages = query.data ? Math.ceil(query.data.total / (query.data.page_size || 20)) : 1
@@ -86,6 +89,11 @@ export function ReviewsPage() {
             {r.customer_name ?? 'Customer'} · {OUTCOME_LABEL[r.order_outcome] ?? r.order_outcome} ·{' '}
             {formatDate(r.created_at)}
           </p>
+          {r.report_count > 0 && (
+            <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-destructive px-2 py-0.5 text-[11px] font-semibold text-destructive-foreground">
+              {r.report_count} report{r.report_count === 1 ? '' : 's'}: {r.report_reasons.join(', ')}
+            </p>
+          )}
           {r.status === 'hidden' && (
             <p className="mt-1 text-xs text-destructive">
               Hidden by {r.hidden_by_name ?? 'an admin'}: {r.hidden_reason}
@@ -104,9 +112,16 @@ export function ReviewsPage() {
       header: '',
       cell: (r) =>
         r.status === 'visible' ? (
-          <Button size="sm" variant="outline" onClick={() => { setHiding(r); setReason('') }}>
-            Hide
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => { setHiding(r); setReason('') }}>
+              Hide
+            </Button>
+            {r.report_count > 0 && (
+              <Button size="sm" variant="ghost" disabled={dismiss.isPending} onClick={() => dismiss.mutate(r.id)}>
+                Dismiss reports
+              </Button>
+            )}
+          </div>
         ) : (
           <Button size="sm" variant="outline" disabled={unhide.isPending} onClick={() => unhide.mutate(r.id)}>
             Restore
@@ -142,6 +157,13 @@ export function ReviewsPage() {
               <TabsTrigger value="rider">Riders</TabsTrigger>
             </TabsList>
           </Tabs>
+          <Button
+            variant={reportedOnly ? 'destructive' : 'outline'}
+            size="sm"
+            onClick={() => { setReportedOnly(!reportedOnly); setPage(1) }}
+          >
+            {reportedOnly ? 'Showing reported only' : 'Reported by users'}
+          </Button>
           <Button variant={lowOnly ? 'default' : 'outline'} size="sm" onClick={() => { setLowOnly(!lowOnly); setPage(1) }}>
             {lowOnly ? 'Showing 1–2★ only' : 'Low ratings only'}
           </Button>

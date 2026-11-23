@@ -37,6 +37,9 @@ export const authService = {
   forgotPassword: (email: string) =>
     apiClient.post<{ message: string }>('/auth/forgot-password', { email }),
 
+  deleteAccount: (password: string) =>
+    apiClient.post<{ message: string }>('/auth/me/delete-account', { password }),
+
   changePassword: (payload: { current_password: string; new_password: string }) =>
     apiClient.post<{ message: string }>('/auth/change-password', payload),
 

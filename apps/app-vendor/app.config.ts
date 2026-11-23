@@ -18,6 +18,9 @@ const config: ExpoConfig = {
   scheme: 'avdanvendor',
   userInterfaceStyle: 'automatic',
   backgroundColor: '#ffffff',
+  // OTA updates (EAS Update): a build only receives updates made for the same app version.
+  runtimeVersion: { policy: 'appVersion' },
+  updates: { url: 'https://u.expo.dev/4224d0fc-fb18-432f-bfc1-5add0a663507' },
   extra: {
     apiUrl: API_URL,
     wsUrl: WS_URL,
@@ -29,8 +32,9 @@ const config: ExpoConfig = {
   ios: {
     icon: './assets/images/icon.png',
     bundleIdentifier: 'com.avdanstore.vendor',
-    supportsTablet: true,
+    supportsTablet: false,
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       // Vendors attach product photos when creating or editing a listing.
       NSCameraUsageDescription: 'AVDAN Vendor uses the camera to photograph your products.',
       NSPhotoLibraryUsageDescription:
@@ -47,7 +51,7 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['CAMERA', 'READ_MEDIA_IMAGES'],
+    permissions: ['CAMERA'],
   },
   web: {
     output: 'static',
