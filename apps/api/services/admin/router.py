@@ -26,6 +26,7 @@ from services.admin.schemas import (
     RenameBusinessRequest,
     SetProductCategoryRequest,
     SetVendorBusinessRequest,
+    UserCountsResponse,
 )
 from services.admin.service import AdminService
 from services.analytics.audit import record_audit
@@ -142,6 +143,15 @@ async def finance_person(
     return await FinanceService(db).person(kind, user_id, start, end)
 
 
+@router.get("/users/counts", response_model=UserCountsResponse)
+async def user_counts(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> UserCountsResponse:
+    """Users per role and per status, for the numbers in the Users filter dropdowns."""
+    return UserCountsResponse(**await AdminService(db).user_counts())
+
+
 @router.get("/users/stats", response_model=NewUserStatsResponse)
 async def new_user_stats(
     date_from: date | None = Query(default=None),
@@ -187,9 +197,14 @@ async def update_user_status(
     data: UpdateUserStatusRequest,
     current_user: CurrentUser = Depends(require_role("admin")),
     db: AsyncSession = Depends(get_db),
+    redis: aioredis.Redis = Depends(get_redis),  # type: ignore[type-arg]
 ) -> UserResponse:
+    from core.session_guard import block_user, unblock_user
+
     svc = AdminService(db)
     user, before = await svc.update_user_status(user_id, data.status)
+    # Take effect now, not when the person's current 15-minute token runs out.
+    await (unblock_user if user.status == "active" else block_user)(redis, user_id)
     record_audit(db, current_user.user_id, "user.status", "user", user_id, {"status": before}, {"status": user.status})
     return _user_response(user)
 
@@ -234,10 +249,11 @@ async def revoke_invite(
 
 # ── Vendor management ─────────────────────────────────────────────────────────
 
-def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
+def _admin_vendor_response(vendor: object, missing: list[str] | None = None) -> AdminVendorResponse:
     from services.vendor.models import Vendor
     v: Vendor = vendor  # type: ignore[assignment]
     return AdminVendorResponse(
+        missing=missing or [],
         id=str(v.id),
         user_id=str(v.user_id),
         name=v.name,
@@ -254,22 +270,42 @@ def _admin_vendor_response(vendor: object) -> AdminVendorResponse:
     )
 
 
+@router.get("/vendors/counts", response_model=dict[str, int])
+async def vendor_counts(
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Vendors per status plus how many have not filled all requirements: the numbers shown in the
+    Vendors filter dropdown."""
+    return await AdminService(db).vendor_counts()
+
+
 @router.get("/vendors", response_model=PaginatedVendorsResponse)
 async def list_vendors(
     status: str | None = Query(default=None),
+    incomplete: bool = Query(default=False, description="Only vendors that have not filled all requirements"),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     _current_user: CurrentUser = Depends(require_role("admin", "support")),
     db: AsyncSession = Depends(get_db),
 ) -> PaginatedVendorsResponse:
+    from sqlalchemy import select as _select
+
+    from services.auth.models import User
+
     svc = AdminService(db)
-    vendors, total = await svc.list_vendors(status=status, page=page, page_size=page_size)
-    return PaginatedVendorsResponse(
-        items=[_admin_vendor_response(v) for v in vendors],
-        total=total,
-        page=page,
-        page_size=page_size,
+    # "__all__" is the dropdown's placeholder for "no filter", never a real status.
+    vendors, total = await svc.list_vendors(
+        status=None if status in (None, "", "__all__") else status, page=page, page_size=page_size, incomplete=incomplete,
     )
+    owners = {
+        u.id: u for u in (await db.execute(_select(User).where(User.id.in_([v.user_id for v in vendors])))).scalars().all()
+    } if vendors else {}
+    items = []
+    for v in vendors:
+        checklist = svc.vendor_checklist(v, owners.get(v.user_id))
+        items.append(_admin_vendor_response(v, [c["label"] for c in checklist if c["required"] and not c["ok"]]))
+    return PaginatedVendorsResponse(items=items, total=total, page=page, page_size=page_size)
 
 
 # ── Branches: requests to join a business, and tidy-up tools ────────────────────
@@ -455,6 +491,16 @@ def _admin_product_response(p: object) -> AdminProductResponse:
         special_delivery_fee_kobo=product.special_delivery_fee_kobo,
         created_at=product.created_at.isoformat(),
     )
+
+
+@router.get("/products/counts", response_model=dict[str, int])
+async def product_counts(
+    vendor_id: str | None = Query(default=None),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Products per approval status (PENDING / APPROVED / REJECTED), for the Products dropdown."""
+    return await AdminService(db).product_counts(vendor_id)
 
 
 @router.get("/products/vendors", response_model=PaginatedProductVendorsResponse)
@@ -703,6 +749,17 @@ def _order_detail_resp(
         created_at=o.created_at.isoformat(),
         updated_at=o.updated_at.isoformat(),
     )
+
+
+@router.get("/orders/status-counts", response_model=dict[str, int])
+async def order_status_counts(
+    date_from: date | None = Query(default=None),
+    date_to: date | None = Query(default=None),
+    _current_user: CurrentUser = Depends(require_role("admin", "support")),
+    db: AsyncSession = Depends(get_db),
+) -> dict[str, int]:
+    """Orders per exact status in a period (Lagos dates), for the numbers in the status dropdown."""
+    return await AdminService(db).order_status_counts(date_from, date_to)
 
 
 @router.get("/orders/stats", response_model=OrderStatsResponse)

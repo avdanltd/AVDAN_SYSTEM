@@ -452,14 +452,16 @@ class DispatchService:
         if not order.delivery_code:
             return
         key = f"delivery_code_attempts:{order.id}"
-        attempts = int(await self.redis.get(key) or 0)
-        if attempts >= _MAX_CODE_ATTEMPTS:
+        # Count the attempt FIRST, atomically, then judge it. Reading the counter, comparing and
+        # incrementing afterwards lets many parallel guesses all see "0 attempts so far".
+        attempts = int(await self.redis.incr(key))
+        if attempts == 1:
+            await self.redis.expire(key, 24 * 3600)
+        if attempts > _MAX_CODE_ATTEMPTS:
             raise ValidationException(
                 "Too many wrong codes. Contact AVDAN support to complete this delivery."
             )
         if not supplied or not hmac.compare_digest(supplied.strip(), order.delivery_code):
-            await self.redis.incr(key)
-            await self.redis.expire(key, 24 * 3600)
             raise ValidationException(
                 "Enter the 4-digit delivery code the customer received."
                 if not supplied else "That delivery code is not correct."
@@ -497,12 +499,48 @@ class DispatchService:
         from services.payment.providers.registry import get_provider
         rider = await self.get_or_create_rider(user_id)
         provider = get_provider("paystack")
+        try:
+            verified = await provider.resolve_account(account_number, bank_code)
+        except Exception as exc:  # noqa: BLE001
+            raise ValidationException("We could not confirm that bank account. Check the number and the bank.") from exc
+        account_name = verified.account_name  # the bank's name for the holder, not the client's
         result = await provider.create_transfer_recipient(account_name, account_number, bank_code)
+        previous = rider.payout_account_number
         rider.paystack_recipient_code = result.recipient_code
         rider.payout_account_number = account_number
         rider.payout_bank_name = bank_name
         rider.payout_account_name = account_name
+        if previous and previous != account_number:
+            await self._announce_payout_change(user_id, "rider", rider.id, f"••••{previous[-4:]}", f"••••{account_number[-4:]}")
         return rider
+
+    async def _announce_payout_change(self, user_id: str, kind: str, owner_id: object, before: str | None, after: str) -> None:
+        """Tell the owner their payout account was replaced, and leave the entry the withdrawal
+        cooling-off period reads. Someone who has hijacked a session can swap the account, so the
+        real owner must hear about it, and the money cannot leave for 24 hours."""
+        from datetime import UTC, datetime
+
+        from services.analytics.audit import record_audit
+        from services.notification.models import Notification
+
+        record_audit(self.db, user_id, "payout.account_change", kind, str(owner_id), {"account": before}, {"account": after})
+        self.db.add(Notification(
+            user_id=uuid.UUID(user_id), type="payout_account_changed", channel="in_app", sent_at=datetime.now(UTC),
+            content={"title": "Payout account changed",
+                     "body": "Your payout bank account was changed. If this was not you, change your password and contact AVDAN now. "
+                             "For your security, withdrawals are paused for 24 hours after a change."},
+        ))
+        try:
+            from workers.tasks.notifications import notify_user_notice
+
+            notify_user_notice.apply_async(
+                args=[user_id, "Your payout account was changed",
+                      "Your AVDAN payout bank account was just changed. If this was not you, reset your password and contact AVDAN "
+                      "immediately. Withdrawals are paused for 24 hours after a change."],
+                countdown=3,
+            )
+        except Exception:  # noqa: BLE001 - the in-app notice and the cooling-off are already recorded
+            pass
 
     async def get_payout_account(self, user_id: str) -> Rider:
         return await self.get_or_create_rider(user_id)

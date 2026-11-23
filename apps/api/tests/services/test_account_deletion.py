@@ -103,3 +103,25 @@ def test_staff_cannot_self_delete() -> None:
         with pytest.raises(ValidationException, match="admin"):
             await delete_account(db, str(a.id), PW)
     run(body)
+
+
+# ── End to end through the API: delete, and the old login stops working at once ────────────────
+
+def test_deleting_through_the_api_ends_the_session_immediately(client) -> None:  # type: ignore[no-untyped-def]
+    from tests.services.test_auth import _login, _register_and_activate
+
+    acct = _register_and_activate(client)
+    _login(client, acct["email"], acct["password"])
+    assert client.get("/auth/me").status_code == 200  # the cookie works
+
+    wrong = client.post("/auth/me/delete-account", json={"password": "not-my-password"})
+    assert wrong.status_code in (400, 422) and client.get("/auth/me").status_code == 200  # nothing happened
+
+    # Keep a copy of the live access token: deleting clears the cookie, but a stolen copy must be dead too.
+    token = client.cookies.get("avdan_token")
+    done = client.post("/auth/me/delete-account", json={"password": acct["password"]})
+    assert done.status_code == 200, done.text
+
+    client.cookies.clear()
+    assert client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).status_code == 401
+    assert client.post("/auth/login", json={"email": acct["email"], "password": acct["password"]}).status_code in (400, 401)

@@ -14,6 +14,7 @@ class EscrowStatus:
     RELEASED = "RELEASED"
     REFUNDED = "REFUNDED"
     FAILED = "FAILED"
+    DUPLICATE = "DUPLICATE"  # a second or late payment for an order that no longer needs one: to be refunded
 
 
 class EscrowTransaction(BaseModel):
