@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { ORDER_GROUP_COLORS, bucketLabel, presetRange, type RangePreset } from '@avdan/types'
-import { Card, CardContent, DateRangeBar, Skeleton, cn } from '@avdan/ui'
+import { ORDER_GROUP_COLORS, presetRange, type RangePreset } from '@avdan/types'
+import { Card, CardContent, DateRangeBar, OrderStatsCharts, Skeleton, cn } from '@avdan/ui'
 import { formatPrice } from '@/lib/format'
 import { useOrderStats } from '../hooks/use-order-stats'
 
@@ -24,9 +24,6 @@ export function OrderStatsPanel() {
   if (group) params.group = group
 
   const { data, isLoading, isError } = useOrderStats(params)
-  const unit = data?.bucket ?? 'day'
-  const series = data?.series ?? []
-  const max = Math.max(1, ...series.map((p) => p.total))
 
   return (
     <Card className="shadow-card">
@@ -77,34 +74,13 @@ export function OrderStatsPanel() {
               </div>
             </div>
 
-            <div className="h-40">
-              {isLoading ? (
-                <Skeleton className="h-full w-full" />
-              ) : (data?.total ?? 0) === 0 ? (
-                <p className="flex h-full items-center justify-center text-sm text-muted-foreground">No orders in this period.</p>
-              ) : (
-                <div className="flex h-full items-end gap-1" role="img" aria-label="Orders per period, by status">
-                  {series.map((p) => (
-                    <div
-                      key={p.bucket}
-                      className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-1"
-                      title={`${bucketLabel(p.bucket, unit)}: ${p.total} order${p.total === 1 ? '' : 's'}`}
-                    >
-                      <div className="flex w-full flex-col-reverse overflow-hidden rounded-t" style={{ height: `${(p.total / max) * 85}%` }}>
-                        {Object.entries(p.by_group).map(([key, n]) => (
-                          <div key={key} style={{ height: `${(n / p.total) * 100}%`, background: ORDER_GROUP_COLORS[key] }} />
-                        ))}
-                      </div>
-                      <span className="w-full truncate text-center text-[10px] text-muted-foreground">
-                        {series.length <= 14 || series.indexOf(p) % Math.ceil(series.length / 8) === 0
-                          ? bucketLabel(p.bucket, unit)
-                          : ''}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {isLoading ? (
+              <Skeleton className="h-60 w-full" />
+            ) : !data || data.total === 0 ? (
+              <p className="flex h-32 items-center justify-center text-sm text-muted-foreground">No orders in this period.</p>
+            ) : (
+              <OrderStatsCharts data={data} formatMoney={formatPrice} valueLabel="your sales" />
+            )}
           </>
         )}
       </CardContent>

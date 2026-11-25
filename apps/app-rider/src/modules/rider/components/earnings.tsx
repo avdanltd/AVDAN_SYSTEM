@@ -37,7 +37,7 @@ export function Earnings() {
         loading={summary.isLoading}
         error={summary.isError}
         onRetry={() => void refetchAll()}
-        showClearing={false}
+        showClearing
         onRequestWithdrawal={async (amountKobo) => {
           await withdraw.mutateAsync(amountKobo)
         }}

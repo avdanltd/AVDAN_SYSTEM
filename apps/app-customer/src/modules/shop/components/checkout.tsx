@@ -19,6 +19,7 @@ import {
   EmptyState,
   fonts,
   formatKobo,
+  LocationPrompt,
   toast,
   radius,
   spacing,
@@ -280,20 +281,15 @@ export function Checkout() {
 
           <View style={styles.fieldGroup}>
             <Text style={[styles.label, { color: colors.foreground }]}>Delivery location</Text>
-            <Button
-              label={coords ? 'Update my location' : 'Use my current location'}
-              variant="outline"
+            <LocationPrompt
+              instruction="Tap here to calculate your delivery fee and route a rider to you"
+              captured={Boolean(coords)}
+              capturedText={`Location saved${
+                quote?.total_km != null ? ` · about ${quote.total_km.toFixed(1)} km via ${quote.hub_name ?? 'our hub'}` : ''
+              }`}
               loading={locating}
               onPress={captureLocation}
             />
-            {coords ? (
-              <Text style={[styles.error, { color: colors.success }]}>
-                Location saved
-                {quote?.total_km != null
-                  ? ` · about ${quote.total_km.toFixed(1)} km via ${quote.hub_name ?? 'our hub'}`
-                  : ''}
-              </Text>
-            ) : null}
             {errors.location ? (
               <Text style={[styles.error, { color: colors.destructive }]}>{errors.location}</Text>
             ) : null}

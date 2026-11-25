@@ -120,6 +120,10 @@ class DisputeService:
             await payment_svc.release_escrow(str(order.id))
 
         elif data.resolution == "refund_to_customer":
+            # The rider still did the delivery, so they are paid whatever the outcome for the vendor.
+            from services.wallet.service import WalletService
+
+            await WalletService(self.db).credit_rider_for_order(order)
             if escrow:
                 await payment_svc.process_refund(
                     str(order.id), escrow.amount_kobo, admin_id, data.notes
@@ -132,9 +136,10 @@ class DisputeService:
         elif data.resolution == "split":
             # Vendor's portion goes to their wallet (no automatic transfer — they withdraw it via
             # a payout request an admin approves); the customer's portion is refunded.
-            if escrow:
-                from services.wallet.service import WalletService
+            from services.wallet.service import WalletService
 
+            await WalletService(self.db).credit_rider_for_order(order)
+            if escrow:
                 await WalletService(self.db).credit_vendor_for_order(
                     order, amount_kobo=data.vendor_amount_kobo, reason="dispute_split"  # type: ignore[arg-type]
                 )
