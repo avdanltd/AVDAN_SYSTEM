@@ -39,7 +39,7 @@ export function EarningsPage() {
       <div>
         <h1 className="text-lg font-semibold">Earnings</h1>
         <p className="text-sm text-muted-foreground">
-          You earn the delivery fee on every order. It lands in Available as soon as the parcel is delivered.
+          You earn the delivery fee on every order. After delivery it shows as Delivered while the payment settles (about 24 hours, the same as vendors), then moves to Available.
         </p>
       </div>
 
@@ -50,7 +50,7 @@ export function EarningsPage() {
         loading={summary.isLoading}
         error={summary.isError}
         onRetry={refetchAll}
-        showClearing={false}
+        showClearing
         onRequestWithdrawal={async (amountKobo) => {
           await withdraw.mutateAsync(amountKobo)
         }}

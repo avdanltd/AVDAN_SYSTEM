@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
-import { ORDER_GROUP_COLORS, bucketLabel, presetRange, type RangePreset } from '@avdan/types'
-import { Card, Skeleton, fonts, formatKobo, radius, spacing, useTheme } from '@avdan/mobile'
+import { ORDER_GROUP_COLORS, presetRange, type RangePreset } from '@avdan/types'
+import { Card, OrderStatsCharts, Skeleton, fonts, formatKobo, radius, spacing, useTheme } from '@avdan/mobile'
 
 import { useOrderStats } from '../hooks/use-vendor'
 
@@ -32,10 +32,6 @@ export function OrderHistogram() {
   if (group) params.group = group
 
   const { data, isLoading, isError } = useOrderStats(params)
-  const unit = data?.bucket ?? 'day'
-  const series = data?.series ?? []
-  const max = Math.max(1, ...series.map((p) => p.total))
-  const labelEvery = Math.max(1, Math.ceil(series.length / 6))
 
   return (
     <Card style={styles.card}>
@@ -97,30 +93,15 @@ export function OrderHistogram() {
             })}
           </ScrollView>
 
-          <View style={{ height: CHART_HEIGHT + 18 }}>
-            {isLoading ? (
-              <Skeleton height={CHART_HEIGHT} />
-            ) : (data?.total ?? 0) === 0 ? (
-              <View style={[styles.empty, { height: CHART_HEIGHT }]}>
-                <Text style={[styles.sub, { color: colors.mutedForeground }]}>No orders in this period.</Text>
-              </View>
-            ) : (
-              <View style={styles.bars}>
-                {series.map((p, i) => (
-                  <View key={p.bucket} style={styles.barCol}>
-                    <View style={[styles.stack, { height: (p.total / max) * CHART_HEIGHT }]}>
-                      {Object.entries(p.by_group).map(([key, n]) => (
-                        <View key={key} style={{ flex: n, backgroundColor: ORDER_GROUP_COLORS[key] }} />
-                      ))}
-                    </View>
-                    <Text style={[styles.axis, { color: colors.subtleForeground }]} numberOfLines={1}>
-                      {i % labelEvery === 0 ? bucketLabel(p.bucket, unit) : ''}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          {isLoading ? (
+            <Skeleton height={CHART_HEIGHT} />
+          ) : !data || data.total === 0 ? (
+            <View style={[styles.empty, { height: CHART_HEIGHT }]}>
+              <Text style={[styles.sub, { color: colors.mutedForeground }]}>No orders in this period.</Text>
+            </View>
+          ) : (
+            <OrderStatsCharts data={data} valueLabel="your sales" />
+          )}
         </>
       )}
     </Card>
@@ -139,8 +120,4 @@ const styles = StyleSheet.create({
   chipText: { fontFamily: fonts.sansMedium, fontSize: 12 },
   dot: { width: 8, height: 8, borderRadius: 4 },
   empty: { alignItems: 'center', justifyContent: 'center' },
-  bars: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: CHART_HEIGHT + 18 },
-  barCol: { flex: 1, minWidth: 0, justifyContent: 'flex-end', alignItems: 'center', gap: 4 },
-  stack: { width: '100%', flexDirection: 'column-reverse', borderTopLeftRadius: 3, borderTopRightRadius: 3, overflow: 'hidden', minHeight: 2 },
-  axis: { fontFamily: fonts.sans, fontSize: 9.5, width: '100%', textAlign: 'center', height: 12 },
 })

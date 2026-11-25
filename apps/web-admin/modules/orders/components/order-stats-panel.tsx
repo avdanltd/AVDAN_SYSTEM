@@ -1,8 +1,6 @@
 'use client'
 
-import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-
-import { Card, CardContent, Skeleton, cn } from '@avdan/ui'
+import { Card, CardContent, OrderStatsCharts, Skeleton, cn } from '@avdan/ui'
 import { formatKobo } from '@/lib/format'
 import { useOrderStats } from '../hooks/use-order-stats'
 
@@ -15,13 +13,6 @@ const GROUP_COLORS: Record<string, string> = {
   completed: 'hsl(var(--success))',
   cancelled: 'hsl(var(--destructive))',
   issues: 'hsl(280 60% 55%)',
-}
-
-function label(bucket: string, unit: string): string {
-  const d = new Date(`${bucket}T00:00:00Z`)
-  if (unit === 'month') return d.toLocaleDateString('en-NG', { month: 'short', year: '2-digit', timeZone: 'UTC' })
-  const base = d.toLocaleDateString('en-NG', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-  return unit === 'week' ? `Wk ${base}` : base
 }
 
 /**
@@ -44,9 +35,7 @@ export function OrderStatsPanel({
     return <p className="text-sm text-destructive">Couldn&apos;t load the order numbers.</p>
   }
 
-  const unit = data?.bucket ?? 'day'
   const groups = data?.groups ?? []
-  const chart = (data?.series ?? []).map((p) => ({ name: label(p.bucket, unit), ...p.by_group }))
 
   return (
     <Card>
@@ -93,42 +82,13 @@ export function OrderStatsPanel({
           </div>
         </div>
 
-        <div className="h-52 w-full">
-          {isLoading ? (
-            <Skeleton className="h-full w-full" />
-          ) : chart.length === 0 || (data?.total ?? 0) === 0 ? (
-            <p className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              No orders in this period.
-            </p>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chart} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} interval="preserveStartEnd" />
-                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--muted))' }}
-                  contentStyle={{
-                    background: 'hsl(var(--popover))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                {groups.map((g) => (
-                  <Bar
-                    key={g.key}
-                    dataKey={g.key}
-                    name={g.label}
-                    stackId="orders"
-                    fill={GROUP_COLORS[g.key] ?? 'hsl(var(--muted-foreground))'}
-                  />
-                ))}
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+        {isLoading ? (
+          <Skeleton className="h-60 w-full" />
+        ) : !data || data.total === 0 ? (
+          <p className="flex h-32 items-center justify-center text-sm text-muted-foreground">No orders in this period.</p>
+        ) : (
+          <OrderStatsCharts data={data} formatMoney={formatKobo} valueLabel="paid orders" />
+        )}
       </CardContent>
     </Card>
   )

@@ -610,12 +610,20 @@ class AdminService:
             point["total"] += n
             point["by_group"][g] = point["by_group"].get(g, 0) + n
 
+        value_rows = (await self.db.execute(
+            select(trunc, func.coalesce(func.sum(value_col), 0))
+            .where(*conds, Order.status.notin_(self._NO_VALUE)).group_by(trunc)
+        )).all()
+        for b, v in value_rows:
+            key = b.date().isoformat()
+            points.setdefault(key, {"bucket": key, "total": 0, "by_group": {}})["value_kobo"] = int(v)
+
         series: list[dict] = []
         cursor = self._bucket_start(start, unit)
         last = self._bucket_start(end, unit)
         while cursor <= last and len(series) < 400:
             key = cursor.isoformat()
-            series.append(points.get(key, {"bucket": key, "total": 0, "by_group": {}}))
+            series.append(points.get(key, {"bucket": key, "total": 0, "by_group": {}, "value_kobo": 0}))
             cursor = self._next_bucket(cursor, unit)
 
         return {

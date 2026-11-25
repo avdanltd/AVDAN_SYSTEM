@@ -3,7 +3,6 @@ import httpx
 import pytest
 
 from services.routing.providers import OsrmProvider, _thin, get_route_provider
-from tests.services.test_admin_attention import run
 
 
 def _osrm_ok(request: httpx.Request) -> httpx.Response:
@@ -26,9 +25,14 @@ def test_osrm_response_becomes_lat_lng_points() -> None:
 
 
 def run_plain(coro_fn):  # type: ignore[no-untyped-def]
+    # A private loop, closed afterwards, so nothing here leaks into the app's own loop handling.
     import asyncio
 
-    asyncio.run(coro_fn())
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(coro_fn())
+    finally:
+        loop.close()
 
 
 def test_osrm_failures_give_none_not_an_error() -> None:

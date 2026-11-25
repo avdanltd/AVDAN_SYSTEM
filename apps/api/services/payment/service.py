@@ -249,8 +249,7 @@ class PaymentService:
 
         wallet = WalletService(self.db)
         credited = await wallet.credit_vendor_for_order(order)
-        # Normally the rider was already credited at delivery; this is an idempotent safety net
-        # for orders that reached release some other way (admin override, dispute resolution).
+        # The rider is paid here too, in the same release as the vendor (idempotent).
         await wallet.credit_rider_for_order(order)
         escrow.provider_metadata = {
             **(escrow.provider_metadata or {}),

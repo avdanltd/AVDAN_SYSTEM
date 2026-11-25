@@ -70,7 +70,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     (_MEDIA_DIR / "qa-evidence").mkdir(parents=True, exist_ok=True)
     yield
     await engine.dispose()
-    await redis_pool.aclose()
+    try:
+        await redis_pool.aclose()
+    except RuntimeError:
+        # Connections opened on an event loop that has since closed (happens when the app is started
+        # and stopped repeatedly in one process, as the tests do); there is nothing left to close.
+        pass
 
 
 def create_app() -> FastAPI:
