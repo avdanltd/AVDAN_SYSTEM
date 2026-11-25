@@ -66,6 +66,9 @@ export function TrackingPage({ id }: { id: string }) {
   }
 
   const hasLocation = tracking.location !== null
+  const addr = order.delivery_address as { lat?: unknown; lng?: unknown }
+  const destination =
+    typeof addr.lat === 'number' && typeof addr.lng === 'number' ? { lat: addr.lat, lng: addr.lng } : null
 
   return (
     <div className="space-y-6">
@@ -123,6 +126,8 @@ export function TrackingPage({ id }: { id: string }) {
           lat={tracking.location!.lat}
           lng={tracking.location!.lng}
           riderName={tracking.rider?.name ?? undefined}
+          destination={destination}
+          lastLeg={tracking.stage === 'to_customer'}
         />
       ) : (
         <div className="flex h-[400px] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border bg-muted/30 text-center">
