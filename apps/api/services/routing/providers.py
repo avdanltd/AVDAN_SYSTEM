@@ -21,6 +21,10 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 _TIMEOUT_S = 4.0
+# OSRM snaps each end to the nearest road in its data. Our road data covers one region, so a point far
+# outside it would otherwise 'snap' to the region's edge and give a route that ends nowhere near the
+# destination. A point further than this from a mapped road gets no route (the apps draw a straight line).
+_MAX_SNAP_M = 2000
 _MAX_POINTS = 1500  # a very long route is thinned so the response stays small for phones
 
 
@@ -72,6 +76,9 @@ class OsrmProvider:
             return None
         routes = data.get("routes") or []
         if data.get("code") != "Ok" or not routes:
+            return None
+        waypoints = data.get("waypoints") or []
+        if any(float(w.get("distance", 0)) > _MAX_SNAP_M for w in waypoints):
             return None
         best = routes[0]
         coordinates = (best.get("geometry") or {}).get("coordinates") or []

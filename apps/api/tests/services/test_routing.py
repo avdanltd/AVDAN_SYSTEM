@@ -103,3 +103,20 @@ def test_second_identical_request_is_served_from_the_cache(client, monkeypatch) 
     second = client.get("/routing/route", params=params)
     assert first.status_code == second.status_code == 200
     assert first.json() == second.json() and first.json()["provider"] == "fake" and len(calls) == 1
+
+
+def test_a_point_far_from_any_mapped_road_gets_no_route() -> None:
+    """Outside the region OSRM snaps the point to the data's edge; that route would end nowhere near
+    the destination, so it is refused."""
+    def far(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={
+            "code": "Ok",
+            "waypoints": [{"distance": 12.0}, {"distance": 480000.0}],
+            "routes": [{"distance": 1000, "duration": 100,
+                        "geometry": {"coordinates": [[3.35, 6.6], [3.4, 6.7]]}}],
+        })
+
+    async def body() -> None:
+        client = httpx.AsyncClient(transport=httpx.MockTransport(far))
+        assert await OsrmProvider("http://osrm:5000", client).route((6.6, 3.35), (12.0, 8.5)) is None
+    run_plain(body)
