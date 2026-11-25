@@ -30,7 +30,7 @@ services:
   osrm:
     image: ghcr.io/project-osrm/osrm-backend:v5.27.1
     restart: unless-stopped
-    command: osrm-routed --algorithm mld --max-matching-size 2 /data/region.osrm
+    command: osrm-routed --algorithm mld /data/region.osrm
     volumes:
       - /opt/avdan/osrm-data:/data:ro
     mem_limit: 1500m
