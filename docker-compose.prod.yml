@@ -25,6 +25,18 @@ services:
       timeout: 5s
       retries: 3
 
+  # Road routing for the live maps. Built once with infra/osrm/setup.sh; the api reaches it at
+  # ROUTING_OSRM_URL=http://osrm:5000 (set in /opt/avdan/secrets/api.env). Not exposed to the internet.
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    restart: unless-stopped
+    command: osrm-routed --algorithm mld --max-matching-size 2 /data/nigeria.osrm
+    volumes:
+      - /opt/avdan/osrm-data:/data:ro
+    mem_limit: 1500m
+    networks:
+      - avdan
+
   celery:
     image: ${IMAGE_PREFIX}/api:${IMAGE_TAG}
     restart: unless-stopped
