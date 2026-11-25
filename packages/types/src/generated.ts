@@ -2811,6 +2811,27 @@ export interface paths {
         patch: operations["update_my_hub_hub_me_patch"];
         trace?: never;
     };
+    "/routing/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Route
+         * @description The driving route between two points, for the live maps in the apps. Signed-in users only.
+         *     503 when routing is not configured or the provider is down: the apps then draw a straight line.
+         */
+        get: operations["get_route_routing_route_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -4041,6 +4062,11 @@ export interface components {
             by_group: {
                 [key: string]: number;
             };
+            /**
+             * Value Kobo
+             * @default 0
+             */
+            value_kobo: number;
         };
         /** OrderStatsResponse */
         OrderStatsResponse: {
@@ -4694,6 +4720,24 @@ export interface components {
              * @default 0
              */
             review_count: number;
+        };
+        /** RoutePointOut */
+        RoutePointOut: {
+            /** Lat */
+            lat: number;
+            /** Lng */
+            lng: number;
+        };
+        /** RouteResponse */
+        RouteResponse: {
+            /** Provider */
+            provider: string;
+            /** Distance M */
+            distance_m: number;
+            /** Duration S */
+            duration_s: number;
+            /** Points */
+            points: components["schemas"]["RoutePointOut"][];
         };
         /** SavePayoutAccountRequest */
         SavePayoutAccountRequest: {
@@ -11532,6 +11576,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HubResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_route_routing_route_get: {
+        parameters: {
+            query: {
+                from_lat: number;
+                from_lng: number;
+                to_lat: number;
+                to_lng: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                avdan_token?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteResponse"];
                 };
             };
             /** @description Validation Error */

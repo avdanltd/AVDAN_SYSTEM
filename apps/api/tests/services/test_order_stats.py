@@ -51,6 +51,7 @@ def test_order_stats_by_group_value_and_series() -> None:
         assert res["total"] == 6
         # Pending + cancelled never became money: 4 paid orders x (1000 + 500).
         assert res["value_kobo"] == 4 * 1500
+        assert sum(p["value_kobo"] for p in res["series"]) == res["value_kobo"]  # per-bucket value adds up
         assert res["bucket"] == "day" and len(res["series"]) == 7
         assert [p["total"] for p in res["series"]] == [2, 2, 0, 2, 0, 0, 0]
         assert res["series"][3]["by_group"] == {"completed": 1, "cancelled": 1}

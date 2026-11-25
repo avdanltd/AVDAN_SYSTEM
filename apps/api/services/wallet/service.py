@@ -154,7 +154,8 @@ class WalletService:
     async def credit_rider_for_order(self, order: Order) -> int:
         """Credit the rider's Available balance with their share of the delivery fee (the fee less
         AVDAN's delivery commission; orders from before the commission pay it in full). Called
-        when the order is delivered."""
+        when the order is released (after the same hold as the vendor's money), or when an admin
+        resolves a dispute."""
         if not order.rider_id or order.delivery_fee_kobo <= 0:
             return 0
         rider_fee = order.delivery_fee_kobo if order.rider_fee_kobo is None else order.rider_fee_kobo
@@ -168,11 +169,24 @@ class WalletService:
 
     # ── Balances ──────────────────────────────────────────────────────────────
 
-    async def _sum_orders(self, owner_type: str, owner_id: uuid.UUID, states: list[str]) -> list[Order]:
+    @staticmethod
+    def _not_yet_credited(owner_type: str, owner_id: uuid.UUID):  # type: ignore[no-untyped-def]
+        """Orders whose money has not reached this owner's wallet yet. A rider is credited when the
+        order is released; riders delivered before that rule changed were credited at delivery, and
+        must not also show as "delivered, clearing"."""
+        return ~select(WalletEntry.id).where(
+            WalletEntry.owner_type == owner_type, WalletEntry.owner_id == owner_id,
+            WalletEntry.order_id == Order.id, WalletEntry.kind == WalletEntryKind.ORDER_CREDIT,
+        ).exists()
+
+    async def _sum_orders(
+        self, owner_type: str, owner_id: uuid.UUID, states: list[str], *, uncredited: bool = False
+    ) -> list[Order]:
         column = Order.vendor_id if owner_type == WalletOwner.VENDOR else Order.rider_id
-        result = await self.db.execute(
-            select(Order).where(column == owner_id, Order.status.in_(states))
-        )
+        conds = [column == owner_id, Order.status.in_(states)]
+        if uncredited:
+            conds.append(self._not_yet_credited(owner_type, owner_id))
+        result = await self.db.execute(select(Order).where(*conds))
         return list(result.scalars().all())
 
     async def _period_summary(
@@ -195,16 +209,18 @@ class WalletService:
                 return o.vendor_total_kobo if o.vendor_total_kobo is not None else o.total_kobo - int(o.total_kobo * rate / 100)
             return o.delivery_fee_kobo if o.rider_fee_kobo is None else o.rider_fee_kobo
 
-        async def orders(states: list[str], col) -> int:
-            rows = (await self.db.execute(
-                select(Order).where(column == owner_id, Order.status.in_(states), *window(col))
-            )).scalars().all()
+        async def orders(states: list[str], col, *, uncredited: bool = False) -> int:
+            conds = [column == owner_id, Order.status.in_(states), *window(col)]
+            if uncredited:
+                conds.append(self._not_yet_credited(owner_type, owner_id))
+            rows = (await self.db.execute(select(Order).where(*conds))).scalars().all()
             return sum(amount(o) for o in rows)
 
         ongoing = await orders(_ONGOING_STATES, Order.created_at)
-        clearing = 0
         if owner_type == WalletOwner.VENDOR:
             clearing = await orders([*_VENDOR_CLEARING_STATES, OrderStatus.DISPUTED], Order.updated_at)
+        else:
+            clearing = await orders(_VENDOR_CLEARING_STATES, Order.updated_at, uncredited=True)
 
         available = int((await self.db.execute(
             select(func.coalesce(func.sum(WalletEntry.amount_kobo), 0)).where(
@@ -259,7 +275,13 @@ class WalletService:
             clearing = sum(amount(o) for o in await self._sum_orders(owner_type, owner_id, _VENDOR_CLEARING_STATES))
             on_hold = sum(amount(o) for o in await self._sum_orders(owner_type, owner_id, [OrderStatus.DISPUTED]))
         else:
-            clearing = on_hold = 0  # rider pay is credited on delivery
+            # A rider waits out the same hold as a vendor: paid once the order is released, so the
+            # money is safely with AVDAN (Paystack settles to us on its own schedule) first.
+            clearing = sum(
+                amount(o) for o in await self._sum_orders(
+                    owner_type, owner_id, _VENDOR_CLEARING_STATES, uncredited=True)
+            )
+            on_hold = 0
 
         available = int((await self.db.execute(
             select(func.coalesce(func.sum(WalletEntry.amount_kobo), 0)).where(

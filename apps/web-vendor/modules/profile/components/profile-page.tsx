@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { LocateFixed, MapPin } from 'lucide-react'
+
 import { LogoField } from './logo-field'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
@@ -23,6 +23,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
+  LocationPrompt,
   Skeleton,
   Separator,
   Textarea,
@@ -190,9 +191,12 @@ function BusinessForm() {
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        setDeviceCoords(coords)
         setLocating(false)
-        toast.success('Location captured. Press Save Changes to keep it.')
+        // The pickup point is saved on its own, right now: it doesn't wait for (or touch) the rest of
+        // the form, so nothing typed in the address boxes is lost or has to be re-entered.
+        updateVendor(coords, { onSuccess: () => setDeviceCoords(null) })
       },
       () => {
         setLocating(false)
@@ -202,8 +206,12 @@ function BusinessForm() {
     )
   }
 
+  // Fill the form from the server once per vendor, and again after a full save. Refetches in
+  // between (e.g. after the location is saved on its own) must not overwrite what is being typed.
+  const hydratedFor = useRef<string | null>(null)
   useEffect(() => {
-    if (vendor) {
+    if (vendor && hydratedFor.current !== vendor.id) {
+      hydratedFor.current = vendor.id
       form.reset({
         name: vendor.name ?? '',
         description: vendor.description ?? '',
@@ -230,7 +238,7 @@ function BusinessForm() {
           }
         : {}),
       ...(deviceCoords ?? {}),
-    }, { onSuccess: () => setDeviceCoords(null) })
+    }, { onSuccess: () => { setDeviceCoords(null); hydratedFor.current = null } })
   }
 
   if (isLoading) {
@@ -298,29 +306,23 @@ function BusinessForm() {
           <AddressFields value={address} onChange={setAddress} disabled={isPending} idPrefix="vendor" />
           {addressError && <p className="text-sm text-destructive">{addressError}</p>}
         </div>
-        <div className="space-y-2 rounded-md border border-border p-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" size="sm" onClick={shareDeviceLocation} disabled={locating}>
-              <LocateFixed className="mr-2 h-4 w-4" />
-              {locating ? 'Locating…' : 'Use my current location'}
-            </Button>
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3.5 w-3.5" />
-              {deviceCoords
-                ? `New position ${deviceCoords.lat.toFixed(5)}, ${deviceCoords.lng.toFixed(5)} (not saved yet)`
-                : vendor?.lat != null && vendor?.lng != null
-                  ? `Map position saved: ${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)}`
-                  : 'No map position yet'}
-            </span>
-          </div>
-          {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) && (
-            <p className="text-xs text-amber-600">
-              Your pickup location isn&apos;t pinned, so customers are charged only the flat delivery fee and riders
-              can&apos;t be matched by distance. Stand at the exact spot riders will collect from and press
-              &quot;Use my current location&quot;, or enter a more specific street address and save.
-            </p>
-          )}
-        </div>
+        <LocationPrompt
+          instruction="Click here to share your pick up location for riders to locate you"
+          captured={vendor?.lat != null && vendor?.lng != null}
+          capturedText={
+            vendor?.lat != null && vendor?.lng != null
+              ? `Pickup location saved (${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)})`
+              : undefined
+          }
+          loading={locating || isPending}
+          onClick={shareDeviceLocation}
+        />
+        {(vendor?.lat == null || vendor?.lng == null) && (
+          <p className="text-xs text-amber-600">
+            Until your pickup location is shared, customers are charged only the flat delivery fee and riders
+            can&apos;t be matched by distance. Stand at the exact spot riders will collect from.
+          </p>
+        )}
         <div className="flex justify-end">
           <Button type="submit" disabled={isPending}>
             {isPending ? 'Saving…' : 'Save Changes'}

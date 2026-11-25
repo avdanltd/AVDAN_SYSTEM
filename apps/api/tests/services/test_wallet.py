@@ -122,6 +122,21 @@ def test_rider_credit_is_net_of_delivery_commission() -> None:
     run(body)
 
 
+def test_delivered_rider_money_clears_first_then_becomes_available() -> None:
+    """A rider waits out the same hold as a vendor: delivered money shows as "clearing", not
+    available, until the order is released and credited; it is never counted in both."""
+    async def body(db):  # type: ignore[no-untyped-def]
+        s = await _seed(db)  # order is DELIVERED, rider not yet credited
+        svc = WalletService(db)
+        uid = str(s.rider_user.id)
+        before = await svc.my_summary("rider", uid)
+        assert before["clearing_kobo"] == 80_000 and before["available_kobo"] == 0
+        await svc.credit_rider_for_order(s.order)  # what the release does
+        after = await svc.my_summary("rider", uid)
+        assert after["clearing_kobo"] == 0 and after["available_kobo"] == 80_000
+    run(body)
+
+
 def test_request_validation() -> None:
     async def body(db):  # type: ignore[no-untyped-def]
         s = await _seed(db)

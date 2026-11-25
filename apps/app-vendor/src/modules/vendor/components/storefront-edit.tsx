@@ -5,7 +5,7 @@ import * as Location from 'expo-location'
 import { z } from 'zod'
 
 import { useUpdateStorefront, useVendorProfile } from '../hooks/use-vendor'
-import { AddressFields, Button, Card, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
+import { AddressFields, Button, Card, LocationPrompt, Skeleton, fonts, radius, spacing, toast, useTheme } from '@avdan/mobile'
 import { LogoPicker } from './logo-picker'
 import { addressFromApi, addressProblem, type AddressValue } from '@avdan/types'
 
@@ -21,6 +21,8 @@ export function StorefrontEdit() {
   const { colors } = useTheme()
   const { data: vendor, isLoading } = useVendorProfile()
   const { mutate: save, isPending } = useUpdateStorefront(() => router.back())
+  // The pickup point is saved on its own the moment it is captured (no router.back, form untouched).
+  const { mutate: saveLocation, isPending: savingLocation } = useUpdateStorefront()
 
   const [name, setName] = useState(vendor?.name ?? '')
   const [description, setDescription] = useState(vendor?.description ?? '')
@@ -39,7 +41,9 @@ export function StorefrontEdit() {
         return
       }
       const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High })
-      setDeviceCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+      setDeviceCoords(coords)
+      saveLocation(coords, { onSuccess: () => setDeviceCoords(null) })
     } catch {
       toast.error('Could not get your location', 'Check that location is switched on and try again.')
     } finally {
@@ -167,20 +171,18 @@ export function StorefrontEdit() {
               </Text>
             ) : null}
             <AddressFields value={address} onChange={setAddress} error={errors.address} />
-            <Button
-              label={locating ? 'Locating…' : 'Use my current location'}
-              variant="outline"
+            <LocationPrompt
+              instruction="Tap here to share your pick up location for riders to locate you"
+              captured={vendor?.lat != null && vendor?.lng != null}
+              capturedText={
+                vendor?.lat != null && vendor?.lng != null
+                  ? `Pickup location saved (${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)})`
+                  : undefined
+              }
+              loading={locating || savingLocation}
               onPress={pinCurrentLocation}
-              loading={locating}
             />
-            <Text style={[styles.hint, { color: colors.subtleForeground }]}>
-              {deviceCoords
-                ? `New position ${deviceCoords.lat.toFixed(5)}, ${deviceCoords.lng.toFixed(5)} (not saved yet)`
-                : vendor?.lat != null && vendor?.lng != null
-                  ? `Map position saved: ${Number(vendor.lat).toFixed(5)}, ${Number(vendor.lng).toFixed(5)}`
-                  : 'No map position yet'}
-            </Text>
-            {!deviceCoords && (vendor?.lat == null || vendor?.lng == null) ? (
+            {vendor?.lat == null || vendor?.lng == null ? (
               <Text style={[styles.error, { color: colors.warning }]}>
                 Your pickup location isn&apos;t pinned, so customers are charged only the flat delivery fee.
                 Stand at the exact spot riders will collect from and tap &quot;Use my current location&quot;,

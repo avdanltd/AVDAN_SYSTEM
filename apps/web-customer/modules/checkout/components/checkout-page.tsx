@@ -19,11 +19,12 @@ import {
   FormMessage,
   Input,
   Label,
+  LocationPrompt,
   Separator,
   Textarea,
   toast,
 } from '@avdan/ui'
-import { Loader2, MapPin, ShoppingCart } from 'lucide-react'
+import { Loader2, ShoppingCart } from 'lucide-react'
 import { checkoutSchema, type CheckoutInput } from '../schemas/checkout.schemas'
 import { useCreateOrder, useDeliveryQuote, useInitiatePayment } from '../hooks/use-checkout'
 import type { OrderCreated } from '../services/checkout.service'
@@ -34,6 +35,8 @@ import { ROUTES } from '@/config/routes'
 function formatPrice(kobo: number): string {
   return (kobo / 100).toLocaleString('en-NG', { style: 'currency', currency: 'NGN' })
 }
+
+const CHECKOUT_DRAFT_KEY = 'avdan_checkout_draft'
 
 export function CheckoutPage() {
   const router = useRouter()
@@ -80,6 +83,29 @@ export function CheckoutPage() {
       { enableHighAccuracy: true, timeout: 15_000 },
     )
   }
+
+  // Keep what was typed (address, phone, notes, captured location) for this browser tab, so a page
+  // reload — common on phones when they bounce to Settings to switch location on — never makes the
+  // customer re-enter the state and local government. Per-tab, cleared when they leave for payment.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CHECKOUT_DRAFT_KEY)
+      if (raw) {
+        const draft = JSON.parse(raw) as Partial<CheckoutInput>
+        form.reset({ ...form.getValues(), ...draft, delivery_address: { ...form.getValues('delivery_address'), ...draft.delivery_address } })
+      }
+    } catch {
+      // storage blocked or corrupt draft: start empty
+    }
+    const sub = form.watch((values) => {
+      try {
+        sessionStorage.setItem(CHECKOUT_DRAFT_KEY, JSON.stringify(values))
+      } catch {
+        // ignore
+      }
+    })
+    return () => sub.unsubscribe()
+  }, [form])
 
   // Prefill phone once session loads
   useEffect(() => {
@@ -131,6 +157,11 @@ export function CheckoutPage() {
     try {
       const payment = await initiatePayment(placedOrder.id)
       leavingForPayment.current = true
+      try {
+        sessionStorage.removeItem(CHECKOUT_DRAFT_KEY)
+      } catch {
+        // ignore
+      }
       clearCart()
       // Redirect to Paystack payment page
       window.location.assign(payment.payment_url)
@@ -237,19 +268,12 @@ export function CheckoutPage() {
 
                   <div className="space-y-2">
                     <Label>Delivery Location</Label>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button type="button" variant="outline" onClick={captureLocation} disabled={locating}>
-                        {locating ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <MapPin className="mr-2 h-4 w-4" />
-                        )}
-                        {lat !== undefined ? 'Update my location' : 'Use my current location'}
-                      </Button>
-                      {lat !== undefined && lng !== undefined && (
-                        <span className="text-sm text-success">Location saved</span>
-                      )}
-                    </div>
+                    <LocationPrompt
+                      instruction="Click here to calculate your delivery fee and route a rider to you"
+                      captured={lat !== undefined && lng !== undefined}
+                      loading={locating}
+                      onClick={captureLocation}
+                    />
                     {quote && quote.total_km != null && (
                       <p className="text-xs text-muted-foreground">
                         Delivery is priced on the route

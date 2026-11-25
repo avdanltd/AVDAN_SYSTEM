@@ -88,6 +88,7 @@ class OrderStatsPoint(BaseModel):
     bucket: str  # first day of the day / week / month, YYYY-MM-DD (Lagos time)
     total: int
     by_group: dict[str, int]
+    value_kobo: int = 0  # value of the paid orders in this bucket (same basis as the response total)
 
 
 class OrderStatsResponse(BaseModel):

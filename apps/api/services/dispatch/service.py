@@ -428,11 +428,9 @@ class DispatchService:
         # QA_PASSED -> OUT_FOR_DELIVERY) closes the lifecycle: entering the state stamps
         # `updated_at`, which is the timestamp the 48h release cutoff is measured from.
         if to_state == OrderStatus.DELIVERED:
-            # The rider's job is done: credit their wallet now (not after the vendor's dispute
-            # window). It becomes withdrawable via a payout request an admin approves.
-            from services.wallet.service import WalletService
-
-            await WalletService(self.db).credit_rider_for_order(order)
+            # The rider is NOT paid yet: like the vendor, their money is released after the hold
+            # (PaymentService.release_escrow), so it is only withdrawable once it has surely
+            # settled with us from Paystack.
             order = await order_svc.transition(
                 order_id=order_id,
                 to_state=OrderStatus.PAYMENT_RELEASE_PENDING,
