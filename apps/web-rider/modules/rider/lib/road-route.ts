@@ -1,68 +1,34 @@
 /**
- * Road-snapped route fetching via OSRM's public demo server.
- *
- * IMPORTANT — PROTOTYPE ONLY, NOT PRODUCTION-SAFE:
- * `router.project-osrm.org` is a free demo instance run by the OSRM project for evaluation/
- * testing. It has no uptime SLA, no documented rate limits (it will silently throttle or block
- * a user-agent/IP that sends too much traffic), and can be taken down or changed without notice.
- * It must NEVER be treated as this app's production routing backend. Before shipping this to
- * real riders, replace this module with one of:
- *   - A self-hosted OSRM instance (same API, our own infra, our own rate limits)
- *   - Mapbox Directions API (paid, has a JS SDK, adds live traffic + turn-by-turn if needed)
- *   - Google Directions API / Navigation SDK (paid, partner access required for nav SDK)
- *   - HERE Routing API (paid)
- *
- * This module exists to prove the "real road-shaped polyline" feature today, with a public
- * server that needs no API key or signup. Callers MUST treat a `null` result as expected and
- * fall back to a straight line — never surface an error or blank map when this fails.
+ * Road-snapped routes for the live map, fetched from OUR API (`GET /routing/route`), never from a
+ * routing service directly. `null` is a normal answer (routing not set up, no road link, provider
+ * down): callers fall back to a straight line and must never show an error or a blank map.
  */
-
-const OSRM_BASE_URL = 'https://router.project-osrm.org'
-const REQUEST_TIMEOUT_MS = 5000
+import { apiClient } from '@/lib/api-client'
 
 export interface RoutePoint {
   lat: number
   lng: number
 }
 
-interface OsrmResponse {
-  code: string
-  routes?: { geometry?: { coordinates?: [number, number][] } }[]
+interface RouteApiResponse {
+  points: RoutePoint[]
 }
 
-/**
- * Fetches a road-following route between two points from OSRM's demo server.
- * Returns the ordered list of {lat, lng} points tracing the route, or `null` if the request
- * fails for any reason (network error, timeout, non-200, malformed response, rate limiting).
- * Never throws — callers can rely on `null` meaning "fall back to the straight line".
- */
 export async function fetchRoadRoute(origin: RoutePoint, destination: RoutePoint): Promise<RoutePoint[] | null> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
-
   try {
-    const url =
-      `${OSRM_BASE_URL}/route/v1/driving/` +
-      `${origin.lng},${origin.lat};${destination.lng},${destination.lat}` +
-      `?overview=full&geometries=geojson`
-
-    const response = await fetch(url, { signal: controller.signal })
-    if (!response.ok) return null
-
-    const data = (await response.json()) as OsrmResponse
-    const coordinates = data.routes?.[0]?.geometry?.coordinates
-    if (!coordinates || coordinates.length < 2) return null
-
-    return coordinates.map(([lng, lat]) => ({ lat, lng }))
+    const res = await apiClient.get<RouteApiResponse>('/routing/route', {
+      from_lat: String(origin.lat),
+      from_lng: String(origin.lng),
+      to_lat: String(destination.lat),
+      to_lng: String(destination.lng),
+    })
+    return res.points && res.points.length >= 2 ? res.points : null
   } catch {
-    // Network error, abort/timeout, or malformed JSON — treat all the same: no route available.
     return null
-  } finally {
-    clearTimeout(timeout)
   }
 }
 
-/** Great-circle distance in km, used both for the caption and to decide when to refetch. */
+/** Great-circle distance in km, used for captions and to decide when to refetch. */
 export function haversineKm(a: RoutePoint, b: RoutePoint): number {
   const R = 6371
   const dLat = ((b.lat - a.lat) * Math.PI) / 180
@@ -73,5 +39,5 @@ export function haversineKm(a: RoutePoint, b: RoutePoint): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h))
 }
 
-/** Minimum rider movement (km) since the last fetched route before we bother refetching. */
-export const REFETCH_DISTANCE_KM = 0.08
+/** Minimum movement (km) since the last fetched route before it is worth fetching again. */
+export const REFETCH_DISTANCE_KM = 0.2

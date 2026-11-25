@@ -46,9 +46,8 @@ function FollowRider({ rider }: { rider: { lat: number; lng: number } | null }) 
  * Live map for the web rider portal: the rider's own GPS position, a marker for the current
  * destination (hub or customer — decided by the caller using the same reveal logic as the rest
  * of this app), and a route line between them. When possible the line is a real road-snapped
- * route fetched from OSRM's public demo server (see `../lib/road-route.ts` — that server is a
- * best-effort prototype dependency, NOT production-safe); if that fetch fails, is slow, or
- * hasn't resolved yet, this falls back to a dashed straight-line distance/direction indicator so
+ * route fetched from our own routing endpoint (see `../lib/road-route.ts`); if that fetch fails, is
+ * slow, or hasn't resolved yet, this falls back to a dashed straight-line distance/direction indicator so
  * the map is never broken or blank. The existing "Open in Maps" link stays the way to get real
  * turn-by-turn directions.
  */
