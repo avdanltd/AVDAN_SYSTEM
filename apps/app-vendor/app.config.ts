@@ -25,6 +25,9 @@ const config: ExpoConfig = {
     apiUrl: API_URL,
     wsUrl: WS_URL,
     hasPushConfig: Boolean(GOOGLE_SERVICES_JSON),
+    // Lets the JS side skip mounting the native Google map when this Android build has no key
+    // (the SDK throws on a missing key rather than rendering blank). iPhones use Apple Maps.
+    hasAndroidMapsKey: Boolean(process.env.GOOGLE_MAPS_API_KEY_ANDROID),
     eas: {
       projectId: '4224d0fc-fb18-432f-bfc1-5add0a663507',
     },
@@ -51,6 +54,12 @@ const config: ExpoConfig = {
       monochromeImage: './assets/images/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
+    // Android's Google Maps SDK needs a key in the manifest at build time (an EAS secret, never in git).
+    config: {
+      googleMaps: {
+        apiKey: process.env.GOOGLE_MAPS_API_KEY_ANDROID,
+      },
+    },
     permissions: ['CAMERA'],
   },
   web: {

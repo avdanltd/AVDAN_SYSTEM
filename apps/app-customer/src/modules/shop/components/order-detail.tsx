@@ -25,6 +25,7 @@ import { useOrder } from '../hooks/use-shop'
 import { shopService } from '../services/shop.service'
 import { useCheckout } from '../hooks/use-checkout'
 import { useOrderTracking } from '../hooks/use-order-tracking'
+import { TrackingMap } from './tracking-map'
 
 /** Statuses where a rider is actually en route and worth opening a live WS connection for. */
 const TRACKABLE_STATUSES = new Set([
@@ -291,6 +292,18 @@ export function OrderDetail({ orderId }: { orderId: string }) {
               />
             )}
           </View>
+          {tracking.location && (
+            <TrackingMap
+              rider={tracking.location}
+              destination={
+                typeof order.delivery_address.lat === 'number' && typeof order.delivery_address.lng === 'number'
+                  ? { lat: order.delivery_address.lat, lng: order.delivery_address.lng }
+                  : null
+              }
+              stage={tracking.stage}
+              etaSeconds={tracking.etaSeconds}
+            />
+          )}
           {tracking.location && (
             <Button
               label="View rider location"

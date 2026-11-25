@@ -40,6 +40,7 @@ from services.review.router import admin_router as admin_reviews_router
 from services.review.router import router as reviews_router
 from services.search.router import router as search_router
 from services.storage.router import router as uploads_router
+from services.routing.router import router as routing_router
 from services.tracking.router import ws_router
 from services.vendor.router import products_router
 from services.vendor.router import router as vendor_router
@@ -149,6 +150,7 @@ def create_app() -> FastAPI:
     app.include_router(notifications_router, prefix="/notifications", tags=["notifications"])
     app.include_router(hub_router, prefix="/hub", tags=["hub"])
     app.include_router(ws_router, prefix="/ws", tags=["tracking"])
+    app.include_router(routing_router, prefix="/routing", tags=["routing"])
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
